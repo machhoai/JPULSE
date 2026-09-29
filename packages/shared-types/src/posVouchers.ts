@@ -1,13 +1,9 @@
 import type {
-  ISOTimestamped,
-  LocalDate,
-  SoftDeletable,
-} from "./utility.js";
-import type {
   MarketingVoucherCampaignStatus,
   MarketingVoucherRewardType,
 } from "./marketingVouchers.js";
 import type { PosProductVisibilityCatalogItem } from "./pos.js";
+import type { ISOTimestamped, LocalDate, SoftDeletable } from "./utility.js";
 
 export const POS_VOUCHER_CAMPAIGN_SETTINGS_COLLECTION =
   "pos_voucher_campaign_settings" as const;
@@ -15,8 +11,7 @@ export const POS_VOUCHER_REDEMPTIONS_COLLECTION =
   "pos_voucher_redemptions" as const;
 
 export interface PosVoucherCampaignSetting
-  extends SoftDeletable,
-    ISOTimestamped {
+  extends SoftDeletable, ISOTimestamped {
   id: string;
   warehouse_id: string;
   campaign_id: string;

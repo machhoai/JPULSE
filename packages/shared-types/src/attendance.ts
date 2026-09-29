@@ -1,3 +1,9 @@
+import type {
+  LeaveDayPortion,
+  LeaveRequestStatus,
+  LeaveRequestType,
+} from "./leave.js";
+
 export enum AttendanceLogStatus {
   SUCCESS = "SUCCESS",
   REJECTED = "REJECTED",
@@ -176,9 +182,9 @@ export interface AttendanceLeaveDay {
   employee_user_id: string;
   warehouse_id: string;
   attendance_date: string;
-  request_type: import("./leave.js").LeaveRequestType;
-  portion: import("./leave.js").LeaveDayPortion;
-  status: import("./leave.js").LeaveRequestStatus;
+  request_type: LeaveRequestType;
+  portion: LeaveDayPortion;
+  status: LeaveRequestStatus;
 }
 
 export interface AttendanceCheckInContext {
