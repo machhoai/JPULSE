@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useMFA } from "../../hooks/useMFA";
-import { useUserStore } from "../../stores/useUserStore";
-import { useTranslation } from "../../lib/i18n";
-import { useAuth } from "../../hooks/useAuth";
 import { LockClosedIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
-import { LogOut, Globe } from "lucide-react";
 import { gooeyToast } from "goey-toast";
+import { LogOut, Globe } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+
+import { useAuth } from "../../hooks/useAuth";
+import { useMFA } from "../../hooks/useMFA";
+import { useTranslation } from "../../lib/i18n";
 import { MFA_LOCK_TEXT } from "../../lib/i18n/componentTranslations";
+import { useUserStore } from "../../stores/useUserStore";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 
@@ -48,6 +49,8 @@ const maskEmail = (email?: string) => {
 export const MFALockScreen = () => {
     const { isLocked, unlockScreen } = useMFA();
     const { user } = useUserStore();
+    const userId = user?.id;
+    const mfaEnabled = user?.mfa_enabled;
     const { lang, setLang } = useTranslation();
     const { logout } = useAuth();
     const copy = MFA_LOCK_TEXT[lang === "zh" ? "zh" : "vi"];
@@ -59,21 +62,12 @@ export const MFALockScreen = () => {
     const [isSendingEmail, setIsSendingEmail] = useState(false);
     const validationInFlightRef = useRef(false);
     const emailInFlightRef = useRef(false);
-
-    useEffect(() => {
-        if (isLocked && user) {
-            if (user.mfa_enabled) {
-                setMethod("totp");
-            } else {
-                setMethod("email");
-                sendEmailOtp();
-            }
-        }
-    }, [isLocked, user]);
+    const autoSentForUserRef = useRef<string | null>(null);
 
     const sendEmailOtp = useCallback(async () => {
         if (emailInFlightRef.current) return;
         emailInFlightRef.current = true;
+        setCode("");
         setIsSendingEmail(true);
         try {
             await gooeyToast.promise(
@@ -98,6 +92,26 @@ export const MFALockScreen = () => {
             setIsSendingEmail(false);
         }
     }, [copy]);
+
+    useEffect(() => {
+        if (!isLocked) {
+            autoSentForUserRef.current = null;
+            setCode("");
+            return;
+        }
+        if (!userId) {
+            autoSentForUserRef.current = null;
+            return;
+        }
+        if (mfaEnabled) {
+            setMethod("totp");
+            return;
+        }
+        setMethod("email");
+        if (autoSentForUserRef.current === userId) return;
+        autoSentForUserRef.current = userId;
+        void sendEmailOtp();
+    }, [isLocked, userId, mfaEnabled, sendEmailOtp]);
 
     const verifyCode = async (token: string) => {
         if (validationInFlightRef.current) return;
