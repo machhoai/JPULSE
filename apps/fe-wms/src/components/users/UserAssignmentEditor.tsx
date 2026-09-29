@@ -62,9 +62,18 @@ export function UserAssignmentEditor({
     value: string | boolean,
   ) => {
     onChange(
-      assignments.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, [key]: value } : item,
-      ),
+      assignments.map((item, itemIndex) => {
+        if (itemIndex !== index) return item;
+        if (
+          key === "role_id" &&
+          isSystemAdmin &&
+          activeRoles.find((role) => role.id === value)?.permissions["*"] ===
+            true
+        ) {
+          return { ...item, role_id: value as string, warehouse_id: "" };
+        }
+        return { ...item, [key]: value };
+      }),
     );
   };
 
@@ -99,6 +108,12 @@ export function UserAssignmentEditor({
               label={t.users.warehouseScope}
               value={assignment.warehouse_id}
               required={!isSystemAdmin}
+              disabled={
+                isSystemAdmin &&
+                !assignment.warehouse_id &&
+                activeRoles.find((role) => role.id === assignment.role_id)
+                  ?.permissions["*"] === true
+              }
               onChange={(value) =>
                 updateAssignment(index, "warehouse_id", value)
               }
@@ -122,11 +137,15 @@ export function UserAssignmentEditor({
               onChange={(value) => updateAssignment(index, "role_id", value)}
             >
               <option value="">{t.users.selectRole}</option>
-              {activeRoles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
-                </option>
-              ))}
+              {activeRoles
+                .filter(
+                  (role) => isSystemAdmin || role.permissions["*"] !== true,
+                )
+                .map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
+                ))}
             </SelectField>
             <DateField
               label={t.users.validFrom}
@@ -195,12 +214,14 @@ function SelectField({
   label,
   value,
   required,
+  disabled,
   onChange,
   children,
 }: {
   label: string;
   value: string;
   required?: boolean;
+  disabled?: boolean;
   onChange: (value: string) => void;
   children: React.ReactNode;
 }) {
@@ -208,6 +229,7 @@ function SelectField({
     <Field label={label}>
       <select
         required={required}
+        disabled={disabled}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className={inputClassName}
