@@ -1,0 +1,27 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-37 – Xem việc soạn, nhận và hoàn tất chứng từ
+  actor NV as Nhân viên kho
+  participant WEB as Web JPULSE
+  participant DB as Firestore JPULSE
+  NV->>WEB: Mở tab phiên hoặc hoàn tất
+  par Phiếu nhập
+    WEB->>DB: Theo dõi phiếu nhập · Web SDK
+    DB-->>WEB: Phiếu nhập hiện hoạt động
+  and Phiếu xuất
+    WEB->>DB: Theo dõi phiếu xuất · Web SDK
+    DB-->>WEB: Phiếu xuất hiện hoạt động
+  and Lệnh điều chuyển
+    WEB->>DB: Theo dõi lệnh điều chuyển · Web SDK
+    DB-->>WEB: Lệnh hiện hoạt động
+  end
+  alt Các listener trả dữ liệu
+    WEB->>WEB: Gom phiếu và lọc trạng thái theo tab
+    opt Tab phiên thao tác
+      WEB->>WEB: Lọc phân công soạn/nhận
+    end
+    WEB-->>NV: Danh sách việc có thể mở
+  else Một listener lỗi
+    WEB-->>NV: Danh sách thiếu nguồn dữ liệu bị lỗi
+  end
+  Note over NV,DB: Hành động tiếp theo theo SD-08, SD-09, SD-10A/B hoặc SD-17

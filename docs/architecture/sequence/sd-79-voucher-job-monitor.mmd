@@ -1,0 +1,21 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":75,"messageMargin":18,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-79 – Theo dõi job và kết quả email
+  actor Q as Quản trị marketing
+  participant WEB as Web JPULSE
+  participant DB as Firestore JPULSE
+  Q->>WEB: Mở tab tác vụ
+  WEB->>DB: Theo dõi danh sách job · Web SDK
+  alt Có quyền đọc
+    DB-->>WEB: Snapshot job và tiến độ
+    WEB->>WEB: Lọc theo campaign, trạng thái, loại
+    WEB-->>Q: Danh sách và phần trăm hoàn tất
+    opt Mở kết quả email
+      WEB->>DB: Theo dõi items của job · Web SDK
+      DB-->>WEB: Item gửi thành công hoặc thất bại
+      WEB-->>Q: Kết quả theo người nhận
+    end
+  else Rules từ chối hoặc listener lỗi
+    DB-->>WEB: Lỗi đọc
+    WEB-->>Q: Thông báo lỗi tải
+  end

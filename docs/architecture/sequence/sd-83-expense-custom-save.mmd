@@ -1,0 +1,31 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":72,"messageMargin":18,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-83 – Thêm hoặc sửa dòng chi phí tự tạo
+  actor U as Người nhập liệu
+  participant W as Web JPULSE
+  participant A as JPULSE API
+  participant F as Firestore JPULSE
+  U->>W: Thêm hoặc sửa dòng tự tạo
+  W->>W: Tạo mã dòng khi thêm, cập nhật giao diện tạm
+  W->>A: Lưu dòng tự tạo · REST
+  activate A
+  A->>A: Kiểm dữ liệu và quyền theo cost center
+  alt Có quyền và dữ liệu hợp lệ
+    A->>F: Đọc chứng từ kỳ
+    F-->>A: Dữ liệu và trạng thái
+    alt Kỳ OPEN
+      A->>F: Ghi dòng mới hoặc sửa dòng hiện có
+      F-->>A: Đã ghi
+      A->>F: Ghi audit CREATE hoặc UPDATE
+      F-->>A: Đã ghi audit
+      A-->>W: Chứng từ cập nhật
+      W-->>U: Hiển thị dòng đã lưu
+    else Kỳ CLOSED
+      A-->>W: Từ chối cập nhật
+      W->>W: Hoàn tác giao diện tạm
+    end
+  else Dữ liệu sai hoặc thiếu quyền
+    A-->>W: Từ chối yêu cầu
+    W->>W: Hoàn tác giao diện tạm
+  end
+  deactivate A

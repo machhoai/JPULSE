@@ -1,0 +1,22 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-21 – Xóa mềm tổ chức
+  actor QT as Quản trị hệ thống
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  QT->>WEB: Xác nhận xóa tổ chức
+  WEB->>API: Xóa tổ chức · HTTP/JSON
+  activate API
+  API->>API: Kiểm tra phiên và quyền quản trị
+  API->>DB: Đọc tổ chức và cơ sở liên kết
+  DB-->>API: Tổ chức, trạng thái cơ sở
+  alt Thiếu quyền hoặc còn cơ sở đang dùng
+    API-->>WEB: Từ chối xóa
+  else Có thể xóa
+    API->>DB: Đánh dấu tổ chức đã xóa
+    API->>DB: Ghi audit xóa mềm
+    API-->>WEB: Xóa thành công
+  end
+  deactivate API
+  WEB-->>QT: Hiển thị kết quả

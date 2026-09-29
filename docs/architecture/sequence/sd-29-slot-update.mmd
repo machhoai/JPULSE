@@ -1,0 +1,25 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-29 – Sửa ô kệ
+  actor NV as Nhân viên được phân quyền
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  NV->>WEB: Sửa tên, mã, thứ tự hoặc trạng thái
+  WEB->>API: Cập nhật ô kệ · HTTP/JSON
+  activate API
+  API->>DB: Đọc ô kệ và quyền cơ sở
+  DB-->>API: Ô kệ, quyền
+  opt Đổi mã ô kệ
+    API->>DB: Kiểm tra mã trong vị trí hiện tại
+    DB-->>API: Kết quả đối chiếu
+  end
+  alt Thiếu quyền, không có ô kệ hoặc mã trùng
+    API-->>WEB: Từ chối cập nhật
+  else Hợp lệ
+    API->>DB: Ghi thay đổi ô kệ
+    API->>DB: Ghi audit cập nhật
+    API-->>WEB: Cập nhật thành công
+  end
+  deactivate API
+  WEB-->>NV: Hiển thị kết quả

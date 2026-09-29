@@ -1,0 +1,24 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-09 – Hoàn tất phiếu xuất sau khi soạn hàng
+  actor NV as Nhân viên kho
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+
+  Note over NV,DB: Phiếu đã ở SHIPPED sau SD-08
+  NV->>WEB: Xác nhận hoàn tất xuất
+  WEB->>API: Hoàn tất phiếu xuất · HTTP/JSON
+  activate API
+  API->>DB: Đọc quyền theo kho và trạng thái phiếu
+  DB-->>API: Phạm vi quyền và phiếu
+  alt Không đủ quyền hoặc không có phiếu
+    API-->>WEB: Từ chối hoàn tất
+  else Hợp lệ
+    API->>DB: Chuyển phiếu sang COMPLETED
+    DB-->>API: Đã lưu trạng thái
+    API->>DB: Ghi audit hoàn tất
+    DB-->>API: Kết quả ghi audit
+    API-->>WEB: Trả phiếu đã hoàn tất
+  end
+  deactivate API

@@ -1,0 +1,23 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-30 – Xóa mềm ô kệ
+  actor NV as Nhân viên được phân quyền
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  NV->>WEB: Xác nhận xóa ô kệ
+  WEB->>API: Xóa ô kệ · HTTP/JSON
+  activate API
+  API->>DB: Đọc ô kệ và quyền cơ sở
+  DB-->>API: Ô kệ, quyền
+  API->>DB: Đọc sản phẩm đã gán trong vị trí
+  DB-->>API: Danh sách gán
+  alt Thiếu quyền hoặc ô kệ đang gán sản phẩm
+    API-->>WEB: Từ chối xóa
+  else Có thể xóa
+    API->>DB: Đánh dấu ô kệ đã xóa
+    API->>DB: Ghi audit xóa mềm
+    API-->>WEB: Xóa thành công
+  end
+  deactivate API
+  WEB-->>NV: Hiển thị kết quả

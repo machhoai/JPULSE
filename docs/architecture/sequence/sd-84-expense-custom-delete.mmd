@@ -1,0 +1,27 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":72,"messageMargin":18,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-84 – Xóa mềm dòng chi phí tự tạo
+  actor U as Người nhập liệu
+  participant W as Web JPULSE
+  participant A as JPULSE API
+  participant F as Firestore JPULSE
+  U->>W: Xóa dòng tự tạo
+  W->>W: Đánh dấu xóa tạm trên giao diện
+  W->>A: Xóa dòng theo mã · REST
+  activate A
+  A->>F: Đọc dòng hiện có để xác định cost center
+  F-->>A: Dòng hoặc không tồn tại
+  A->>A: Kiểm quyền ghi theo cost center
+  alt Có quyền, dòng tồn tại và kỳ OPEN
+    A->>F: Đọc chứng từ và ghi is_deleted=true
+    F-->>A: Đã ghi
+    A->>F: Ghi audit SOFT_DELETE
+    F-->>A: Đã ghi audit
+    A-->>W: Chứng từ cập nhật
+    W-->>U: Ẩn dòng đã xóa
+  else Thiếu quyền, dòng vắng hoặc kỳ CLOSED
+    A-->>W: Từ chối hoặc không tìm thấy
+    W->>W: Hoàn tác đánh dấu tạm
+    W-->>U: Báo lỗi xóa
+  end
+  deactivate A

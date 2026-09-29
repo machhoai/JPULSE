@@ -1,0 +1,35 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":72,"messageMargin":18,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-90 – Theo dõi và đồng bộ doanh thu trên báo cáo
+  actor U as Quản lý hoặc kế toán
+  participant W as Web JPULSE
+  participant FA as Firebase Authentication
+  participant A as JPULSE API
+  participant F as Firestore JPULSE
+  participant J as JoyWorld
+  U->>W: Mở dashboard theo cơ sở và kỳ
+  W->>FA: Theo dõi phiên đăng nhập · Auth SDK
+  FA-->>W: Người dùng hiện tại hoặc chưa đăng nhập
+  alt Có phiên đăng nhập
+    W->>F: Lắng nghe revenue_sync theo cơ sở và kỳ · Web SDK
+    F-->>W: Snapshot doanh thu hoặc chưa có dữ liệu
+    W->>A: Kích hoạt đồng bộ doanh thu · REST
+    activate A
+    A->>A: Kiểm quyền revenue.sync và độ mới cache
+    alt Cache còn mới
+      A-->>W: Dữ liệu đã có
+    else Cần đồng bộ và nguồn sẵn sàng
+      A->>J: Tra doanh thu kỳ
+      J-->>A: Số liệu doanh thu
+      A->>F: Ghi revenue_sync và audit
+      F-->>A: Đã ghi
+      A-->>W: Hoàn tất đồng bộ
+      F-->>W: Snapshot doanh thu mới
+      W->>W: Cập nhật KPI doanh thu và lợi nhuận
+    else Thiếu quyền hoặc tích hợp lỗi
+      A-->>W: Phản hồi lỗi (Web chưa kiểm tra)
+    end
+    deactivate A
+  else Chưa đăng nhập hoặc listener lỗi
+    W-->>U: Không có dữ liệu realtime
+  end

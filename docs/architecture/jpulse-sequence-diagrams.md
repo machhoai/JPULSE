@@ -15,6 +15,7 @@ Trong hình, **Firebase Auth** là Firebase Authentication và **JPOS Functions*
 | **SD-03A–C: Tạo phiếu nhập kho** | Nhân viên kho chọn tệp và nhập phiếu → Web tải tệp trực tiếp lên Storage; API kiểm tra quyền và ghi phiếu, dòng hàng, bước duyệt, audit vào Firestore. | Tệp sai/tải lỗi, phiên/quyền/OTP sai, thiếu chứng từ theo cấu hình, ghi batch lỗi. | SRS use case **Tạo phiếu nhập**, **Tải cấu hình quy trình**, **Kiểm tra quyền, sản phẩm, vị trí**; mã Web/API. |
 | **SD-04A–D: Phát hành hóa đơn qua hàng đợi** | Kế toán chọn draft đủ điều kiện → API tạo job, Cloud Tasks giao item cho worker, API gọi MISA và ghi kết quả. | Feature flag/queue chưa bật, quyền hoặc draft sai, task đến sớm/lane bận, MISA từ chối, kết quả mơ hồ cần tra trạng thái. | SRS use case **Phát hành đơn lẻ/hàng loạt**, **Gọi meInvoice và ghi sổ**, INT-03, INT-10; [thiết kế issue jobs](../integrations/meinvoice/phase-4-issue-jobs.md). |
 | **SD-05: Thông báo realtime** | Nhân viên mở thông báo → Web đọc snapshot Firestore và đánh dấu đã đọc trực tiếp. | Firestore Security Rules từ chối hoặc subscription lỗi. | SRS nhóm **thông báo** và INT-01; [useNotifications](../../apps/fe-wms/src/hooks/useNotifications.ts), [firestore.rules](../../firestore.rules). |
+| **SD-06–17: Quản lý kho** | Tạo và duyệt chứng từ, xuất/nhập hàng, xem tồn, kiểm kê và điều chuyển → tồn kho được cập nhật theo từng nghiệp vụ. | Quyền/phân công sai, ATP thiếu, chứng từ hoặc bằng chứng lỗi, transaction thất bại. | SRS các bảng **Tạo chứng từ tồn kho**, **Xử lý phiên kiểm kê**; [bộ SD kho](./jpulse-warehouse-sequence-diagrams.md). |
 
 Các bước của cùng một luồng được chia thành hình A/B/C/D tại điểm nối ghi ngay trên hình. Điều này giữ từng ảnh ở kích thước đọc được trên trang Word ngang.
 
@@ -163,3 +164,27 @@ Web dùng Firestore Web SDK để lắng nghe thông báo của User và cập n
 | SD-05 | Web ↔ Firestore trực tiếp qua Web SDK; Rules giới hạn đọc/ghi. | Khớp đường truy cập trực tiếp trong Container Diagram. |
 
 Các SD mô tả một lần tương tác hoặc một bước được nối rõ ràng. Chúng không mở rộng controller, service hay repository thành container riêng; các xử lý nội bộ của API/JPOS Functions chỉ xuất hiện dưới dạng thông điệp tự gọi khi cần làm rõ quyết định nghiệp vụ.
+
+## 9. SD-06–17 — Quản lý kho
+
+[Bộ SD quản lý kho](./jpulse-warehouse-sequence-diagrams.md) bổ sung 14 hình đã render, gồm tạo phiếu xuất, duyệt phiếu nhập/xuất, soạn và chốt xuất, nhận phiếu nhập, xem tồn, tạo/ghi/nộp kiểm kê và điều chuyển kho. SD-03A–C ở tài liệu này vẫn là luồng tạo phiếu nhập; SD-10A/B nối từ phiếu nhập đã duyệt đến khi tồn được cập nhật. Mỗi hình có mã Mermaid, SVG và PNG kèm nguồn mã, nhánh lỗi và điểm chưa xác nhận trong tài liệu bổ sung.
+
+## 10. SD-18–35 — Tổ chức, cơ sở và cấu trúc kho
+
+[Bộ SD tổ chức và cơ sở](./jpulse-facility-sequence-diagrams.md) bổ sung 18 hình đã render: xem danh sách, tạo/sửa/xóa tổ chức và cơ sở, quản lý vị trí/ô kệ, gán sản phẩm, xem tổng quan tồn và quầy giải thưởng, xuất Excel, thiết lập định mức tồn. “Giải thưởng” trong UI hiện là bảng tổng hợp theo ô kệ và ATP; tài liệu nêu rõ điểm cần xác minh về nghiệp vụ giải thưởng độc lập.
+
+## 11. SD-36–45 — Nhiệm vụ và kiểm kê hàng hóa
+
+[Bộ SD nhiệm vụ và kiểm kê](./jpulse-tasks-stock-count-sequence-diagrams.md) bổ sung 10 hình đã render: danh sách và chi tiết công việc, từ chối/hủy phê duyệt, danh sách và xử lý báo cáo không phù hợp, danh sách và chi tiết phiên kiểm kê. Các thao tác duyệt, soạn/nhận hàng và tạo/ghi/nộp kiểm kê đã có ở SD-07–14 và SD-17; tài liệu mới dẫn chiếu lại theo đúng điểm nối thay vì vẽ trùng. Mỗi hình có Mermaid, SVG, PNG, nguồn mã và các điểm cần xác minh.
+
+## 12. SD-46–60 — Quản lý hóa đơn
+
+[Bộ SD quản lý hóa đơn](./jpulse-invoice-management-sequence-diagrams.md) bổ sung 18 hình đã render: xem và đồng bộ đơn, đối chiếu MISA, cấu hình cửa hàng, tạo/chỉnh/xem trước draft, phát hành lô, theo dõi tiến độ, retry có kiểm tra, sổ hóa đơn và case đối chiếu. SD-49, SD-58 và SD-60 được tách A/B để dễ đọc; phát hành bất đồng bộ nối sang SD-04A–D đã có. Tài liệu ghi riêng các chênh lệch giữa SRS, thiết kế giai đoạn và route/UI hiện tại.
+
+## 13. SD-61–80 — Voucher marketing
+
+[Bộ SD voucher marketing](./jpulse-marketing-voucher-sequence-diagrams.md) bổ sung 20 hình đã render cho `/admin/vouchers`: tổng quan, vòng đời chiến dịch, tra cứu và thu hồi mã, sinh mã/gia hạn theo job, gửi email Brevo, xuất Excel, tải file và theo dõi/tiếp tục tác vụ. Bộ hình phân biệt listener Firestore trực tiếp của Web với các mutation qua JPULSE API; worker dùng Cloud Tasks khi đã cấu hình.
+
+## 14. SD-81–90 — Chi phí và báo cáo chi phí
+
+[Bộ SD chi phí](./jpulse-expense-sequence-diagrams.md) bổ sung 10 hình đã render cho `/expenses` và `/expenses/entry`: tải chứng từ, sửa dòng cố định, thêm/sửa/xóa mềm dòng tự tạo, tải mẫu và nhập Excel, chốt/mở lại kỳ, xem dashboard và đồng bộ doanh thu. Bộ hình tách các mutation qua API khỏi listener `revenue_sync` trực tiếp của Web; tài liệu ghi rõ các chênh lệch giữa chỉ tiêu dashboard và dữ liệu API hiện trả.

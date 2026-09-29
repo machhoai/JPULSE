@@ -1,0 +1,30 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":75,"messageMargin":18,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-57 – Thử lại hóa đơn bị MISA từ chối rõ ràng
+  actor KT as Kế toán
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  participant MISA as MISA meInvoice
+  KT->>WEB: Mở danh sách lỗi phát hành
+  WEB->>API: Lấy ứng viên retry · HTTP/JSON
+  API->>DB: Đọc item thất bại đủ điều kiện
+  DB-->>API: Danh sách ứng viên
+  API-->>WEB: Item có thể thử lại
+  KT->>WEB: Chọn thử lại và nhập OTP
+  WEB->>API: Yêu cầu retry · HTTP/JSON
+  activate API
+  API->>DB: Kiểm tra lại item, quyền và trạng thái
+  API->>API: Xác minh OTP, cờ phát hành và hạn ngày
+  API->>MISA: Đọc hóa đơn ngày và trạng thái RefID · HTTPS API
+  MISA-->>API: Kết quả tra cứu hoặc lỗi
+  alt Tra cứu chắc chắn, item đủ điều kiện
+    API->>API: Phân loại được phép publish/xác nhận
+    API->>DB: Requeue item hợp lệ, chặn bản ghi trùng
+    API-->>WEB: Item đã xếp lại hoặc bị chặn
+    Note over API,DB: Worker tiếp tục theo SD-04B–D
+  else MISA lỗi hoặc điều kiện không đạt
+    API-->>WEB: Không xếp lại, yêu cầu đối chiếu
+  end
+  deactivate API
+  WEB-->>KT: Hiển thị kết quả

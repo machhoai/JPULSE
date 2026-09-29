@@ -1,0 +1,22 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-45 – Xem chi tiết phiên kiểm kê
+  actor NV as Nhân viên kiểm kê
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  NV->>WEB: Chọn phiên kiểm kê
+  WEB->>API: Lấy chi tiết phiên · HTTP/JSON
+  activate API
+  API->>DB: Đọc phiên và quyền cơ sở
+  DB-->>API: Phiên hoặc không tìm thấy
+  alt Không có phiên hoặc thiếu quyền
+    API-->>WEB: Từ chối xem
+  else Hợp lệ
+    API->>DB: Đọc dòng kiểm kê và thông tin sản phẩm
+    DB-->>API: Dòng và dữ liệu hiển thị
+    API-->>WEB: Phiên, dòng, số mốc và số đếm
+  end
+  deactivate API
+  WEB-->>NV: Hiển thị chi tiết và thao tác phù hợp
+  Note over NV,DB: Tạo, ghi/đếm lại và nộp phiên đã có tại SD-12–14

@@ -1,0 +1,38 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-07 – Duyệt phiếu nhập hoặc xuất kho
+  actor DUYET as Người duyệt
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+
+  DUYET->>WEB: Chọn bước duyệt phiếu
+  WEB->>API: Gửi quyết định duyệt
+  activate API
+  API->>DB: Đọc quyền, bước duyệt và phiếu
+  DB-->>API: Trạng thái và cấu hình cấp duyệt
+  API->>API: Kiểm tra vai trò, không tự duyệt, OTP nếu cần
+  alt Không đủ quyền hoặc bước không hợp lệ
+    API-->>WEB: Từ chối quyết định
+  else Hợp lệ
+    API->>DB: Ghi quyết định duyệt
+    DB-->>API: Số người đã duyệt ở cấp hiện tại
+    API->>DB: Ghi audit quyết định
+    alt Chưa đủ người hoặc chưa hết cấp
+      API-->>WEB: Trả trạng thái đang duyệt
+    else Duyệt hoàn tất
+      opt Phiếu xuất
+        API->>DB: Đọc dòng phiếu và ATP theo vị trí
+        DB-->>API: Số lượng khả dụng
+      end
+      alt ATP phiếu xuất không đủ
+        API->>DB: Hoàn nguyên bản ghi duyệt về chờ
+        API-->>WEB: Báo không đủ ATP
+      else Có thể hoàn tất duyệt
+        API->>DB: Chuyển phiếu sang APPROVED và ghi audit
+        DB-->>API: Trạng thái mới
+        API-->>WEB: Báo duyệt thành công
+      end
+    end
+  end
+  deactivate API

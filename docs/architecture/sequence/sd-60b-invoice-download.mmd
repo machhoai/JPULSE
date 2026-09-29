@@ -1,0 +1,24 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":75,"messageMargin":18,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-60B – Tải PDF hoặc XML hóa đơn
+  actor KT as Kế toán
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  participant MISA as MISA meInvoice
+  KT->>WEB: Chọn tải PDF hoặc XML
+  WEB->>API: Yêu cầu tệp hóa đơn · HTTP/JSON
+  activate API
+  API->>DB: Đọc ledger, TransactionID và cấu hình
+  DB-->>API: Hóa đơn trong phạm vi cửa hàng
+  alt Có quyền và TransactionID
+    API->>MISA: Tải bản phát hành · HTTPS API
+    MISA-->>API: URL hoặc dữ liệu tệp
+    API->>API: Kiểm tra domain/kích thước/nội dung
+    API-->>WEB: Tệp hoặc URL hợp lệ
+    WEB-->>KT: Lưu PDF/XML
+  else Thiếu quyền, định danh hoặc MISA lỗi
+    API-->>WEB: Báo không thể tải
+    WEB-->>KT: Hiển thị lỗi
+  end
+  deactivate API

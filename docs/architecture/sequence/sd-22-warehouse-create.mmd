@@ -1,0 +1,30 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-22 – Tạo cơ sở kho
+  actor QT as Quản trị hệ thống
+  participant WEB as Web JPULSE
+  participant ST as Storage JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  QT->>WEB: Nhập thông tin cơ sở
+  opt Có ảnh cơ sở mới
+    WEB->>ST: Tải ảnh cơ sở · Storage SDK
+    ST-->>WEB: URL ảnh hoặc lỗi tải
+  end
+  WEB->>API: Tạo cơ sở · HTTP/JSON
+  activate API
+  API->>API: Kiểm tra quyền quản trị hệ thống
+  API->>DB: Đọc tổ chức và kiểm tra mã cơ sở
+  DB-->>API: Kết quả kiểm tra
+  alt Thiếu quyền, tổ chức không có hoặc mã trùng
+    API-->>WEB: Từ chối tạo
+  else Hợp lệ
+    API->>DB: Ghi cơ sở mới
+    opt Loại cơ sở là OFFICE
+      API->>DB: Khởi tạo cấu hình phạm vi văn phòng
+    end
+    API->>DB: Ghi audit và tính lại quyền cơ sở
+    API-->>WEB: Trả cơ sở mới
+  end
+  deactivate API
+  WEB-->>QT: Hiển thị kết quả

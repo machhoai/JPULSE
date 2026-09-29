@@ -1,0 +1,17 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":75,"messageMargin":18,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-58A – Xem sổ hóa đơn đã phát hành
+  actor KT as Kế toán
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  KT->>WEB: Mở tab Đã phát hành
+  WEB->>API: Lấy ledger và snapshot MISA · HTTP/JSON
+  API->>DB: Đọc đơn đã ghép, snapshot ngày
+  DB-->>API: Sổ và hóa đơn MISA đã lưu
+  API-->>WEB: Dòng sổ và thống kê
+  alt Tải thành công
+    WEB-->>KT: Sổ hóa đơn theo ngày
+  else API lỗi
+    WEB-->>KT: Báo lỗi và cho tải lại
+  end

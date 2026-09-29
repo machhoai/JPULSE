@@ -1,0 +1,27 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":72,"messageMargin":18,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-81 – Tải chứng từ chi phí theo cơ sở và kỳ
+  actor U as Người nhập liệu
+  participant W as Web JPULSE
+  participant A as JPULSE API
+  participant F as Firestore JPULSE
+  U->>W: Chọn cơ sở và kỳ tại /expenses/entry
+  W->>A: Lấy chứng từ chi phí · REST
+  activate A
+  A->>A: Kiểm quyền expenses.read theo cơ sở
+  alt Được phép đọc
+    A->>F: Đọc expenses theo cơ sở và kỳ
+    F-->>A: Chứng từ hoặc chưa có
+    opt Chưa có chứng từ
+      A->>F: Tạo chứng từ OPEN với giá trị mặc định
+      F-->>A: Đã lưu
+    end
+    A->>F: Đọc phiếu xuất hoàn tất và các dòng hàng
+    F-->>A: Dữ liệu tính gợi ý COGS và quà tặng
+    A-->>W: Dòng cố định, dòng tự tạo, trạng thái kỳ
+    W-->>U: Hiển thị biểu mẫu nhập liệu
+  else Thiếu quyền hoặc đọc thất bại
+    A-->>W: Lỗi truy cập hoặc dữ liệu
+    W-->>U: Hiển thị lỗi tải
+  end
+  deactivate A

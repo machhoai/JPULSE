@@ -1,0 +1,31 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-20 – Sửa tổ chức
+  actor QT as Quản trị hệ thống
+  participant WEB as Web JPULSE
+  participant ST as Storage JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  QT->>WEB: Chỉnh thông tin tổ chức
+  opt Có ảnh thay thế
+    WEB->>ST: Tải ảnh thay thế · Storage SDK
+    ST-->>WEB: URL ảnh hoặc lỗi tải
+  end
+  WEB->>API: Cập nhật tổ chức · HTTP/JSON
+  activate API
+  API->>API: Kiểm tra phiên và quyền quản trị
+  API->>DB: Đọc tổ chức hiện tại
+  DB-->>API: Tổ chức hoặc không tìm thấy
+  opt Mã tổ chức thay đổi
+    API->>DB: Kiểm tra mã mới
+    DB-->>API: Kết quả đối chiếu
+  end
+  alt Thiếu quyền, không tồn tại hoặc mã trùng
+    API-->>WEB: Từ chối cập nhật
+  else Hợp lệ
+    API->>DB: Ghi thay đổi tổ chức
+    API->>DB: Ghi audit cập nhật
+    API-->>WEB: Cập nhật thành công
+  end
+  deactivate API
+  WEB-->>QT: Hiển thị kết quả

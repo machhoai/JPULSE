@@ -1,0 +1,21 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-42 – Xem việc xử lý báo cáo không phù hợp
+  actor NV as Nhân viên xử lý
+  participant WEB as Web JPULSE
+  participant DB as Firestore JPULSE
+  participant API as JPULSE API
+  NV->>WEB: Mở tab báo cáo không phù hợp
+  alt Web có quyền inventory.write và listener hoạt động
+    WEB->>DB: Theo dõi nonconformity_reports · Web SDK
+    DB-->>WEB: Danh sách báo cáo
+  else Listener lỗi hoặc không có phiên Firebase
+    WEB->>API: Lấy báo cáo không phù hợp · HTTP/JSON
+    activate API
+    API->>DB: Đọc báo cáo theo quyền cơ sở
+    DB-->>API: Báo cáo được phép xem
+    API-->>WEB: Danh sách hoặc lỗi
+    deactivate API
+  end
+  WEB->>WEB: Chỉ giữ báo cáo chưa RESOLVED/CLOSED
+  WEB-->>NV: Danh sách ngoại lệ cần xử lý

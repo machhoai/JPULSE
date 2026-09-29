@@ -1,0 +1,26 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":75,"messageMargin":18,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-67 – Yêu cầu sinh thêm mã
+  actor Q as Quản trị marketing
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  participant TASK as Google Cloud Tasks
+  Q->>WEB: Nhập số lượng sinh thêm
+  WEB->>API: Tạo job sinh thêm · HTTP/JSON
+  activate API
+  API->>API: Kiểm tra quyền, số lượng và flag
+  API->>DB: Kiểm tra campaign, revision và job xung đột
+  alt Đủ điều kiện
+    API->>DB: Transaction tạo job QUEUED và audit
+    DB-->>API: Job mới hoặc kết quả lặp
+    opt Tasks đã cấu hình
+      API->>TASK: Xếp job · Cloud Tasks
+    end
+    API-->>WEB: Job sinh thêm
+    WEB-->>Q: Theo dõi tiến độ tại tab job
+  else Tạm dừng, hết không gian mã hoặc xung đột
+    API-->>WEB: Từ chối tạo job
+    WEB-->>Q: Hiển thị lý do
+  end
+  deactivate API

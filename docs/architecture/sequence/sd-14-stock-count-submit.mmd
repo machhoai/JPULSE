@@ -1,0 +1,36 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-14 – Nộp phiên kiểm kê và xử lý chênh lệch
+  actor NV as Nhân viên kho
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+
+  NV->>WEB: Nộp kết quả kiểm kê
+  WEB->>API: Gửi phiên kiểm kê · HTTP/JSON
+  activate API
+  API->>DB: Đọc quyền, phiên và toàn bộ dòng đếm
+  DB-->>API: Trạng thái và kết quả từng dòng
+  API->>API: Kiểm tra đã đếm hết và có bằng chứng cho ngoại lệ
+  alt Còn dòng chưa đếm hoặc thiếu ảnh
+    API-->>WEB: Từ chối nộp phiên
+  else Kết quả hợp lệ
+    API->>DB: Transaction đọc tồn hiện tại
+    DB-->>API: ATP và trạng thái tồn
+    alt Có chênh lệch hoặc hàng lỗi
+      API->>DB: Ghi ngoại lệ, giữ/cách ly · DISCREPANCY_FOUND
+    else Không có chênh lệch
+      API->>DB: Ghi trạng thái VERIFIED và mốc kiểm kê
+    end
+    alt Transaction thất bại
+      DB-->>API: Lỗi ghi
+      API-->>WEB: Báo chưa nộp được
+    else Transaction hoàn tất
+      DB-->>API: Trạng thái phiên mới
+      API->>DB: Ghi audit sau transaction
+      DB-->>API: Kết quả audit
+      API-->>WEB: Trả trạng thái phiên
+      WEB-->>NV: Hiển thị kết quả nộp
+    end
+  end
+  deactivate API

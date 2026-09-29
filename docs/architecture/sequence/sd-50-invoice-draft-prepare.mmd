@@ -1,0 +1,22 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":75,"messageMargin":18,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-50 – Tạo hoặc cập nhật bản nháp hóa đơn
+  actor KT as Kế toán
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  KT->>WEB: Mở đơn và chọn tạo/cập nhật draft
+  WEB->>API: Chuẩn bị draft · HTTP/JSON
+  activate API
+  API->>DB: Đọc đơn nguồn, hash và draft hiện có
+  DB-->>API: Đơn và revision
+  API->>API: Kiểm tra quyền, nguồn và preflight
+  alt Đủ điều kiện
+    API->>DB: Tạo, rebase hoặc giữ draft hiện hành
+    API->>DB: Ghi audit và lịch sử revision
+    API-->>WEB: Draft và trạng thái mới
+  else Nguồn đổi, draft đã review hoặc sai phạm vi
+    API-->>WEB: Từ chối, yêu cầu xem lại dữ liệu
+  end
+  deactivate API
+  WEB-->>KT: Hiển thị draft hoặc lỗi

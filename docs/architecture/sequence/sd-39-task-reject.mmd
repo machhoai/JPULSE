@@ -1,0 +1,27 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-39 – Từ chối công việc phê duyệt
+  actor NV as Người duyệt
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  NV->>WEB: Nhập lý do từ chối
+  opt Quy trình yêu cầu OTP
+    WEB->>WEB: Yêu cầu mã OTP
+  end
+  WEB->>API: Từ chối bản ghi · HTTP/JSON
+  activate API
+  API->>DB: Đọc bản ghi, role và cấu hình
+  DB-->>API: Dữ liệu kiểm tra
+  API->>API: Kiểm tra quyền, trạng thái, lý do và OTP
+  alt Sai quyền, tự xử lý, OTP hoặc trạng thái
+    API-->>WEB: Từ chối thao tác
+  else Hợp lệ
+    API->>DB: Đánh dấu bản ghi REJECTED
+    API->>DB: Từ chối các cấp PENDING còn lại
+    API->>DB: Cập nhật trạng thái chứng từ
+    API->>DB: Ghi audit từ chối
+    API-->>WEB: Từ chối thành công
+  end
+  deactivate API
+  WEB-->>NV: Hiển thị kết quả

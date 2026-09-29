@@ -1,0 +1,36 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-08 – Ghi soạn hàng và hoàn tất soạn phiếu xuất
+  actor NV as Nhân viên kho
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+
+  Note over NV,DB: Phiếu đã được duyệt (SD-07)
+  NV->>WEB: Nhập số lượng đã soạn
+  WEB->>API: Lưu thực soạn · HTTP/JSON
+  activate API
+  API->>DB: Đọc phiếu và cấu hình phân công
+  DB-->>API: Phiếu, bước soạn và quyền theo kho
+  alt Sai quyền hoặc phân công
+    API-->>WEB: Từ chối lưu
+  else Hợp lệ
+    API->>DB: Ghi batch số lượng đã soạn
+    DB-->>API: Kết quả lưu
+    API->>DB: Ghi audit thực soạn
+    API-->>WEB: Đã lưu thực soạn
+    WEB->>API: Hoàn tất soạn · HTTP/JSON
+    API->>DB: Đọc phiếu, dòng hàng và ATP hiện tại
+    DB-->>API: Số lượng đã soạn và tồn khả dụng
+    alt Chưa soạn hàng hoặc ATP thiếu
+      API-->>WEB: Từ chối chốt soạn
+    else Có hàng và đủ ATP
+      API->>DB: Transaction trừ ATP, đánh dấu đã trừ
+      DB-->>API: Đã cập nhật tồn
+      API->>DB: Chuyển phiếu sang SHIPPED
+      DB-->>API: Trạng thái mới
+      API->>DB: Ghi audit chốt soạn
+      API-->>WEB: Đã hoàn tất soạn
+    end
+  end
+  deactivate API

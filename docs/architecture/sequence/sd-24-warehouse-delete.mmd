@@ -1,0 +1,23 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-24 – Xóa mềm cơ sở kho
+  actor NV as Người có quyền sửa cơ sở
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  NV->>WEB: Xác nhận xóa cơ sở
+  WEB->>API: Xóa cơ sở · HTTP/JSON
+  activate API
+  API->>DB: Đọc cơ sở và quyền theo phạm vi
+  DB-->>API: Cơ sở, quyền
+  API->>DB: Kiểm tra vị trí ACTIVE và tồn dương
+  DB-->>API: Kết quả ràng buộc
+  alt Thiếu quyền hoặc còn vị trí ACTIVE/tồn dương
+    API-->>WEB: Từ chối xóa
+  else Có thể xóa
+    API->>DB: Đánh dấu cơ sở đã xóa
+    API->>DB: Ghi audit và tính lại quyền cơ sở
+    API-->>WEB: Xóa thành công
+  end
+  deactivate API
+  WEB-->>NV: Hiển thị kết quả

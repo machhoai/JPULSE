@@ -1,0 +1,26 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":75,"messageMargin":18,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-75 – Gửi lại các email lỗi đang hiển thị
+  actor Q as Quản trị marketing
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  participant TASK as Google Cloud Tasks
+  Q->>WEB: Bấm gửi lại các email lỗi
+  WEB->>API: Retry email items · HTTP/JSON
+  activate API
+  API->>API: Kiểm tra quyền và khóa lặp
+  API->>DB: Đọc job, campaign và item lỗi
+  alt Item đủ điều kiện retry
+    API->>DB: Chuyển item và job sang QUEUED, ghi audit
+    DB-->>API: Job cập nhật
+    opt Tasks đã cấu hình
+      API->>TASK: Xếp lại email job · Cloud Tasks
+    end
+    API-->>WEB: Đã xếp gửi lại
+    WEB-->>Q: Xem tiến độ mới
+  else Item không còn lỗi hoặc campaign tạm dừng
+    API-->>WEB: Từ chối retry
+    WEB-->>Q: Hiển thị lý do
+  end
+  deactivate API

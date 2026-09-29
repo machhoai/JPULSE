@@ -1,0 +1,30 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-23 – Sửa cơ sở kho
+  actor NV as Người có quyền sửa cơ sở
+  participant WEB as Web JPULSE
+  participant ST as Storage JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  NV->>WEB: Sửa cơ sở
+  opt Có ảnh thay thế
+    WEB->>ST: Tải ảnh cơ sở · Storage SDK
+    ST-->>WEB: URL ảnh hoặc lỗi tải
+  end
+  WEB->>API: Cập nhật cơ sở · HTTP/JSON
+  activate API
+  API->>DB: Đọc cơ sở và quyền theo phạm vi
+  DB-->>API: Cơ sở, quyền
+  opt Đổi tổ chức hoặc mã cơ sở
+    API->>DB: Kiểm tra tổ chức và mã mới
+    DB-->>API: Kết quả kiểm tra
+  end
+  alt Thiếu quyền hoặc dữ liệu không hợp lệ
+    API-->>WEB: Từ chối cập nhật
+  else Hợp lệ
+    API->>DB: Ghi thay đổi cơ sở
+    API->>DB: Ghi audit và tính lại quyền cơ sở
+    API-->>WEB: Cập nhật thành công
+  end
+  deactivate API
+  WEB-->>NV: Hiển thị kết quả

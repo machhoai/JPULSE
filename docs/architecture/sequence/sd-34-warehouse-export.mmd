@@ -1,0 +1,25 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-34 – Xuất dữ liệu kho ra Excel
+  actor NV as Nhân viên
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  Note over NV,DB: Dữ liệu màn hình đã được tải theo SD-33 và các hook chứng từ
+  NV->>WEB: Chọn loại dữ liệu, thời gian và bộ lọc
+  WEB->>WEB: Kiểm tra dữ liệu đã tải và quyền xem
+  alt Thiếu dữ liệu hoặc quyền cho báo cáo biến động
+    WEB-->>NV: Báo lỗi, không tạo tệp
+  else Có thể xuất
+    WEB->>WEB: Tổng hợp dòng và tạo workbook
+    WEB->>API: Ghi nhật ký xuất · HTTP/JSON
+    activate API
+    API->>API: Kiểm tra quyền audit.read
+    API->>DB: Ghi audit EXPORT
+    DB-->>API: Kết quả ghi
+    API-->>WEB: Kết quả audit
+    deactivate API
+    Note over WEB,API: Web hiện không chặn tải nếu audit trả lỗi
+    WEB->>WEB: Tạo tệp XLSX và tải xuống
+    WEB-->>NV: Tệp Excel
+  end

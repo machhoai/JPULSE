@@ -1,0 +1,26 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-16 – Tạo phiếu xuất từ lệnh điều chuyển liên kho
+  actor NV as Nhân viên kho
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+
+  Note over NV,DB: Nhánh thủ công khi auto_create_export = false
+  NV->>WEB: Chọn tạo phiếu xuất từ lệnh
+  WEB->>API: Tạo phiếu xuất liên kết · HTTP/JSON
+  activate API
+  API->>DB: Đọc lệnh, dòng hàng và quyền kho nguồn
+  DB-->>API: Trạng thái lệnh và phạm vi
+  alt Chưa duyệt hoặc đã có phiếu xuất
+    API-->>WEB: Từ chối tạo trùng
+  else Được phép tạo
+    API->>DB: Transaction tạo phiếu xuất và liên kết lệnh
+    DB-->>API: Phiếu xuất và trạng thái EXPORT_CREATED
+    API->>DB: Tạo bước duyệt phiếu xuất nếu cần
+    DB-->>API: Trạng thái khởi tạo duyệt
+    API->>DB: Ghi audit điều chuyển
+    API-->>WEB: Trả phiếu xuất liên kết
+  end
+  deactivate API
+  Note over WEB,DB: Phiếu xuất tiếp tục SD-07 và SD-08

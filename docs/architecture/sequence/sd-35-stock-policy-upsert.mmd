@@ -1,0 +1,28 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-35 – Thiết lập định mức tồn cho sản phẩm
+  actor NV as Nhân viên được phân quyền
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  NV->>WEB: Nhập mức tồn tối thiểu theo phạm vi
+  WEB->>API: Lưu định mức tồn · HTTP/JSON
+  activate API
+  API->>DB: Đọc cơ sở, sản phẩm, vị trí và ô kệ
+  DB-->>API: Dữ liệu quan hệ
+  API->>API: Kiểm tra inventory.write và quan hệ phạm vi
+  alt Thiếu quyền hoặc phạm vi không hợp lệ
+    API-->>WEB: Từ chối lưu
+  else Hợp lệ
+    API->>DB: Tìm định mức cùng phạm vi và sản phẩm
+    DB-->>API: Định mức cũ hoặc chưa có
+    alt Đã có định mức
+      API->>DB: Cập nhật định mức
+    else Chưa có
+      API->>DB: Tạo định mức
+    end
+    API->>DB: Ghi audit định mức
+    API-->>WEB: Trả định mức hiện tại
+  end
+  deactivate API
+  WEB-->>NV: Cập nhật cảnh báo thiếu tồn

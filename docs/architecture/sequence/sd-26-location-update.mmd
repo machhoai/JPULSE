@@ -1,0 +1,26 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-26 – Sửa vị trí trong cơ sở
+  actor NV as Nhân viên được phân quyền
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  NV->>WEB: Đổi tên, mã hoặc trạng thái vị trí
+  WEB->>API: Cập nhật vị trí · HTTP/JSON
+  activate API
+  API->>DB: Đọc vị trí hiện tại và quyền cơ sở
+  DB-->>API: Vị trí, quyền
+  opt Đổi cơ sở, mã hoặc sang QUARANTINE
+    API->>DB: Kiểm tra cơ sở đích và mã mới
+    DB-->>API: Kết quả kiểm tra
+    API->>API: Kiểm tra quyền cơ sở đích và cách ly
+  end
+  alt Thiếu quyền hoặc dữ liệu không hợp lệ
+    API-->>WEB: Từ chối cập nhật
+  else Hợp lệ
+    API->>DB: Ghi thay đổi vị trí
+    API->>DB: Ghi audit cập nhật/cách ly
+    API-->>WEB: Cập nhật thành công
+  end
+  deactivate API
+  WEB-->>NV: Hiển thị kết quả

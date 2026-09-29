@@ -1,0 +1,32 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-13 – Ghi kết quả kiểm đếm từng dòng
+  actor NV as Nhân viên kho
+  participant WEB as Web JPULSE
+  participant FILE as Storage JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+
+  NV->>WEB: Nhập số đếm, tình trạng và lý do
+  opt Có ảnh bằng chứng
+    WEB->>FILE: Tải ảnh kiểm kê · Storage SDK
+    FILE-->>WEB: URL ảnh hoặc lỗi
+  end
+  alt Ảnh lỗi hoặc thiếu bằng chứng cần thiết
+    WEB-->>NV: Yêu cầu bổ sung bằng chứng
+  else Dữ liệu đầu vào đủ
+    WEB->>API: Cập nhật dòng kiểm kê · HTTP/JSON
+    activate API
+    API->>DB: Đọc phiên và dòng kiểm kê
+    DB-->>API: Trạng thái, mốc tồn và số đếm cũ
+    API->>API: Kiểm tra quyền, trạng thái, tính chênh lệch
+    alt Không được sửa
+      API-->>WEB: Từ chối cập nhật
+    else Được sửa hoặc kiểm đếm lại
+      API->>DB: Ghi số đếm và chênh lệch
+      DB-->>API: Dòng đã cập nhật
+      API->>DB: Ghi audit kiểm đếm
+      API-->>WEB: Trả phiên và các dòng mới
+    end
+    deactivate API
+  end

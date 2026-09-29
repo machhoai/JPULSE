@@ -1,0 +1,26 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":75,"messageMargin":18,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-63 – Worker sinh mã voucher theo chunk
+  participant TASK as Google Cloud Tasks
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  TASK->>API: Gọi xử lý job · HTTP POST
+  activate API
+  API->>API: Xác thực worker và loại job
+  API->>DB: Bắt đầu transaction, đọc job và campaign
+  DB-->>API: Revision, trạng thái và số mã còn lại
+  alt Job được phép chạy
+    API->>API: Dựng tối đa 400 mã duy nhất
+    API->>DB: Trong transaction, tạo mã và ghi tiến độ/audit
+    DB-->>API: Tiến độ đã ghi
+    opt Còn mã cần sinh
+      API->>TASK: Xếp chunk tiếp theo · Cloud Tasks
+    end
+    API-->>TASK: Kết quả chunk
+  else Tạm dừng, kết thúc hoặc đã xử lý
+    API-->>TASK: Không xử lý thêm
+  else Lỗi xử lý
+    API->>DB: Đánh dấu job FAILED, campaign GENERATION_FAILED nếu ban đầu
+    API-->>TASK: Báo lỗi worker
+  end
+  deactivate API

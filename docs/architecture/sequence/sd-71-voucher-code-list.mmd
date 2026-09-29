@@ -1,0 +1,23 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":75,"messageMargin":18,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-71 – Tra cứu mã voucher
+  actor Q as Quản trị marketing
+  participant WEB as Web JPULSE
+  participant DB as Firestore JPULSE
+  Q->>WEB: Lọc chiến dịch, trạng thái hoặc nhập mã
+  alt Tra một mã cụ thể
+    WEB->>DB: Theo dõi document mã · Web SDK
+    DB-->>WEB: Mã khớp hoặc không có
+  else Xem danh sách có phân trang
+    opt Trang sau
+      WEB->>DB: Đọc mã cuối trang trước · Web SDK
+      DB-->>WEB: Cursor document
+    end
+    WEB->>DB: Theo dõi query mã và bộ lọc · Web SDK
+    DB-->>WEB: Tối đa 51 mã để xác định trang sau
+  end
+  alt Đọc được
+    WEB-->>Q: Danh sách mã và trạng thái
+  else Rules từ chối hoặc query lỗi
+    WEB-->>Q: Báo lỗi tra cứu
+  end

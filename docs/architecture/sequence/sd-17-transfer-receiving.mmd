@@ -1,0 +1,35 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-17 – Nhận hàng điều chuyển và cập nhật tồn hai kho
+  actor NV as Nhân viên kho đích
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+
+  Note over NV,DB: SD-08 đã trừ ATP nguồn và tăng hàng đang chuyển
+  NV->>WEB: Bắt đầu nhận lệnh đã chờ nhận
+  WEB->>API: Bắt đầu nhận · HTTP/JSON
+  activate API
+  API->>DB: Đọc lệnh và quyền kho đích
+  DB-->>API: Trạng thái PENDING_RECEIVE hoặc lỗi
+  alt Không đúng trạng thái hoặc quyền
+    API-->>WEB: Từ chối nhận
+  else Có thể nhận
+    API->>DB: Chuyển lệnh sang RECEIVING
+    DB-->>API: Trạng thái mới
+    API->>DB: Ghi audit bắt đầu nhận
+    API-->>WEB: Mở bước kiểm đếm
+    NV->>WEB: Nhập vị trí đích và lượng nhận
+    WEB->>API: Hoàn tất nhận · HTTP/JSON
+    API->>DB: Đọc lệnh, dòng và tồn hai kho
+    DB-->>API: Dữ liệu đối chiếu
+    alt Vị trí sai hoặc tồn đang chuyển thiếu
+      API-->>WEB: Từ chối hoàn tất
+    else Dữ liệu hợp lệ
+      API->>DB: Transaction giảm đang chuyển, tăng ATP đích
+      DB-->>API: Tồn và lệnh COMPLETED
+      API->>DB: Ghi audit nhận hàng
+      API-->>WEB: Trả lệnh hoàn tất
+    end
+  end
+  deactivate API

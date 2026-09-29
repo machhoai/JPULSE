@@ -1,0 +1,21 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-32 – Bỏ gán sản phẩm khỏi ô kệ
+  actor NV as Nhân viên được phân quyền
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  NV->>WEB: Chọn bỏ gán sản phẩm
+  WEB->>API: Xóa gán sản phẩm · HTTP/JSON
+  activate API
+  API->>DB: Đọc gán và quyền cơ sở
+  DB-->>API: Gán hiện tại, quyền
+  alt Thiếu quyền hoặc không có gán
+    API-->>WEB: Từ chối bỏ gán
+  else Hợp lệ
+    API->>DB: Đánh dấu gán đã xóa
+    API->>DB: Ghi audit bỏ gán
+    API-->>WEB: Bỏ gán thành công
+  end
+  deactivate API
+  WEB-->>NV: Hiển thị kết quả

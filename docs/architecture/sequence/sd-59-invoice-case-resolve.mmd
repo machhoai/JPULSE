@@ -1,0 +1,27 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":75,"messageMargin":18,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-59 – Đóng case đối chiếu hóa đơn
+  actor KT as Kế toán
+  participant WEB as Web JPULSE
+  participant API as JPULSE API
+  participant DB as Firestore JPULSE
+  KT->>WEB: Nhập ghi chú xử lý case
+  WEB->>API: Đóng case · HTTP/JSON
+  activate API
+  API->>DB: Đọc case theo cửa hàng và trạng thái
+  DB-->>API: Case hoặc không tìm thấy
+  alt Có quyền, case hợp lệ và ghi chú đủ
+    API->>DB: Ghi RESOLVED và người xử lý
+    API->>DB: Ghi audit
+    API-->>WEB: Case đã đóng
+    WEB->>API: Tải lại case · HTTP/JSON
+    API->>DB: Đọc case theo cửa hàng/ngày
+    DB-->>API: Danh sách mới
+    API-->>WEB: Case mới nhất
+    WEB-->>KT: Danh sách đã cập nhật
+  else Không hợp lệ
+    API-->>WEB: Từ chối đóng case
+    WEB-->>KT: Hiển thị lỗi
+  end
+  deactivate API
+  Note over API,DB: Đóng case không gửi lại hóa đơn

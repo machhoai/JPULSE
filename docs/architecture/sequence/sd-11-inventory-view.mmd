@@ -1,0 +1,26 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","primaryColor":"#e2efff","primaryBorderColor":"#2563eb","lineColor":"#52657a","actorTextColor":"#18273c","signalColor":"#52657a","signalTextColor":"#26374b","noteBkgColor":"#fff9e6","noteBorderColor":"#a56b17"},"sequence":{"useMaxWidth":false,"showSequenceNumbers":true,"actorMargin":80,"messageMargin":17,"mirrorActors":false}}}%%
+sequenceDiagram
+  title SD-11 – Xem tồn kho theo phạm vi được cấp
+  actor NV as Nhân viên kho
+  participant WEB as Web JPULSE
+  participant DB as Firestore JPULSE
+  participant API as JPULSE API
+
+  NV->>WEB: Mở màn hình tồn kho, chọn kho
+  WEB->>WEB: Xác định phạm vi inventory.read
+  opt Có người dùng Firebase
+    WEB->>DB: Lắng nghe tồn theo kho · Web SDK
+    DB-->>WEB: Snapshot hoặc lỗi truy cập
+  end
+  alt Snapshot hợp lệ
+    WEB->>WEB: Lọc, nhóm theo sản phẩm và vị trí
+    WEB-->>NV: Hiển thị ATP, giữ, chuyển và tổng
+  else Không có người dùng hoặc snapshot lỗi
+    WEB->>API: Lấy danh sách tồn · HTTP/JSON
+    activate API
+    API->>DB: Đọc quyền và tồn trong phạm vi
+    DB-->>API: Dữ liệu được phép hoặc lỗi
+    API-->>WEB: Danh sách tồn hoặc từ chối
+    deactivate API
+    WEB-->>NV: Hiển thị dữ liệu hoặc báo lỗi
+  end
