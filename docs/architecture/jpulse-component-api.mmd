@@ -1,0 +1,59 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"16px","lineColor":"#52657a","edgeLabelBackground":"#ffffff"},"flowchart":{"htmlLabels":true,"curve":"linear","nodeSpacing":45,"rankSpacing":65}}}%%
+flowchart LR
+  web["<b>Web JPULSE</b><br/>Container · Next.js/React"]
+  jpos["<b>JPOS</b><br/>Hệ thống ngoài · POS"]
+
+  subgraph api["JPULSE API · Sơ đồ thành phần C4 Level 3"]
+    direction TB
+    http["<b>Định tuyến & controller</b><br/>Component · Express<br/>Nhận yêu cầu, kiểm dữ liệu, trả kết quả"]
+    identity["<b>Xác thực phiên</b><br/>Component · Middleware/Admin SDK<br/>Xác minh token hoặc cookie"]
+    access["<b>Phân quyền</b><br/>Component · Authorization service<br/>Quyết định quyền và phạm vi cơ sở"]
+    audit["<b>Nhật ký thay đổi</b><br/>Component · auditService<br/>Ghi lịch sử thao tác nghiệp vụ"]
+    subgraph domains["Các component nghiệp vụ trong cùng API"]
+      direction LR
+      master["<b>Tài khoản & tổ chức</b><br/>User/role/facility services<br/>Quản lý định danh nghiệp vụ và cơ sở"]
+      stock["<b>Kho & vận hành</b><br/>Inventory/voucher/stock-count services<br/>Xử lý tồn, phiếu và kiểm kê"]
+      hr["<b>Nhân sự</b><br/>Attendance/leave/contract services<br/>Xử lý hồ sơ và lao động"]
+      expense["<b>Chi phí & doanh thu</b><br/>Expense/revenue/report services<br/>Nhập chi phí và tổng hợp báo cáo"]
+      invoice["<b>Hóa đơn</b><br/>Invoice services<br/>Quản lý đơn và phát hành"]
+      marketing["<b>Voucher marketing</b><br/>Marketing voucher services<br/>Quản lý chiến dịch và mã"]
+      pos["<b>Quản lý POS</b><br/>Device/order/settings services<br/>Quản lý thiết bị, cấu hình và đơn POS"]
+    end
+  end
+
+  auth["<b>Firebase Authentication</b><br/>Dịch vụ xác thực ngoài"]
+  db[("<b>Firestore JPULSE</b><br/>Kho dữ liệu của JPULSE")]
+
+  web -->|"Gọi nghiệp vụ · HTTP/JSON"| http
+  jpos -->|"Phiên/cấu hình thiết bị POS"| http
+  http -->|"Route bảo vệ"| identity
+  identity -->|"Nạp quyền"| access
+  identity -->|"Xác minh · Admin SDK"| auth
+  access -->|"Đọc nguồn quyền · Admin SDK"| db
+  http -->|"Điều phối"| master
+  http -->|"Điều phối"| stock
+  http -->|"Điều phối"| hr
+  http -->|"Điều phối"| expense
+  http -->|"Điều phối"| invoice
+  http -->|"Điều phối"| marketing
+  http -->|"Phiên, cấu hình, đơn POS"| pos
+  master -->|"Tài khoản/cơ sở"| db
+  stock -->|"Kho/phiếu"| db
+  hr -->|"Nhân sự"| db
+  expense -->|"Chi phí/doanh thu"| db
+  invoice -->|"Đơn/hóa đơn"| db
+  marketing -->|"Chiến dịch/job"| db
+  pos -->|"Thiết bị/đơn/cấu hình"| db
+  expense -->|"Ghi thay đổi"| audit
+  audit -->|"Lưu audit_logs · Admin SDK"| db
+
+  classDef app fill:#dcecff,stroke:#2563eb,color:#172554,stroke-width:2px
+  classDef component fill:#e2efff,stroke:#2563eb,color:#172554,stroke-width:2px
+  classDef external fill:#f0f3f7,stroke:#64748b,color:#1f2937,stroke-width:2px
+  classDef data fill:#def7e9,stroke:#178454,color:#103d2a,stroke-width:2px
+  class web app
+  class jpos,auth external
+  class http,identity,access,audit,master,stock,hr,expense,invoice,marketing,pos component
+  class db data
+  style api fill:#f8fbff,stroke:#1d4ed8,stroke-width:3px
+  style domains fill:#f8fbff,stroke:#93c5fd,stroke-width:1px

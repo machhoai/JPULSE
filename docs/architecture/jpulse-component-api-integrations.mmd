@@ -1,0 +1,58 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"16px","lineColor":"#52657a","edgeLabelBackground":"#ffffff"},"flowchart":{"htmlLabels":true,"curve":"linear","nodeSpacing":52,"rankSpacing":72}}}%%
+flowchart LR
+  web["<b>Web JPULSE</b><br/>Container · khởi tạo nghiệp vụ"]
+
+  subgraph api["JPULSE API · Thành phần tích hợp và tác vụ"]
+    direction TB
+    http["<b>Định tuyến & controller</b><br/>Component · Express<br/>Nhận yêu cầu nghiệp vụ"]
+    invoice["<b>Hóa đơn</b><br/>Component · invoice services<br/>Phát hành và đối soát"]
+    revenue["<b>Doanh thu</b><br/>Component · revenue services<br/>Đồng bộ số liệu"]
+    tax["<b>Tra cứu thuế</b><br/>Component · VietQR lookup service<br/>Tra mã số thuế"]
+    marketing["<b>Voucher marketing</b><br/>Component · marketing services<br/>Sinh, gửi và xuất mã"]
+    pos["<b>Đồng bộ POS</b><br/>Component · JPOS sync client<br/>Gửi danh mục sản phẩm"]
+    notify["<b>Chuyển phát thông báo</b><br/>Component · email/push services<br/>Gửi email và push"]
+    worker["<b>Điều phối và worker</b><br/>Component · dispatchers/worker routes<br/>Tạo và nhận task nền"]
+    file["<b>Xử lý tệp</b><br/>Component · storage services<br/>Lưu/cấp tệp nghiệp vụ"]
+  end
+
+  joyworld["<b>JoyWorld / Cityfuns</b><br/>Doanh thu/đơn ngoài JPULSE"]
+  misa["<b>MISA meInvoice</b><br/>Hóa đơn điện tử"]
+  vietqr["<b>VietQR</b><br/>Tra cứu doanh nghiệp"]
+  jpos["<b>JPOS</b><br/>Hệ thống POS ngoài"]
+  brevo["<b>Brevo</b><br/>Dịch vụ email"]
+  fcm["<b>Firebase Cloud Messaging</b><br/>Dịch vụ push"]
+  tasks["<b>Google Cloud Tasks</b><br/>Dịch vụ task quản lý"]
+  storage[("<b>Storage JPULSE</b><br/>Kho tệp logic của JPULSE")]
+  db[("<b>Firestore JPULSE</b><br/>Trạng thái job và doanh thu")]
+
+  web -->|"Yêu cầu · HTTP/JSON"| http
+  http -->|"Phát hành/tra cứu"| invoice
+  http -->|"Đồng bộ"| revenue
+  http -->|"Chiến dịch"| marketing
+  http -->|"Danh mục"| pos
+  http -->|"Tra cứu MST"| tax
+  invoice -->|"Xếp việc"| worker
+  invoice -->|"Phát hành/tra cứu · HTTPS"| misa
+  revenue -->|"Lấy doanh thu · API cấu hình"| joyworld
+  revenue -->|"Lưu cache · Admin SDK"| db
+  tax -->|"Tra cứu · HTTP GET"| vietqr
+  marketing -->|"Xếp việc"| worker
+  marketing -->|"Email voucher"| notify
+  marketing -->|"Xuất tệp"| file
+  pos -->|"Đồng bộ · HTTPS POST"| jpos
+  notify -->|"Gửi email · SMTP"| brevo
+  notify -->|"Gửi push · Admin SDK"| fcm
+  worker -->|"Tạo task nếu cấu hình · SDK"| tasks
+  tasks -->|"Gọi worker · HTTP POST"| worker
+  worker -->|"Lưu trạng thái · Admin SDK"| db
+  file -->|"Lưu/cấp tệp · Admin SDK"| storage
+
+  classDef app fill:#dcecff,stroke:#2563eb,color:#172554,stroke-width:2px
+  classDef component fill:#e2efff,stroke:#2563eb,color:#172554,stroke-width:2px
+  classDef external fill:#f0f3f7,stroke:#64748b,color:#1f2937,stroke-width:2px
+  classDef data fill:#def7e9,stroke:#178454,color:#103d2a,stroke-width:2px
+  class web app
+  class http,invoice,revenue,tax,marketing,pos,notify,worker,file component
+  class joyworld,misa,vietqr,jpos,brevo,fcm,tasks external
+  class storage,db data
+  style api fill:#f8fbff,stroke:#1d4ed8,stroke-width:3px

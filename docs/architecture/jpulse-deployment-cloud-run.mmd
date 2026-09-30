@@ -1,0 +1,34 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","lineColor":"#52657a","edgeLabelBackground":"#ffffff"},"flowchart":{"htmlLabels":true,"curve":"linear","nodeSpacing":55,"rankSpacing":80}}}%%
+flowchart LR
+  web["<b>Web JPULSE</b><br/>Nơi chạy chưa xác minh<br/>Gọi API theo URL cấu hình"]
+  jpos["<b>JPOS</b><br/>Hệ thống ngoài<br/>Gọi API quản lý POS"]
+
+  subgraph gcp["Cloud Run"]
+    api["<b>JPULSE API</b><br/>Image Node 22 / Express<br/>Lắng nghe PORT=8080"]
+  end
+  tasks["<b>Cloud Tasks</b><br/>Hàng đợi quản lý<br/>Hóa đơn / voucher nếu cấu hình"]
+  subgraph firebase["Dịch vụ Firebase"]
+    direction TB
+    auth["<b>Firebase Authentication</b><br/>Dịch vụ quản lý<br/>Xác thực danh tính"]
+    db[("<b>Firestore JPULSE</b><br/>Kho dữ liệu quản lý<br/>Dữ liệu nghiệp vụ và quyền")]
+    files[("<b>Storage JPULSE</b><br/>Kho tệp quản lý<br/>Tệp nghiệp vụ")]
+  end
+
+  web -.->|"Gọi nếu cấu hình URL"| api
+  jpos -.->|"Gọi nếu trỏ URL"| api
+  api -->|"Xác minh · Admin SDK"| auth
+  api -->|"Đọc / ghi · Admin SDK"| db
+  api -->|"Tệp · Admin SDK"| files
+  api -.->|"Tạo task khi cấu hình"| tasks
+  tasks -.->|"Gọi worker · HTTP POST"| api
+
+  classDef app fill:#dcecff,stroke:#2563eb,color:#172554,stroke-width:2px
+  classDef external fill:#f0f3f7,stroke:#64748b,color:#1f2937,stroke-width:2px
+  classDef managed fill:#eee8ff,stroke:#7c3aed,color:#3b0764,stroke-width:2px
+  classDef data fill:#def7e9,stroke:#178454,color:#103d2a,stroke-width:2px
+  class web,api app
+  class jpos external
+  class tasks,auth managed
+  class db,files data
+  style gcp fill:#faf8ff,stroke:#7c3aed,stroke-width:2px
+  style firebase fill:#faf8ff,stroke:#7c3aed,stroke-width:2px

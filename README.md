@@ -15,7 +15,7 @@ JPULSE là hệ thống quản trị nghiệp vụ gồm giao diện web, API v�
 | `.github/workflows`                           | CI kiểm tra và tạo image                  |
 | `infra`, `nginx`, `docker-compose*.yml`       | Cấu hình triển khai và chạy bằng Docker   |
 
-Đọc [sơ đồ container](docs/architecture/jpulse-container-diagram.md) và [các sơ đồ trình tự](docs/architecture/jpulse-sequence-diagrams.md) trước khi thay đổi kiến trúc hoặc tích hợp.
+Đọc [sơ đồ container](docs/architecture/jpulse-container-diagram.md), [các sơ đồ thành phần C4](docs/architecture/jpulse-component-diagrams.md), [sơ đồ triển khai C4](docs/architecture/jpulse-deployment-diagrams.md) và [các sơ đồ trình tự](docs/architecture/jpulse-sequence-diagrams.md) trước khi thay đổi kiến trúc hoặc tích hợp.
 
 ## Yêu cầu phát triển
 

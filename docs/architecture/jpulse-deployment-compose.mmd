@@ -1,0 +1,49 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"17px","lineColor":"#52657a","edgeLabelBackground":"#ffffff"},"flowchart":{"htmlLabels":true,"curve":"linear","nodeSpacing":50,"rankSpacing":75}}}%%
+flowchart LR
+  subgraph client["Thiết bị người dùng"]
+    direction TB
+    browser["<b>Trình duyệt</b><br/>Web JPULSE client · Firebase SDK<br/>Hiển thị và gửi yêu cầu nghiệp vụ"]
+  end
+
+  subgraph host["Máy Docker Compose"]
+    direction TB
+    proxy["<b>Nginx</b><br/>Container · nginx:alpine · :80<br/>Định tuyến Web và API"]
+    subgraph network["Mạng Docker"]
+      direction LR
+      web["<b>Web JPULSE</b><br/>Container · Next.js / Node 22 · :3000<br/>Phục vụ ứng dụng web"]
+      api["<b>JPULSE API</b><br/>Container · Express / Node 22<br/>PORT=8080 theo image"]
+    end
+  end
+
+  subgraph firebase["Dịch vụ Firebase"]
+    direction TB
+    auth["<b>Firebase Authentication</b><br/>Dịch vụ quản lý<br/>Xác thực danh tính"]
+    db[("<b>Firestore JPULSE</b><br/>Kho dữ liệu quản lý<br/>Lưu dữ liệu nghiệp vụ và quyền")]
+    files[("<b>Storage JPULSE</b><br/>Kho tệp quản lý<br/>Lưu tệp nghiệp vụ")]
+  end
+
+  browser -->|"Web / API · HTTP :80"| proxy
+  proxy -->|"Web · HTTP :3000"| web
+  proxy -->|"API · HTTP :4000 *"| api
+  browser -->|"Đăng nhập · Web SDK"| auth
+  browser -->|"Realtime · Web SDK"| db
+  browser -->|"Tệp · Storage SDK"| files
+  api -->|"Xác minh · Admin SDK"| auth
+  api -->|"Đọc / ghi · Admin SDK"| db
+  api -->|"Tệp · Admin SDK"| files
+
+  classDef browser fill:#fff5da,stroke:#a56b17,color:#1f2937,stroke-width:2px
+  classDef app fill:#dcecff,stroke:#2563eb,color:#172554,stroke-width:2px
+  classDef proxy fill:#e8eaf0,stroke:#64748b,color:#1f2937,stroke-width:2px
+  classDef managed fill:#eee8ff,stroke:#7c3aed,color:#3b0764,stroke-width:2px
+  classDef data fill:#def7e9,stroke:#178454,color:#103d2a,stroke-width:2px
+  class browser browser
+  class web,api app
+  class proxy proxy
+  class auth managed
+  class db,files data
+  style client fill:#fffcf3,stroke:#a56b17,stroke-width:2px
+  style host fill:#f8fbff,stroke:#1d4ed8,stroke-width:3px
+  style network fill:#ffffff,stroke:#94a3b8,stroke-width:1.5px
+  style firebase fill:#faf8ff,stroke:#7c3aed,stroke-width:2px
+  linkStyle 2 stroke:#c2410c,stroke-width:3px

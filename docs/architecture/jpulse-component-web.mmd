@@ -1,0 +1,46 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"16px","lineColor":"#52657a","edgeLabelBackground":"#ffffff"},"flowchart":{"htmlLabels":true,"curve":"linear","nodeSpacing":48,"rankSpacing":68}}}%%
+flowchart LR
+  user["<b>Nhân viên / quản trị</b><br/>Tác nhân sử dụng Web"]
+
+  subgraph web["Web JPULSE · Sơ đồ thành phần C4 Level 3"]
+    direction TB
+    pages["<b>Trang và giao diện</b><br/>Component · Next.js App Router/React<br/>Hiển thị nghiệp vụ và nhận thao tác"]
+    auth["<b>Đăng nhập Web</b><br/>Component · useAuth/Firebase Web SDK<br/>Xác thực và tạo phiên API"]
+    access["<b>Trạng thái quyền</b><br/>Component · Zustand/access snapshot<br/>Giữ quyền để điều khiển giao diện"]
+    client["<b>Client nghiệp vụ</b><br/>Component · fetch/hooks<br/>Gọi API cho lệnh và báo cáo"]
+    realtime["<b>Đọc realtime</b><br/>Component · Firestore Web SDK/hooks<br/>Lắng nghe dữ liệu được phép"]
+    files["<b>Tải tệp trực tiếp</b><br/>Component · Storage Web SDK<br/>Tải tệp từ trình duyệt"]
+    map["<b>Bản đồ</b><br/>Component · Mapbox SDK/Directions<br/>Hiển thị tuyến đường"]
+  end
+
+  api["<b>JPULSE API</b><br/>Container · Node.js/Express"]
+  firebase["<b>Firebase Authentication</b><br/>Dịch vụ xác thực ngoài"]
+  db[("<b>Firestore JPULSE</b><br/>Kho dữ liệu realtime")]
+  storage[("<b>Storage JPULSE</b><br/>Kho tệp nghiệp vụ")]
+  mapbox["<b>Mapbox</b><br/>Hệ thống bản đồ ngoài"]
+
+  user -->|"Sử dụng"| pages
+  pages -->|"Đăng nhập"| auth
+  pages -->|"Kiểm quyền UI"| access
+  pages -->|"Gửi lệnh"| client
+  pages -->|"Theo dõi"| realtime
+  pages -->|"Tải tệp"| files
+  pages -->|"Mở bản đồ"| map
+  auth -->|"Xác thực · Web SDK"| firebase
+  auth -->|"Tạo phiên · HTTP/JSON"| api
+  client -->|"Nghiệp vụ · HTTP/JSON"| api
+  realtime -->|"Đọc có phạm vi · Web SDK"| db
+  files -->|"Upload · Storage SDK"| storage
+  map -->|"Bản đồ/tuyến · SDK/HTTPS"| mapbox
+
+  classDef actor fill:#fff5da,stroke:#a56b17,color:#1f2937,stroke-width:2px
+  classDef component fill:#e2efff,stroke:#2563eb,color:#172554,stroke-width:2px
+  classDef app fill:#dcecff,stroke:#2563eb,color:#172554,stroke-width:2px
+  classDef external fill:#f0f3f7,stroke:#64748b,color:#1f2937,stroke-width:2px
+  classDef data fill:#def7e9,stroke:#178454,color:#103d2a,stroke-width:2px
+  class user actor
+  class pages,auth,access,client,realtime,files,map component
+  class api app
+  class firebase,mapbox external
+  class db,storage data
+  style web fill:#f8fbff,stroke:#1d4ed8,stroke-width:3px
