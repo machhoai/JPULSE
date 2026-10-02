@@ -1,3 +1,4 @@
+import { reviseRejectedVoucher } from "./voucherRevisionService.js";
 import {
   AuditAction,
   TransferItemStatus,
@@ -69,6 +70,10 @@ export async function updateTransferOrder(
       "Chi co the sua phieu dang cho duyet hoac bi tu choi.",
       "只能修改待审批或已拒绝的单据。",
     );
+  }
+
+  if (oldOrder.status === TransferOrderStatus.REJECTED && input.transfer_type !== oldOrder.transfer_type) {
+    throw createTransferError(400, "Không thể đổi loại điều chuyển khi gửi duyệt lại phiếu cũ.", "重新提交原单据时不能更改调拨类型。");
   }
 
   const isIntra = input.transfer_type === TransferType.INTRA_WAREHOUSE;
@@ -178,6 +183,17 @@ export async function updateTransferOrder(
     status: TransferItemStatus.PENDING,
     is_deleted: false,
   }));
+
+  if (oldOrder.status === "REJECTED") {
+    await reviseRejectedVoucher({
+      collection: "transfer_orders", id: orderId, entityType: configEntityType,
+      creatorId: oldOrder.creator_id, actorId: userId, warehouseId: input.source_warehouse_id,
+      voucherNumber: oldOrder.order_number, oldValues: { ...oldOrder }, values: { ...newOrder },
+      items: items.map((item) => ({ ...item })),
+      scopeInfo: { sourceWarehouseId: input.source_warehouse_id, destinationWarehouseId: input.destination_warehouse_id },
+    });
+    return { ...oldOrder, ...newOrder } as TransferOrder;
+  }
 
   const orderRef = db.collection("transfer_orders").doc(orderId);
   const oldItemsQuery = orderRef.collection("items");

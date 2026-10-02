@@ -2,8 +2,10 @@
  * Vietnamese dictionary - ERP WMS Layout
  */
 import { revenueExportVi } from "./revenueExportTranslations";
+import { voucherRevisionVi } from "./voucherRevisionTranslations";
 
 const vi = {
+    voucherRevision: voucherRevisionVi,
     nav: {
         dashboard: "Trang chủ",
         inventory: "Tồn kho",

@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+
+import type { TransferOrder } from "@bduck/shared-types";
+import { TransferType } from "@bduck/shared-types";
 import {
   ArrowDownRight,
   ArrowRightLeft,
@@ -12,11 +14,13 @@ import {
   Truck,
   XCircle,
 } from "lucide-react";
-import type { TransferOrder } from "@bduck/shared-types";
-import { TransferType } from "@bduck/shared-types";
+import { useMemo, useState } from "react";
+
+import { getStatusStyle } from "@/components/ui/StatusBadge";
+
 import { useWarehouses } from "../../../hooks/useWarehouses";
 import { useTranslation } from "../../../lib/i18n";
-import { getStatusStyle } from "@/components/ui/StatusBadge";
+import RejectedVoucherEditButton from "../vouchers/RejectedVoucherEditButton";
 
 function LocalStatusBadge({ status, label }: { status: string; label: string }) {
   const Icon = (() => {
@@ -89,12 +93,13 @@ function formatDate(value: unknown) {
 
 interface Props {
   orders: TransferOrder[];
+    onSubmitted?: () => void;
   onViewDetail?: (orderId: string) => void;
 }
 
 type TypeFilter = "ALL" | "INTRA" | "INTER";
 
-export default function TransferListTab({ orders, onViewDetail }: Props) {
+export default function TransferListTab({ orders, onViewDetail, onSubmitted }: Props) {
   const { t } = useTranslation();
   const { warehouses } = useWarehouses();
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
@@ -229,6 +234,7 @@ export default function TransferListTab({ orders, onViewDetail }: Props) {
               </div>
 
               <div className="mt-3 flex gap-2">
+<RejectedVoucherEditButton type="TRANSFER" voucher={order} onSubmitted={onSubmitted} />
                 {onViewDetail && (
                   <button
                     type="button"

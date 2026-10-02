@@ -1,17 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { playForward, checkmarkCircle, time } from "ionicons/icons";
 import { ClipboardList, History, PackageMinus, Plus } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+
+import { IonIcon } from "@/components/ui/IonIcon";
+
 import { useExportVouchers } from "../../../hooks/useExportVouchers";
 import { useTranslation } from "../../../lib/i18n";
 import { useUserStore } from "../../../stores/useUserStore";
+
 import CreateExportTab from "./CreateExportTab";
 import ExportHistoryTab from "./ExportHistoryTab";
 import ExportInProgressTab from "./ExportInProgressTab";
 import ExportVoucherSkeleton from "./ExportVoucherSkeleton";
-import { IonIcon } from "@/components/ui/IonIcon";
-import { playForward, checkmarkCircle, time } from "ionicons/icons";
 
 type TabId = "create" | "inProgress" | "history";
 
@@ -224,6 +227,7 @@ export default function ExportVoucherPage() {
                     {effectiveTab === "history" && (
                         <ExportHistoryTab
                             vouchers={completedVouchers}
+                            onSubmitted={() => setActiveTab("inProgress")}
                             onClone={handleCloneToCreate}
                         />
                     )}

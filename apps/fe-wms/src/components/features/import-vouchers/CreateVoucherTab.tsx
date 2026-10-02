@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Product } from "@bduck/shared-types";
+import { gooeyToast } from "goey-toast";
 import {
     CheckCircle2,
     ChevronLeft,
@@ -14,33 +15,35 @@ import {
     Upload,
     Warehouse,
 } from "lucide-react";
-import { gooeyToast } from "goey-toast";
-import type { Product } from "@bduck/shared-types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { getVoucherCreateTourName } from "../../../config/guides/voucherTours";
+import { useGuidedTourTransition } from "../../../hooks/useGuidedTourTransition";
 import { createImportVoucher, updateImportVoucher } from "../../../hooks/useImportVoucherApi";
+import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse";
+import { useProcessConfig } from "../../../hooks/useProcessConfig";
 import { useProducts } from "../../../hooks/useProducts";
 import {
     useWarehouseLocations,
     useWarehouses,
 } from "../../../hooks/useWarehouses";
-import { uploadFile } from "../../../lib/uploadFile";
 import { useTranslation } from "../../../lib/i18n";
-import { useUserStore } from "../../../stores/useUserStore";
-import {
-    FileUploadField,
-    type SelectedFile,
-} from "../../shared/FileUploadField";
-import { WarehouseSelectionPanel } from "./WarehouseSelectionPanel";
-import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse";
-import { VoucherExcelImportPanel } from "./VoucherExcelImportPanel";
-import { QuickLocationAssign } from "./QuickLocationAssign";
-import { useProcessConfig } from "../../../hooks/useProcessConfig";
-import { ActionOtpModal } from "../../shared/ActionOtpModal";
 import {
     IMPORT_VOUCHER_CREATE_TEXT,
     type ComponentLocale,
 } from "../../../lib/i18n/componentTranslations";
-import { getVoucherCreateTourName } from "../../../config/guides/voucherTours";
-import { useGuidedTourTransition } from "../../../hooks/useGuidedTourTransition";
+import { uploadFile } from "../../../lib/uploadFile";
+import { useUserStore } from "../../../stores/useUserStore";
+import { ActionOtpModal } from "../../shared/ActionOtpModal";
+import {
+    FileUploadField,
+    type SelectedFile,
+} from "../../shared/FileUploadField";
+
+import { QuickLocationAssign } from "./QuickLocationAssign";
+import { VoucherExcelImportPanel } from "./VoucherExcelImportPanel";
+import { WarehouseSelectionPanel } from "./WarehouseSelectionPanel";
+
 
 type Locale = ComponentLocale;
 
@@ -439,6 +442,7 @@ export default function CreateVoucherTab({
     const executeSubmit = async (otp?: string) => {
         setIsSubmitting(true);
 
+        const actionTime = new Date().toISOString();
         const submitAction = async () => {
             const uploadedUrls: string[] = [];
             for (const selectedFile of files) {
@@ -479,6 +483,7 @@ export default function CreateVoucherTab({
                         condition: item.condition,
                         notes: item.notes || undefined,
                     })),
+                    action_time: actionTime,
                     otp,
                 });
             } else {
@@ -497,7 +502,7 @@ export default function CreateVoucherTab({
                         condition: item.condition,
                         notes: item.notes || undefined,
                     })),
-                    action_time: new Date().toISOString(),
+                    action_time: actionTime,
                     otp,
                 });
             }
@@ -506,17 +511,17 @@ export default function CreateVoucherTab({
         const promise = submitAction();
 
         gooeyToast.promise(promise, {
-            loading: isEdit ? "Đang cập nhật phiếu nhập kho..." : (
+            loading: isEdit ? t.voucherRevision.saving : (
                 (t as any).importVoucher?.toast?.creating ??
                 "Đang tạo phiếu nhập kho..."
             ),
-            success: isEdit ? "Cập nhật thành công" : (
+            success: isEdit ? t.voucherRevision.saved : (
                 (t as any).importVoucher?.toast?.createSuccess ??
                 "Đã tạo phiếu nhập kho"
             ),
             error: (t as any).importVoucher?.toast?.createError ?? "Lỗi khi xử lý phiếu nhập kho",
             description: {
-                success: isEdit ? "Phiếu đã được cập nhật." : (
+                success: isEdit ? t.voucherRevision.savedDescription : (
                     (t as any).importVoucher?.toast?.createSuccessDesc ??
                     "Phiếu đã được gửi vào quy trình duyệt."
                 ),
@@ -540,7 +545,8 @@ export default function CreateVoucherTab({
             await promise;
             onCreated();
             setShowOtpModal(false);
-        } catch {
+        } catch (error) {
+            console.error("[VoucherRevision] submit failed:", error);
             // goeyToast.promise already presents the error.
         } finally {
             setIsSubmitting(false);
@@ -561,7 +567,7 @@ export default function CreateVoucherTab({
             data-guide-active-tour={activeGuideTour}
             data-guide-priority="30"
         >
-            <div id="voucher-guide-wizard" className="flex h-10 items-center justify-between w-full gap-1 overflow-hidden py-1">
+            <div id="voucher-guide-wizard" className="flex shrink-0 flex-wrap items-center justify-between w-full gap-2 py-1 sm:flex-nowrap">
                 <button
                     type="button"
                     onClick={goPrev}
@@ -572,7 +578,7 @@ export default function CreateVoucherTab({
                     {(t as any).importVoucher?.form?.prev ?? "Quay lại"}
                 </button>
 
-                <div className="flex">
+                <div className="order-first flex w-full justify-center sm:order-none sm:w-auto">
                     {STEPS.map((stepConfig, idx) => {
                         const Icon = stepConfig.icon;
                         const isActive = step === stepConfig.id;
@@ -631,7 +637,7 @@ export default function CreateVoucherTab({
                     >
                         {isSubmitting
                             ? ((t as any).importVoucher?.toast?.creating ?? "Đang tạo...")
-                            : ((t as any).importVoucher?.form?.submit ?? "Gửi duyệt")}
+                            : isEdit ? t.voucherRevision.submit : ((t as any).importVoucher?.form?.submit ?? "Gửi duyệt")}
                     </button>
                 )}
             </div>
@@ -864,7 +870,7 @@ export default function CreateVoucherTab({
                                                 </span>
                                                 <div className="min-w-0 flex-1">
                                                     <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
-                                                        {item.product_name}
+                                                        {item.product_name || products.find((product) => product.id === item.product_id)?.name || item.product_id}
                                                     </p>
                                                     <p className="text-xxs text-[var(--color-text-muted)]">
                                                         {product?.code} · {product?.unit}

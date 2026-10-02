@@ -27,6 +27,7 @@ import {
   isOperatorAllowedToScan,
 } from "./externalScanAccessService.js";
 import * as approvalService from "./approvalService.js";
+import { prepareExternalVoucherRevision, notifyExternalVoucherRevision } from "./externalVoucherRevisionService.js";
 import { isExternalCountGateOpen } from "./stockCountService.js";
 
 // Lấy sản phẩm dựa trên barcode hoặc productId
@@ -717,6 +718,9 @@ export const approveBatch = async (
   const voucherId = existingVoucherId || uuidv4();
   let voucherNumber = await generateVoucherNumber("EXP");
   const now = new Date();
+  const revisionPlan = batchStatus === ExternalScanQueueStatus.REVISION_REQUIRED
+    ? await prepareExternalVoucherRevision(voucherId, warehouseId, managerId)
+    : null;
 
   await db.runTransaction(async (tx) => {
     const inventoryDocs = await Promise.all(
@@ -738,6 +742,12 @@ export const approveBatch = async (
     const existingVoucher = existingVoucherSnap?.exists
       ? (existingVoucherSnap.data() as ExportVoucher)
       : null;
+    if (revisionPlan && (!existingVoucher || existingVoucher.status !== ExportVoucherStatus.REJECTED || existingVoucher.creator_id !== managerId)) {
+      throw Object.assign(new Error("VOUCHER_REVISION_CONFLICT"), {
+        statusCode: 409,
+        messages: { vi: "Phiếu đã thay đổi hoặc bạn không phải người tạo phiếu.", zh: "单据已更改或您不是单据创建人。" },
+      });
+    }
     const oldVoucherItemsSnap = existingVoucher
       ? await tx.get(
           voucherRef.collection("items").where("is_deleted", "==", false),
@@ -919,10 +929,14 @@ export const approveBatch = async (
 
       tx.set(voucherRef.collection("items").doc(itemId), voucherItem);
     }
+    for (const approval of revisionPlan?.records ?? []) {
+      const values = Object.fromEntries(Object.entries(approval).filter(([, value]) => value !== undefined));
+      tx.set(db.collection("pending_approvals").doc(approval.id), { ...values, voucher_number: voucherNumber });
+    }
   });
 
   const creatorName = await getUserDisplayName(managerId);
-  const approvals = await approvalService.createApprovalsForEntity(
+  const approvals = revisionPlan?.records ?? await approvalService.createApprovalsForEntity(
     "EXPORT_VOUCHER",
     voucherId,
     warehouseId,
@@ -935,6 +949,11 @@ export const approveBatch = async (
       configEntityType: "EXTERNAL_QUEUE_EXPORT",
     },
   );
+
+  if (revisionPlan) {
+    revisionPlan.records.forEach((record) => { record.voucher_number = voucherNumber; });
+    await notifyExternalVoucherRevision(revisionPlan);
+  }
 
   let resultingStatus = ExternalScanQueueStatus.PENDING_EXPORT_APPROVAL;
   if (approvals.length === 0) {

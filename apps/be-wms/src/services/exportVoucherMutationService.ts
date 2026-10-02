@@ -1,3 +1,4 @@
+import { reviseRejectedVoucher } from "./voucherRevisionService.js";
 import {
   AuditAction,
   ExportVoucherStatus,
@@ -85,6 +86,15 @@ export const updateExportVoucher = async (
   }
 
   const oldVoucher = voucherDoc.data() as ExportVoucher;
+  if (oldVoucher.status === ExportVoucherStatus.REJECTED && oldVoucher.reference_type === "EXTERNAL_QUEUE_BATCH") {
+    throw Object.assign(new Error("EXTERNAL_QUEUE_REVISION_REQUIRED"), {
+      statusCode: 409,
+      messages: {
+        vi: "Vui lòng sửa và gửi lại lô quét liên kết để giữ đúng số lượng hàng đang giữ.",
+        zh: "请修改并重新提交关联扫描批次，以确保预留库存数量正确。",
+      },
+    });
+  }
   assertVoucherAccess(authorization, "vouchers.write", oldVoucher.warehouse_id);
   await assertVoucherItemLocations(
     input.warehouse_id,
@@ -149,6 +159,16 @@ export const updateExportVoucher = async (
     notes: item.notes ?? null,
     is_deleted: false,
   }));
+
+  if (oldVoucher.status === "REJECTED") {
+    await reviseRejectedVoucher({
+      collection: "export_vouchers", id: voucherId, entityType: "EXPORT_VOUCHER",
+      creatorId: oldVoucher.creator_id, actorId: userId, warehouseId: input.warehouse_id,
+      voucherNumber: oldVoucher.voucher_number, oldValues: { ...oldVoucher }, values: { ...newVoucher },
+      items: items.map((item) => ({ ...item })),
+    });
+    return { ...oldVoucher, ...newVoucher } as ExportVoucher;
+  }
 
   const batch = db.batch();
   batch.update(voucherRef, newVoucher);

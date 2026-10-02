@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+
+import type { ExportVoucher } from "@bduck/shared-types";
+import { ExportVoucherStatus } from "@bduck/shared-types";
 import {
     CheckCircle,
     Copy,
@@ -9,25 +11,29 @@ import {
     Search,
     XCircle,
 } from "lucide-react";
-import type { ExportVoucher } from "@bduck/shared-types";
-import { ExportVoucherStatus } from "@bduck/shared-types";
+import { useMemo, useState } from "react";
+
 import { useWarehouses } from "../../../hooks/useWarehouses";
 import { useTranslation } from "../../../lib/i18n";
+import RejectedVoucherEditButton from "../vouchers/RejectedVoucherEditButton";
+
 import ExportVoucherDetailDrawer from "./ExportVoucherDetailDrawer";
 
 interface Props {
     vouchers: ExportVoucher[];
+    onSubmitted?: () => void;
     onClone: (data: Record<string, unknown>) => void;
 }
 
 type SortKey = "newest" | "oldest" | "voucher";
 
-const STATUS_KEYS = ["COMPLETED", "CANCELLED"] as const;
+const STATUS_KEYS = ["COMPLETED", "REJECTED", "CANCELLED"] as const;
 
 const STATUS_CONFIG: Record<
     string,
     { bg: string; text: string; Icon: React.ElementType }
 > = {
+    REJECTED: { bg: "bg-[var(--color-status-rejected-bg)]", text: "text-[var(--color-status-rejected-text)]", Icon: XCircle },
     COMPLETED: { bg: "bg-[var(--color-status-completed-bg)]", text: "text-[var(--color-status-completed-text)]", Icon: CheckCircle },
     CANCELLED: { bg: "bg-[var(--color-status-draft-bg)]", text: "text-[var(--color-status-draft-text)]", Icon: XCircle },
 };
@@ -71,7 +77,7 @@ function getClonePayload(voucher: ExportVoucher) {
     };
 }
 
-export default function ExportHistoryTab({ vouchers, onClone }: Props) {
+export default function ExportHistoryTab({ vouchers, onClone, onSubmitted }: Props) {
     const { t } = useTranslation();
     const exportText = t.exportVoucher as any;
     const { warehouses } = useWarehouses();
@@ -301,6 +307,7 @@ export default function ExportHistoryTab({ vouchers, onClone }: Props) {
 
                                 {/* Actions */}
                                 <div className="flex shrink-0 gap-1">
+<RejectedVoucherEditButton type="EXPORT" voucher={voucher} onSubmitted={onSubmitted} />
                                     <button
                                         type="button"
                                         onClick={() => setSelectedId(voucher.id)}

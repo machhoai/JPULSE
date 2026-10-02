@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { where } from "firebase/firestore";
 import {
   ExportVoucherStatus,
   type ExportVoucher,
 } from "@bduck/shared-types";
+import { where } from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
+
 import { db } from "@/lib/firebase";
 import {
   buildFacilityScopedQueries,
@@ -18,12 +19,12 @@ const ACTIVE_STATUSES: string[] = [
   ExportVoucherStatus.DRAFT,
   ExportVoucherStatus.PENDING_APPROVAL,
   ExportVoucherStatus.APPROVED,
-  ExportVoucherStatus.REJECTED,
   ExportVoucherStatus.PICKING,
   ExportVoucherStatus.SHIPPED,
 ];
 const COMPLETED_STATUSES: string[] = [
   ExportVoucherStatus.COMPLETED,
+  ExportVoucherStatus.REJECTED,
   ExportVoucherStatus.CANCELLED,
 ];
 

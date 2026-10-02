@@ -15,12 +15,12 @@ const ACTIVE_STATUSES = [
   ExportVoucherStatus.DRAFT,
   ExportVoucherStatus.PENDING_APPROVAL,
   ExportVoucherStatus.APPROVED,
-  ExportVoucherStatus.REJECTED,
   ExportVoucherStatus.PICKING,
   ExportVoucherStatus.SHIPPED,
 ];
 
 const COMPLETED_STATUSES = [
+  ExportVoucherStatus.REJECTED,
   ExportVoucherStatus.COMPLETED,
   ExportVoucherStatus.CANCELLED,
 ];

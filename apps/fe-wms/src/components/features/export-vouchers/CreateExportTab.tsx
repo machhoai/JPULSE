@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { gooeyToast } from "goey-toast";
 import {
     AlertTriangle,
     CheckCircle2,
@@ -13,31 +13,32 @@ import {
     Trash2,
     Upload,
 } from "lucide-react";
-import { gooeyToast } from "goey-toast";
-import { WarehouseSelectionPanel } from "../import-vouchers/WarehouseSelectionPanel";
-import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { getVoucherCreateTourName } from "../../../config/guides/voucherTours";
 import { createExportVoucher, updateExportVoucher } from "../../../hooks/useExportVoucherApi";
+import { useGuidedTourTransition } from "../../../hooks/useGuidedTourTransition";
+import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse";
+import { useProcessConfig } from "../../../hooks/useProcessConfig";
 import { useProducts } from "../../../hooks/useProducts";
 import {
     useWarehouseLocations,
     useWarehouses,
 } from "../../../hooks/useWarehouses";
 import { useTranslation } from "../../../lib/i18n";
+import {
+    EXPORT_VOUCHER_CREATE_TEXT,
+    type ComponentLocale,
+} from "../../../lib/i18n/componentTranslations";
 import { uploadFile } from "../../../lib/uploadFile";
 import { useUserStore } from "../../../stores/useUserStore";
+import { ActionOtpModal } from "../../shared/ActionOtpModal";
 import {
     FileUploadField,
     type SelectedFile,
 } from "../../shared/FileUploadField";
 import { VoucherExcelImportPanel } from "../import-vouchers/VoucherExcelImportPanel";
-import { useProcessConfig } from "../../../hooks/useProcessConfig";
-import { ActionOtpModal } from "../../shared/ActionOtpModal";
-import {
-    EXPORT_VOUCHER_CREATE_TEXT,
-    type ComponentLocale,
-} from "../../../lib/i18n/componentTranslations";
-import { getVoucherCreateTourName } from "../../../config/guides/voucherTours";
-import { useGuidedTourTransition } from "../../../hooks/useGuidedTourTransition";
+import { WarehouseSelectionPanel } from "../import-vouchers/WarehouseSelectionPanel";
 
 type Locale = ComponentLocale;
 type StepId = 0 | 1 | 2 | 3;
@@ -481,6 +482,7 @@ export default function CreateExportTab({
         if (isSubmitting) return;
         setIsSubmitting(true);
 
+        const actionTime = new Date().toISOString();
         const submitAction = async () => {
             const uploadedUrls: string[] = [];
             for (const f of files) {
@@ -505,13 +507,15 @@ export default function CreateExportTab({
             const payload = {
                 warehouse_id: warehouseId,
                 export_type: exportType,
+                reference_id: isEdit ? editData?.reference_id : undefined,
+                reference_type: isEdit ? editData?.reference_type : undefined,
                 recipient_name:
                     exportType === "TRANSFER"
                         ? warehouses.find((w) => w.id === destinationWarehouseId)?.name ||
                         undefined
-                        : undefined,
+                        : (isEdit ? editData?.recipient_name : undefined),
                 recipient_department:
-                    exportType === "TRANSFER" ? destinationWarehouseId : undefined,
+                    exportType === "TRANSFER" ? destinationWarehouseId : (isEdit ? editData?.recipient_department : undefined),
                 notes: notes || undefined,
                 attachment_urls: uploadedUrls,
                 otp,
@@ -522,7 +526,7 @@ export default function CreateExportTab({
                     unit_price: item.unit_price,
                     notes: item.notes || undefined,
                 })),
-                action_time: new Date().toISOString(),
+                action_time: actionTime,
             };
 
             if (isEdit && editData?.id) {
@@ -535,11 +539,11 @@ export default function CreateExportTab({
         const promise = submitAction();
         
         gooeyToast.promise(promise, {
-            loading: isEdit ? "\u0110ang c\u1eadp nh\u1eadt phi\u1ebfu xu\u1ea5t kho..." : exportText.toast.creating,
-            success: isEdit ? "C\u1eadp nh\u1eadt th\u00e0nh c\u00f4ng" : exportText.toast.createSuccess,
+            loading: isEdit ? t.voucherRevision.saving : exportText.toast.creating,
+            success: isEdit ? t.voucherRevision.saved : exportText.toast.createSuccess,
             error: exportText.toast.createError,
             description: {
-                success: isEdit ? "Phi\u1ebfu xu\u1ea5t kho \u0111\u00e3 \u0111\u01b0\u1ee3c c\u1eadp nh\u1eadt." : exportText.toast.createSuccessDesc,
+                success: isEdit ? t.voucherRevision.savedDescription : exportText.toast.createSuccessDesc,
                 error: exportText.toast.createErrorDesc,
             },
             action: {
@@ -550,7 +554,8 @@ export default function CreateExportTab({
         try {
             await promise;
             onCreated();
-        } catch {
+        } catch (error) {
+            console.error("[VoucherRevision] submit failed:", error);
             // Toast handles error.
         } finally {
             setIsSubmitting(false);
@@ -571,7 +576,7 @@ export default function CreateExportTab({
             data-guide-active-tour={activeGuideTour}
             data-guide-priority="30"
         >
-            <div id="voucher-guide-wizard" className="flex items-center justify-between w-full gap-1 overflow-x-auto py-1">
+            <div id="voucher-guide-wizard" className="flex shrink-0 flex-wrap items-center justify-between w-full gap-2 py-1 sm:flex-nowrap">
                 <button
                     type="button"
                     onClick={goPrev}
@@ -582,7 +587,7 @@ export default function CreateExportTab({
                     {copy.back}
                 </button>
 
-                <div className="flex">
+                <div className="order-first flex w-full justify-center sm:order-none sm:w-auto">
                     {STEPS.map((s, idx) => {
                         const Icon = s.icon;
                         const isActive = step === s.id;
@@ -635,7 +640,7 @@ export default function CreateExportTab({
                         disabled={isSubmitting}
                         className="flex items-center gap-1.5 rounded-lg bg-[var(--color-brand-primary)] px-5 py-2 text-xs font-semibold text-white transition-all hover:bg-[var(--color-brand-primary-hover)] disabled:opacity-50"
                     >
-                        {isSubmitting ? copy.submitting : copy.submit}
+                        {isSubmitting ? copy.submitting : isEdit ? t.voucherRevision.submit : copy.submit}
                     </button>
                 )}
             </div>
@@ -884,7 +889,7 @@ export default function CreateExportTab({
                                                     </span>
                                                     <div className="min-w-0 flex-1">
                                                         <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
-                                                            {item.product_name}
+                                                            {item.product_name || products.find((product) => product.id === item.product_id)?.name || item.product_id}
                                                         </p>
                                                         <p className="text-xxs text-[var(--color-text-muted)]">
                                                             {product?.code} · {product?.unit}

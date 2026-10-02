@@ -1,3 +1,4 @@
+import { reviseRejectedVoucher } from "./voucherRevisionService.js";
 import {
   AuditAction,
   ImportVoucherStatus,
@@ -152,6 +153,16 @@ export const updateImportVoucher = async (
     notes: item.notes ?? null,
     is_deleted: false,
   }));
+
+  if (oldVoucher.status === "REJECTED") {
+    await reviseRejectedVoucher({
+      collection: "import_vouchers", id: voucherId, entityType: "IMPORT_VOUCHER",
+      creatorId: oldVoucher.creator_id, actorId: userId, warehouseId: input.warehouse_id,
+      voucherNumber: oldVoucher.voucher_number, oldValues: { ...oldVoucher }, values: { ...newVoucher },
+      items: items.map((item) => ({ ...item })),
+    });
+    return { ...oldVoucher, ...newVoucher } as ImportVoucher;
+  }
 
   const batch = db.batch();
 

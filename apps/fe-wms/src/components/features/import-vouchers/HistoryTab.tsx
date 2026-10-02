@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+
+import type { ImportVoucher } from "@bduck/shared-types";
 import {
     CheckCircle,
     Copy,
@@ -8,13 +9,17 @@ import {
     Search,
     XCircle,
 } from "lucide-react";
-import type { ImportVoucher } from "@bduck/shared-types";
+import { useMemo, useState } from "react";
+
 import { useWarehouses } from "../../../hooks/useWarehouses";
 import { useTranslation } from "../../../lib/i18n";
+import RejectedVoucherEditButton from "../vouchers/RejectedVoucherEditButton";
+
 import VoucherDetailDrawer from "./VoucherDetailDrawer";
 
 interface HistoryTabProps {
     vouchers: ImportVoucher[];
+    onSubmitted?: () => void;
     onClone: (data: Record<string, unknown>) => void;
 }
 
@@ -57,7 +62,7 @@ function getTimestamp(value: unknown): number {
     return date.getTime();
 }
 
-export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
+export default function HistoryTab({ vouchers, onClone, onSubmitted }: HistoryTabProps) {
     const { t } = useTranslation();
     const importText = t.importVoucher as any;
     const { warehouses } = useWarehouses();
@@ -278,6 +283,7 @@ export default function HistoryTab({ vouchers, onClone }: HistoryTabProps) {
 
                                 {/* Actions */}
                                 <div className="flex shrink-0 gap-1">
+<RejectedVoucherEditButton type="IMPORT" voucher={voucher} onSubmitted={onSubmitted} />
                                     <button
                                         type="button"
                                         onClick={() => setSelectedId(voucher.id)}

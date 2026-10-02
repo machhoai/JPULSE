@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { gooeyToast } from "goey-toast";
 import {
     AlertTriangle,
     ArrowRightLeft,
@@ -15,10 +15,12 @@ import {
     Trash2,
     Upload,
 } from "lucide-react";
-import TransferRouteMap from "./TransferRouteMap";
-import { WarehouseSelectionPanel } from "../import-vouchers/WarehouseSelectionPanel";
-import { gooeyToast } from "goey-toast";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { getVoucherCreateTourName } from "../../../config/guides/voucherTours";
+import { useGuidedTourTransition } from "../../../hooks/useGuidedTourTransition";
 import { useInventoryByWarehouse } from "../../../hooks/useInventoryByWarehouse";
+import { useProcessConfig } from "../../../hooks/useProcessConfig";
 import { useProducts } from "../../../hooks/useProducts";
 import { createTransferOrder, updateTransferOrder } from "../../../hooks/useTransferOrderApi";
 import {
@@ -26,21 +28,21 @@ import {
     useWarehouses,
 } from "../../../hooks/useWarehouses";
 import { useTranslation } from "../../../lib/i18n";
+import {
+    TRANSFER_CREATE_TEXT,
+    type ComponentLocale,
+} from "../../../lib/i18n/componentTranslations";
 import { uploadFile } from "../../../lib/uploadFile";
 import { useUserStore } from "../../../stores/useUserStore";
+import { ActionOtpModal } from "../../shared/ActionOtpModal";
 import {
     FileUploadField,
     type SelectedFile,
 } from "../../shared/FileUploadField";
 import { VoucherExcelImportPanel } from "../import-vouchers/VoucherExcelImportPanel";
-import { useProcessConfig } from "../../../hooks/useProcessConfig";
-import { ActionOtpModal } from "../../shared/ActionOtpModal";
-import {
-    TRANSFER_CREATE_TEXT,
-    type ComponentLocale,
-} from "../../../lib/i18n/componentTranslations";
-import { getVoucherCreateTourName } from "../../../config/guides/voucherTours";
-import { useGuidedTourTransition } from "../../../hooks/useGuidedTourTransition";
+import { WarehouseSelectionPanel } from "../import-vouchers/WarehouseSelectionPanel";
+
+import TransferRouteMap from "./TransferRouteMap";
 
 type Locale = ComponentLocale;
 type StepId = 0 | 1 | 2 | 3;
@@ -147,7 +149,7 @@ export default function CreateTransferTab({
     prefillWarehouseId,
     onCreated,
 }: Props) {
-    const { lang } = useTranslation();
+    const { t, lang } = useTranslation();
     const locale = (lang || "vi") as Locale;
     const copy = TRANSFER_CREATE_TEXT[locale];
     const user = useUserStore((s) => s.user);
@@ -556,6 +558,7 @@ export default function CreateTransferTab({
         setShowConfirm(false);
         setIsSubmitting(true);
 
+        const actionTime = new Date().toISOString();
         const submitAction = async () => {
             const uploadedUrls: string[] = [];
             for (const f of files) {
@@ -592,7 +595,7 @@ export default function CreateTransferTab({
                     destination_location_id: item.destination_location_id,
                     quantity: item.quantity,
                 })),
-                action_time: new Date().toISOString(),
+                action_time: actionTime,
             };
 
             if (isEdit && editData?.id) {
@@ -605,11 +608,11 @@ export default function CreateTransferTab({
         const promise = submitAction();
 
         gooeyToast.promise(promise, {
-            loading: isEdit ? "\u0110ang c\u1eadp nh\u1eadt l\u1ec7nh \u0111i\u1ec1u chuy\u1ec3n..." : (isIntra ? copy.intraLoading : copy.interLoading),
-            success: isEdit ? "C\u1eadp nh\u1eadt th\u00e0nh c\u00f4ng" : (isIntra ? copy.intraSuccess : copy.interSuccess),
+            loading: isEdit ? t.voucherRevision.saving : (isIntra ? copy.intraLoading : copy.interLoading),
+            success: isEdit ? t.voucherRevision.saved : (isIntra ? copy.intraSuccess : copy.interSuccess),
             error: copy.createError,
             description: {
-                success: isEdit ? "L\u1ec7nh \u0111i\u1ec1u chuy\u1ec3n \u0111\u00e3 \u0111\u01b0\u1ee3c c\u1eadp nh\u1eadt." : (isIntra ? copy.intraSuccessDesc : copy.interSuccessDesc),
+                success: isEdit ? t.voucherRevision.savedDescription : (isIntra ? copy.intraSuccessDesc : copy.interSuccessDesc),
                 error: copy.errorDesc,
             },
             action: {
@@ -620,7 +623,8 @@ export default function CreateTransferTab({
         try {
             await promise;
             onCreated();
-        } catch {
+        } catch (error) {
+            console.error("[VoucherRevision] submit failed:", error);
             // Toast handles error.
         } finally {
             setIsSubmitting(false);
@@ -633,7 +637,7 @@ export default function CreateTransferTab({
             data-guide-active-tour={activeGuideTour}
             data-guide-priority="30"
         >
-            <div id="voucher-guide-wizard" className="flex w-full justify-between items-center mx-auto gap-1 overflow-x-auto py-1">
+            <div id="voucher-guide-wizard" className="flex shrink-0 flex-wrap items-center justify-between w-full gap-2 py-1 sm:flex-nowrap">
                 <button
                     type="button"
                     onClick={() => step > 0 && setStep((step - 1) as StepId)}
@@ -643,7 +647,7 @@ export default function CreateTransferTab({
                     <ChevronLeft size={14} />
                     {copy.back}
                 </button>
-                <div className="flex">
+                <div className="order-first flex w-full justify-center sm:order-none sm:w-auto">
                     {STEPS.map((s, index) => {
                         const Icon = s.icon;
                         const isActive = step === s.id;
@@ -700,7 +704,7 @@ export default function CreateTransferTab({
                     >
                         {isSubmitting
                             ? copy.processing
-                            : isIntra
+                            : isEdit ? t.voucherRevision.submit : isIntra
                                 ? copy.submitIntra
                                 : copy.submitInter}
                     </button>
@@ -722,6 +726,7 @@ export default function CreateTransferTab({
                                         <button
                                             key={tt.value}
                                             type="button"
+                                            disabled={isEdit && editData?.status === "REJECTED"}
                                             onClick={() => {
                                                 setTransferType(tt.value);
                                                 setDestWarehouseId("");
@@ -1026,7 +1031,7 @@ export default function CreateTransferTab({
                                                     </span>
                                                     <div className="min-w-0 flex-1">
                                                         <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
-                                                            {item.product_name}
+                                                            {item.product_name || products.find((product) => product.id === item.product_id)?.name || item.product_id}
                                                         </p>
                                                         <p className="text-xxs text-[var(--color-text-muted)]">
                                                             {product?.code} · {product?.unit}
@@ -1501,7 +1506,7 @@ export default function CreateTransferTab({
                                                 {items.map((item) => (
                                                     <tr key={item.id} className="border-t border-[var(--color-border-soft)]">
                                                         <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
-                                                            {item.product_name}
+                                                            {item.product_name || products.find((product) => product.id === item.product_id)?.name || item.product_id}
                                                         </td>
                                                         <td className="px-3 py-1.5 text-right font-medium text-[var(--color-text-primary)]">
                                                             {item.quantity}
@@ -1522,10 +1527,10 @@ export default function CreateTransferTab({
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
                     <div className="w-[500px] rounded-2xl bg-white p-4 shadow-2xl">
                         <h3 className="text-base font-bold text-gray-900">
-                            {isIntra ? copy.confirmIntraTitle : copy.confirmInterTitle}
+                            {isEdit ? t.voucherRevision.title : isIntra ? copy.confirmIntraTitle : copy.confirmInterTitle}
                         </h3>
                         <p className="mt-2 text-sm text-gray-500">
-                            {isIntra ? copy.confirmIntraDesc : copy.confirmInterDesc}
+                            {isEdit ? t.voucherRevision.loadDescription : isIntra ? copy.confirmIntraDesc : copy.confirmInterDesc}
                         </p>
                         <div className="mt-5 flex gap-3">
                             <button

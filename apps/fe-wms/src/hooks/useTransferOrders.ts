@@ -25,10 +25,10 @@ const ACTIVE_STATUSES: string[] = [
   TransferOrderStatus.IN_TRANSIT,
   TransferOrderStatus.PENDING_RECEIVE,
   TransferOrderStatus.RECEIVING,
-  TransferOrderStatus.REJECTED,
 ];
 const COMPLETED_STATUSES: string[] = [
   TransferOrderStatus.COMPLETED,
+  TransferOrderStatus.REJECTED,
   TransferOrderStatus.CANCELLED,
 ];
 

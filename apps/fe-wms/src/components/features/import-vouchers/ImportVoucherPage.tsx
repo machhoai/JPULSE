@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { playForward, checkmarkCircle, time } from "ionicons/icons";
 import { ClipboardList, History, PackagePlus, Plus } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+
+import { IonIcon } from "@/components/ui/IonIcon";
+
 import { useImportVouchers } from "../../../hooks/useImportVouchers";
 import { useTranslation } from "../../../lib/i18n";
 import { useUserStore } from "../../../stores/useUserStore";
+
 import CreateVoucherTab from "./CreateVoucherTab";
+import { EditImportVoucherModal } from "./EditImportVoucherModal";
 import HistoryTab from "./HistoryTab";
 import ImportVoucherSkeleton from "./ImportVoucherSkeleton";
 import InProgressTab from "./InProgressTab";
-import { EditImportVoucherModal } from "./EditImportVoucherModal";
-import { IonIcon } from "@/components/ui/IonIcon";
-import { playForward, checkmarkCircle, time } from "ionicons/icons";
 
 type TabId = "create" | "inProgress" | "history";
 
@@ -233,6 +236,7 @@ export default function ImportVoucherPage() {
                     {effectiveTab === "history" && (
                         <HistoryTab
                             vouchers={completedVouchers}
+                            onSubmitted={() => setActiveTab("inProgress")}
                             onClone={handleCloneToCreate}
                         />
                     )}

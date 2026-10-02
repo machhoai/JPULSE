@@ -3,8 +3,10 @@
  */
 import { revenueExportZh } from "./revenueExportTranslations";
 import type { Dictionary } from "./vi";
+import { voucherRevisionZh } from "./voucherRevisionTranslations";
 
 const zh: Dictionary = {
+  voucherRevision: voucherRevisionZh,
   nav: {
     dashboard: "首页",
     inventory: "库存",

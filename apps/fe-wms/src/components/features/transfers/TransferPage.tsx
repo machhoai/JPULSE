@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { time } from "console";
+
+import { playForward, checkmarkCircle, timer } from "ionicons/icons";
 import {
     ArrowRightLeft,
     ClipboardList,
@@ -8,16 +10,19 @@ import {
     Plus,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { useMemo, useState, useEffect } from "react";
+
+import IonIcon from "@/components/ui/IonIcon";
+
 import { useTransferOrders } from "../../../hooks/useTransferOrders";
 import { useTranslation } from "../../../lib/i18n";
 import { useUserStore } from "../../../stores/useUserStore";
+
 import CreateTransferTab from "./CreateTransferTab";
 import TransferDetailDrawer from "./TransferDetailDrawer";
 import TransferListTab from "./TransferListTab";
 import TransferSkeleton from "./TransferSkeleton";
-import IonIcon from "@/components/ui/IonIcon";
-import { time } from "console";
-import { playForward, checkmarkCircle, timer } from "ionicons/icons";
+
 
 type TabId = "create" | "inProgress" | "history";
 
@@ -218,6 +223,7 @@ export default function TransferPage() {
                 {effectiveTab === "history" && (
                     <TransferListTab
                         orders={completedOrders}
+                        onSubmitted={() => setActiveTab("inProgress")}
                         onViewDetail={(id) => setSelectedOrderId(id)}
                     />
                 )}
