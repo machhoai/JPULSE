@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
+
 import { useTranslation } from "@/lib/i18n";
 
 interface ReceivingSessionHeaderProps {
@@ -45,7 +46,7 @@ export function ReceivingSessionHeader({
   const { t } = useTranslation();
 
   return (
-    <header className="flex items-center justify-between border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-3 shadow-sm">
+    <header className="flex shrink-0 items-center justify-between border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-3 shadow-sm">
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -188,7 +189,7 @@ export function ReceivingSessionFooter({
   const { t } = useTranslation();
 
   return (
-    <footer className="border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
+    <footer className="shrink-0 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
       <label
         className={`mb-3 flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 transition-all ${
           isConfirmed

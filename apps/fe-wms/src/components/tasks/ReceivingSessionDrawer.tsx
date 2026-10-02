@@ -1,22 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { gooeyToast } from "goey-toast";
 import type { WorkflowTask } from "@bduck/shared-types";
+import { gooeyToast } from "goey-toast";
+import { useCallback, useEffect, useState } from "react";
+
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { useReceivingSessionData } from "@/hooks/useTaskSessionData";
-import { useTranslation } from "@/lib/i18n";
-import { BottomSheet } from "@/components/ui/BottomSheet";
 import { emitDataMutation } from "@/lib/dataInvalidation";
+import { useTranslation } from "@/lib/i18n";
 import { useReceivingStore } from "@/stores/useReceivingStore";
 import { createDetailedApiError } from "@/utils/apiError";
+
+import ReceivingItemRow from "./ReceivingItemRow";
 import {
     ReceivingSessionFooter,
     ReceivingSessionHeader,
     ReceivingSessionSkeleton,
     ReceivingSessionStatsBar,
 } from "./ReceivingSessionChrome";
-import ReceivingItemRow from "./ReceivingItemRow";
 import TaskSessionReviewOverlay from "./TaskSessionReviewOverlay";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -188,34 +190,36 @@ export default function ReceivingSessionDrawer({ task, onClose }: ReceivingSessi
                         supplierName={supplierName || sourceSupplierName}
                         onClose={onClose}
                     />
-                    <ReceivingSessionStatsBar
-                        completedItems={completedItems}
-                        totalItems={items.length}
-                        totalActual={totalActual}
-                        totalExpected={totalExpected}
-                        itemsNeedingReview={itemsNeedingReview}
-                        lastSavedAt={lastSavedAt}
-                    />
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                        <ReceivingSessionStatsBar
+                            completedItems={completedItems}
+                            totalItems={items.length}
+                            totalActual={totalActual}
+                            totalExpected={totalExpected}
+                            itemsNeedingReview={itemsNeedingReview}
+                            lastSavedAt={lastSavedAt}
+                        />
 
-                    <div className="flex-1 overflow-y-auto px-4 py-3">
-                        {isLoading ? (
-                            <ReceivingSessionSkeleton />
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                {items.map((item) => (
-                                    <ReceivingItemRow
-                                        key={item.id}
-                                        item={item}
-                                        isHighlighted={
-                                            highlightedCode === item.product_barcode.toUpperCase() ||
-                                            highlightedCode === item.product_sku.toUpperCase()
-                                        }
-                                        onQuantityChange={updateItemQuantity}
-                                        onNotesChange={updateItemNotes}
-                                    />
-                                ))}
-                            </div>
-                        )}
+                        <div className="px-4 py-3">
+                            {isLoading ? (
+                                <ReceivingSessionSkeleton />
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    {items.map((item) => (
+                                        <ReceivingItemRow
+                                            key={item.id}
+                                            item={item}
+                                            isHighlighted={
+                                                highlightedCode === item.product_barcode.toUpperCase() ||
+                                                highlightedCode === item.product_sku.toUpperCase()
+                                            }
+                                            onQuantityChange={updateItemQuantity}
+                                            onNotesChange={updateItemNotes}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <ReceivingSessionFooter
