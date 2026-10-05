@@ -1,5 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+
+import { companyHolidaySchema } from "../../services/companyHolidayRange.js";
 import {
   createCompanyHoliday,
   fetchCompanyHolidays,
@@ -11,23 +13,8 @@ import {
   requireRequestAuthorization,
 } from "../middlewares/requestAccessContext.js";
 
-const safeText = z
-  .string()
-  .trim()
-  .min(1)
-  .max(120)
-  .refine((value) => !/\$(where|ne|gt|lt)\b/i.test(value));
 const yearSchema = z.coerce.number().int().min(2000).max(2100);
-const holidaySchema = z
-  .object({
-    holiday_date: z.string().date(),
-    name: z.object({ vi: safeText, zh: safeText }).strict(),
-    action_time: z.coerce.date(),
-  })
-  .strict();
-const deleteSchema = z
-  .object({ action_time: z.coerce.date() })
-  .strict();
+const deleteSchema = z.object({ action_time: z.coerce.date() }).strict();
 
 const handleError = (res: Response, error: unknown) => {
   console.error("[leaveHolidayController] error:", error);
@@ -79,7 +66,7 @@ export const createCompanyHolidayHandler = async (
   try {
     const actor = requireAuthenticatedRequestUser(req);
     const data = await createCompanyHoliday(
-      holidaySchema.parse(req.body),
+      companyHolidaySchema.parse(req.body),
       actor.id,
       requireRequestAuthorization(req),
     );

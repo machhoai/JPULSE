@@ -120,10 +120,10 @@ export function resolveAttendanceDay({
     if (hasCheckIn && isWeekend) {
         return { ...emptyResolution(), status: "x", workedUnits: 1 };
     }
-    if (isWeekend) return emptyResolution();
     if (isHoliday && !hasCheckIn) {
         return { ...emptyResolution(), status: "NL", holidayUnits: 1 };
     }
+    if (isWeekend) return emptyResolution();
 
     const { morning, afternoon } = assignLeavePortions(leaveDays);
     const units = leaveUnits(morning, afternoon);

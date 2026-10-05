@@ -8,6 +8,8 @@ import {
 import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { useTranslation } from "@/lib/i18n";
+
 const portions = [
     { value: LeaveDayPortion.FULL_DAY, label: "fullDay" },
     { value: LeaveDayPortion.MORNING, label: "morning" },
@@ -47,11 +49,17 @@ export function MultiDateLeaveCalendar({
     fullDayOnly?: boolean;
     onChange: (days: LeaveRequestDaySelection[]) => void;
 }) {
+    const { lang } = useTranslation();
     const [month, setMonth] = useState(
         () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     );
-    const holidayDates = useMemo(
-        () => new Set(holidays.map((holiday) => holiday.holiday_date)),
+    const holidayMap = useMemo(
+        () =>
+            new Map(
+                holidays
+                    .filter((holiday) => !holiday.is_deleted)
+                    .map((holiday) => [holiday.holiday_date, holiday]),
+            ),
         [holidays],
     );
     const selectedDates = useMemo(
@@ -97,7 +105,11 @@ export function MultiDateLeaveCalendar({
                         onClick={() =>
                             setMonth(
                                 (current) =>
-                                    new Date(current.getFullYear(), current.getMonth() - 1, 1),
+                                    new Date(
+                                        current.getFullYear(),
+                                        current.getMonth() - 1,
+                                        1,
+                                    ),
                             )
                         }
                         className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-[var(--color-surface-card)] disabled:opacity-50"
@@ -116,7 +128,11 @@ export function MultiDateLeaveCalendar({
                         onClick={() =>
                             setMonth(
                                 (current) =>
-                                    new Date(current.getFullYear(), current.getMonth() + 1, 1),
+                                    new Date(
+                                        current.getFullYear(),
+                                        current.getMonth() + 1,
+                                        1,
+                                    ),
                             )
                         }
                         className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-[var(--color-surface-card)] disabled:opacity-50"
@@ -132,32 +148,55 @@ export function MultiDateLeaveCalendar({
                 <div className="mt-1 grid grid-cols-7 gap-1">
                     {calendarDays.map((date) => {
                         const value = toLocalDate(date);
-                        const currentMonth = date.getMonth() === month.getMonth();
-                        const weekend = date.getDay() === 0 || date.getDay() === 6;
-                        const holiday = holidayDates.has(value);
+                        const currentMonth =
+                            date.getMonth() === month.getMonth();
+                        const weekend =
+                            date.getDay() === 0 || date.getDay() === 6;
+                        const holiday = holidayMap.get(value);
                         const selected = selectedDates.has(value);
                         return (
                             <button
                                 key={value}
                                 type="button"
                                 aria-pressed={selected}
-                                aria-label={value}
-                                title={holiday ? labels.companyHoliday : undefined}
-                                disabled={disabled || weekend || holiday}
+                                aria-label={
+                                    holiday
+                                        ? `${value}: ${labels.companyHoliday} · ${holiday.name[lang]}`
+                                        : value
+                                }
+                                title={
+                                    holiday
+                                        ? `${labels.companyHoliday}: ${holiday.name[lang]}`
+                                        : undefined
+                                }
+                                disabled={
+                                    disabled || weekend || Boolean(holiday)
+                                }
                                 onClick={() => toggleDate(date)}
-                                className={`aspect-square rounded-xl text-xs font-medium transition ${selected
-                                    ? "bg-[var(--color-brand-primary)] text-white"
-                                    : currentMonth
-                                        ? "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-card)]"
-                                        : "text-[var(--color-text-muted)] opacity-45"
-                                    } disabled:bg-slate-50 disabled:text-slate-300`}
+                                className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-sm font-medium transition ${holiday ? "bg-amber-50 text-amber-900 disabled:bg-amber-50 disabled:text-amber-900" : "disabled:bg-slate-50 disabled:text-slate-300"} ${
+                                    selected
+                                        ? "bg-[var(--color-brand-primary)] text-white"
+                                        : holiday
+                                          ? "text-amber-900"
+                                          : currentMonth
+                                            ? "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-card)]"
+                                            : "text-[var(--color-text-muted)] opacity-45"
+                                }`}
                             >
-                                {date.getDate()}
+                                <span>{date.getDate()}</span>
+                                {holiday ? (
+                                    <span className="w-full break-words text-[11px] leading-4">
+                                        {holiday.name[lang]}
+                                    </span>
+                                ) : null}
                             </button>
                         );
                     })}
                 </div>
             </div>
+            <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                {labels.companyHoliday} · {labels.paidHoliday}
+            </p>
             {selectedDays.length === 0 ? (
                 <p className="rounded-2xl bg-[var(--color-surface-card)] p-3 text-xs text-[var(--color-text-muted)]">
                     {labels.selectLeaveDatesHint}
@@ -184,13 +223,17 @@ export function MultiDateLeaveCalendar({
                                     onChange={(event) =>
                                         updatePortion(
                                             day.date,
-                                            event.target.value as LeaveDayPortion,
+                                            event.target
+                                                .value as LeaveDayPortion,
                                         )
                                     }
                                     className="h-9 rounded-xl border border-[var(--color-border-soft)] bg-white px-2 text-xs"
                                 >
                                     {portions.map((portion) => (
-                                        <option key={portion.value} value={portion.value}>
+                                        <option
+                                            key={portion.value}
+                                            value={portion.value}
+                                        >
                                             {labels[portion.label]}
                                         </option>
                                     ))}
@@ -201,7 +244,11 @@ export function MultiDateLeaveCalendar({
                                 disabled={disabled}
                                 aria-label={labels.removeDate}
                                 onClick={() =>
-                                    onChange(days.filter((item) => item.date !== day.date))
+                                    onChange(
+                                        days.filter(
+                                            (item) => item.date !== day.date,
+                                        ),
+                                    )
                                 }
                                 className="flex h-9 items-center justify-center rounded-xl text-red-600 hover:bg-red-50 disabled:opacity-50"
                             >

@@ -3,8 +3,8 @@
 import type { Warehouse } from "@bduck/shared-types";
 import { CalendarDays, CalendarRange, Search } from "lucide-react";
 import type { ReactNode } from "react";
-import type { AttendanceRangeMode } from "@/utils/attendance";
-import type { AttendanceEmployeeRow } from "@/utils/attendance";
+
+import type { AttendanceRangeMode , AttendanceEmployeeRow } from "@/utils/attendance";
 
 interface TimeAttendanceFiltersProps {
     labels: Record<string, string>;
@@ -75,7 +75,7 @@ export function TimeAttendanceFilters({
                             value={month}
                             onClick={(e) => typeof e.currentTarget.showPicker === "function" && e.currentTarget.showPicker()}
                             onChange={(event) => onMonthChange(event.target.value)}
-                            className="h-10 min-w-44 rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)] cursor-pointer"
+                            className="h-10 min-w-44 rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)] cursor-pointer"
                         />
                     ) : (
                         <input
@@ -83,7 +83,7 @@ export function TimeAttendanceFilters({
                             value={weekStart}
                             onClick={(e) => typeof e.currentTarget.showPicker === "function" && e.currentTarget.showPicker()}
                             onChange={(event) => onWeekStartChange(event.target.value)}
-                            className="h-10 min-w-44 rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)] cursor-pointer"
+                            className="h-10 min-w-44 rounded-full border border-[var(--color-border-subtle)] bg-white px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-brand-primary)] cursor-pointer"
                         />
                     )}
                 </div>

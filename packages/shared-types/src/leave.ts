@@ -244,6 +244,8 @@ export interface LeaveDayReservation extends SoftDeletable, ISOTimestamped {
 
 export interface UpsertCompanyHolidayInput {
   holiday_date: LocalDate;
+  /** Inclusive end date for a consecutive range; omitted for a single day. */
+  holiday_end_date?: LocalDate;
   name: LocalizedText;
   action_time: Date;
 }

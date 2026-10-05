@@ -8,6 +8,7 @@ import {
     type AttendanceLeaveDay,
     type AttendanceLateReport,
     type AttendanceLog,
+    type CompanyHoliday,
 } from "@bduck/shared-types";
 import { motion } from "framer-motion";
 import {
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 import { useState, useMemo, useRef, useEffect } from "react";
 
+import { useTranslation } from "@/lib/i18n";
 import {
     buildLatestLateReportMap,
     buildSuccessLogMap,
@@ -43,6 +45,7 @@ interface TimeAttendanceCalendarProps {
     rows: AttendanceEmployeeRow[];
     logs: AttendanceLog[];
     leaveDays?: AttendanceLeaveDay[];
+    holidays: CompanyHoliday[];
     lateReports?: AttendanceLateReport[];
     loading: boolean;
     mode?: AttendanceRangeMode;
@@ -95,8 +98,8 @@ const leavePortionLabel = (
     portion === LeaveDayPortion.FULL_DAY
         ? labels.fullDay
         : portion === LeaveDayPortion.MORNING
-          ? labels.morning
-          : labels.afternoon;
+            ? labels.morning
+            : labels.afternoon;
 
 const leaveStatusLabel = (
     labels: Record<string, string>,
@@ -109,6 +112,7 @@ export function TimeAttendanceCalendar({
     rows,
     logs,
     leaveDays = [],
+    holidays,
     lateReports = [],
     loading,
     mode = "month",
@@ -117,6 +121,16 @@ export function TimeAttendanceCalendar({
     onMonthChange,
     onWeekStartChange,
 }: TimeAttendanceCalendarProps) {
+    const { lang } = useTranslation();
+    const holidayMap = useMemo(
+        () =>
+            new Map(
+                holidays
+                    .filter((holiday) => !holiday.is_deleted)
+                    .map((holiday) => [holiday.holiday_date, holiday]),
+            ),
+        [holidays],
+    );
     const successMap = buildSuccessLogMap(logs);
     const lateReportMap = buildLatestLateReportMap(lateReports);
     const leaveDayMap = useMemo(() => {
@@ -131,9 +145,7 @@ export function TimeAttendanceCalendar({
 
     const [selectedDateKey, setSelectedDateKey] = useState<string>("");
 
-    const isVi =
-        labels.allEmployees?.toLowerCase().includes("Nhân viên") ||
-        labels.calendar?.toLowerCase().includes("lịch");
+    const isVi = lang === "vi";
     const txtCheckedIn =
         labels.checkedInStatus || (isVi ? "Đã check-in" : "已打卡");
     const txtWaiting =
@@ -202,6 +214,8 @@ export function TimeAttendanceCalendar({
         return () => clearTimeout(timer);
     }, [days, loading, targetKey]);
 
+    const selectedHoliday = holidayMap.get(activeSelectedKey);
+
     const activeSelectedDay = useMemo(() => {
         return days.find((d) => d.key === activeSelectedKey) || null;
     }, [days, activeSelectedKey]);
@@ -218,15 +232,15 @@ export function TimeAttendanceCalendar({
         <motion.section
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-sm lg:rounded-[var(--radius-lg)] lg:border-[var(--color-border-soft)] lg:bg-[var(--color-surface-elevated)] lg:shadow-none"
+            className="overflow-hidden  rounded-t-[28px] lg:rounded-[var(--radius-lg)] lg:border-[var(--color-border-soft)] lg:bg-[var(--color-surface-elevated)] lg:shadow-none"
         >
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border-soft)] bg-white p-4 lg:bg-[var(--color-surface-card)]">
+            <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--color-border-soft)] bg-white p-3 pb-0 lg:bg-[var(--color-surface-card)]">
                 <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#257a3e10] text-[#257a3e]">
-                        <CalendarCheck size={17} />
+                    <div className="flex size-12 items-center justify-center rounded-lg bg-[#257a3e10] text-[#257a3e]">
+                        <CalendarCheck size={24} />
                     </div>
                     <div>
-                        <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                        <h2 className="text-md font-semibold text-[var(--color-text-primary)]">
                             {labels.calendar}
                         </h2>
                         <p className="text-xs text-[var(--color-text-muted)]">
@@ -255,7 +269,7 @@ export function TimeAttendanceCalendar({
                                             );
                                         }
                                     }}
-                                    className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-colors hover:bg-white hover:text-[var(--color-text-primary)] cursor-pointer"
+                                    className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)] cursor-pointer"
                                     title={
                                         labels.prevMonth ||
                                         (isVi
@@ -270,9 +284,9 @@ export function TimeAttendanceCalendar({
                                     <span className="text-xs font-bold text-[var(--color-text-primary)] cursor-pointer select-none">
                                         {mode === "month"
                                             ? formatMonthLabel(
-                                                  month || getCurrentMonthKey(),
-                                                  isVi,
-                                              )
+                                                month || getCurrentMonthKey(),
+                                                isVi,
+                                            )
                                             : `${days[0]?.label || ""}/${(days[0]?.date.getMonth() || 0) + 1} - ${days[days.length - 1]?.label || ""}/${(days[days.length - 1]?.date.getMonth() || 0) + 1}`}
                                     </span>
                                     {mode === "month" && (
@@ -307,7 +321,7 @@ export function TimeAttendanceCalendar({
                                             );
                                         }
                                     }}
-                                    className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-colors hover:bg-white hover:text-[var(--color-text-primary)] cursor-pointer"
+                                    className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)] cursor-pointer"
                                     title={
                                         labels.nextMonth ||
                                         (isVi ? "Tháng sau" : "Next Month")
@@ -336,21 +350,25 @@ export function TimeAttendanceCalendar({
                 <div className="flex items-center gap-4">
                     {/* Visual Legend */}
                     <div className="hidden items-center gap-4 md:flex">
-                        <div className="flex items-center gap-1.5 text-xxs text-[var(--color-text-secondary)] font-medium">
+                        <div className="flex items-center gap-1.5 text-[11pt] text-[var(--color-text-secondary)] font-medium">
                             <span className="h-2 w-2 rounded-full bg-[#257a3e]" />
                             <span>{txtCheckedIn}</span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xxs text-[var(--color-text-secondary)] font-medium">
+                        <div className="flex items-center gap-1.5 text-[11pt] text-[var(--color-text-secondary)] font-medium">
                             <span className="h-2 w-2 rounded-full border border-dashed border-[var(--color-brand-primary)] animate-pulse" />
                             <span>{txtWaiting}</span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xxs text-[var(--color-text-secondary)] font-medium">
+                        <div className="flex items-center gap-1.5 text-[11pt] text-[var(--color-text-secondary)] font-medium">
                             <span className="text-slate-300 font-bold">•</span>
                             <span>{txtNoLog}</span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xxs text-[var(--color-text-secondary)] font-medium">
+                        <div className="flex items-center gap-1.5 text-[11pt] text-[var(--color-text-secondary)] font-medium">
                             <span className="h-2 w-2 rounded-full bg-blue-500" />
                             <span>{labels.leaveOnCalendar}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11pt] font-medium text-amber-900">
+                            <span className="h-2 w-2 rounded-full bg-amber-500" />
+                            <span>{labels.companyHoliday}</span>
                         </div>
                     </div>
                 </div>
@@ -371,68 +389,84 @@ export function TimeAttendanceCalendar({
                 </div>
             ) : (
                 <>
-                    <div className="space-y-3 bg-[#f8fafc] p-3 md:hidden">
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="rounded-2xl bg-white p-3 shadow-sm">
-                                <p className="text-[10px] font-semibold text-[var(--color-text-muted)]">
-                                    {txtCheckedIn}
-                                </p>
-                                <p className="mt-1 text-2xl font-semibold tabular-nums text-[#257a3e]">
-                                    {checkedCount}
-                                </p>
+                    <div className="space-y-3  md:hidden">
+                        <div className="bg-[#f8fafc] px-3 pt-2 pb-0 rounded-b-[28px] overflow-hidden">
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="rounded-2xl bg-white p-3 shadow-sm">
+                                    <p className="text-xs font-semibold text-[var(--color-text-muted)]">
+                                        {txtCheckedIn}
+                                    </p>
+                                    <p className="mt-1 text-2xl font-semibold tabular-nums text-[#257a3e]">
+                                        {checkedCount}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl bg-white p-3 shadow-sm">
+                                    <p className="text-xs font-semibold text-[var(--color-text-muted)]">
+                                        {labels.employees}
+                                    </p>
+                                    <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--color-text-primary)]">
+                                        {rows.length}
+                                    </p>
+                                </div>
                             </div>
-                            <div className="rounded-2xl bg-white p-3 shadow-sm">
-                                <p className="text-[10px] font-semibold text-[var(--color-text-muted)]">
-                                    {labels.employees}
-                                </p>
-                                <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--color-text-primary)]">
-                                    {rows.length}
-                                </p>
-                            </div>
-                        </div>
 
-                        <div
-                            ref={mobileContainerRef}
-                            className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-2 scrollbar-thin"
-                        >
-                            {days.map((day) => {
-                                const isToday = day.key === todayKey;
-                                const isSelected =
-                                    day.key === activeSelectedKey;
-                                const isTargetDay = day.key === targetKey;
-                                return (
-                                    <button
-                                        key={day.key}
-                                        ref={
-                                            isTargetDay ? todayMobileRef : null
-                                        }
-                                        type="button"
-                                        onClick={() =>
-                                            setSelectedDateKey(day.key)
-                                        }
-                                        className={`flex min-w-14 flex-col items-center rounded-2xl border px-3 py-2 transition-all active:scale-[0.93] cursor-pointer ${
-                                            isSelected
+                            <div
+                                ref={mobileContainerRef}
+                                className="-mx-3 mt-3 flex gap-2 overflow-x-auto px-3 pb-3 scrollbar-thin"
+                            >
+                                {days.map((day) => {
+                                    const holiday = holidayMap.get(day.key);
+                                    const isToday = day.key === todayKey;
+                                    const isSelected =
+                                        day.key === activeSelectedKey;
+                                    const isTargetDay = day.key === targetKey;
+                                    return (
+                                        <button
+                                            key={day.key}
+                                            ref={
+                                                isTargetDay ? todayMobileRef : null
+                                            }
+                                            type="button"
+                                            aria-pressed={isSelected}
+                                            title={
+                                                holiday
+                                                    ? `${labels.companyHoliday}: ${holiday.name[lang]}`
+                                                    : undefined
+                                            }
+                                            onClick={() =>
+                                                setSelectedDateKey(day.key)
+                                            }
+                                            className={`flex min-w-20 flex-col items-center rounded-2xl border px-3 py-2 transition-all active:scale-[0.93] cursor-pointer ${isSelected
                                                 ? "border-[var(--color-brand-primary)] bg-[var(--color-brand-primary)] text-white shadow-sm"
                                                 : isToday
-                                                  ? "border-[var(--color-brand-primary-hover)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
-                                                  : day.isSunday
-                                                    ? "border-[#b4231815] bg-[#b4231808] text-[#b42318]"
-                                                    : "border-white bg-white text-[var(--color-text-secondary)] shadow-sm"
-                                        }`}
-                                    >
-                                        <span
-                                            className={`text-[10px] font-semibold ${isSelected ? "text-white/80" : "opacity-80"}`}
+                                                    ? "border-[var(--color-brand-primary-hover)] bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
+                                                    : day.isSunday
+                                                        ? "border-[#b4231815] bg-[#b4231808] text-[#b42318]"
+                                                        : "border-white bg-white text-[var(--color-text-secondary)] shadow-sm"
+                                                }
+                                            ${holiday ? "text-amber-500" : ""}`}
                                         >
-                                            {day.weekday}
-                                        </span>
-                                        <span className="text-base font-semibold tabular-nums">
-                                            {day.label}
-                                        </span>
-                                    </button>
-                                );
-                            })}
+                                            <span
+                                                className={`text-xs font-semibold ${isSelected ? "text-white/80" : "opacity-80"}`}
+                                            >
+                                                {day.weekday}
+                                            </span>
+                                            <span className="text-base font-semibold tabular-nums">
+                                                {day.label}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
 
+                        {selectedHoliday ? (
+                            <div className="flex items-center gap-2 rounded-2xl border justify-center border-amber-200 bg-amber-50 p-2 px-4 text-sm text-amber-950">
+                                <p className="font-semibold">
+                                    {selectedHoliday.name[lang]}
+                                </p>
+                            </div>
+                        ) : null}
                         <div className="space-y-2">
                             {rows.map((row) => {
                                 const dayLog = successMap.get(
@@ -472,7 +506,7 @@ export function TimeAttendanceCalendar({
                                                     <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
                                                         {row.profile.full_name}
                                                     </p>
-                                                    <p className="truncate text-[10px] text-[var(--color-text-muted)]">
+                                                    <p className="truncate text-xs text-[var(--color-text-muted)]">
                                                         {
                                                             row.profile
                                                                 .employee_code
@@ -495,11 +529,11 @@ export function TimeAttendanceCalendar({
                                                                 dayLog.check_in_at,
                                                             )}
                                                         </span>
-                                                        <span className="mt-0.5 text-[9px] font-semibold text-[#257a3e] uppercase">
+                                                        <span className="mt-0.5 text-xs font-semibold text-[#257a3e] uppercase">
                                                             {txtCheckedIn}
                                                         </span>
                                                         {dayLeaves.length >
-                                                        0 ? (
+                                                            0 ? (
                                                             <AttendanceLeaveIndicator
                                                                 labels={labels}
                                                                 leaveDays={
@@ -509,6 +543,10 @@ export function TimeAttendanceCalendar({
                                                             />
                                                         ) : null}
                                                     </div>
+                                                ) : selectedHoliday ? (
+                                                    <span className="rounded-lg truncate px-3 py-2 text-sm font-semibold text-amber-900">
+                                                        {labels.paidHoliday}
+                                                    </span>
                                                 ) : dayLeaves.length > 0 ? (
                                                     <AttendanceLeaveIndicator
                                                         labels={labels}
@@ -560,11 +598,12 @@ export function TimeAttendanceCalendar({
                                 <tr>
                                     <th
                                         ref={stickyHeaderRef}
-                                        className="sticky left-0 z-20 w-60 min-w-60 border-b border-r border-[var(--color-border-soft)] bg-white px-3 py-3 text-left text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wider shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]"
+                                        className="sticky left-0 z-20 w-60 min-w-60 border-b border-r border-[var(--color-border-soft)] bg-white px-3 py-3 text-center text-sm font-bold text-[var(--color-text-secondary)] tracking-wider shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]"
                                     >
                                         {labels.employee}
                                     </th>
                                     {days.map((day) => {
+                                        const holiday = holidayMap.get(day.key);
                                         const isToday = day.key === todayKey;
                                         const isTargetDay =
                                             day.key === targetKey;
@@ -576,24 +615,36 @@ export function TimeAttendanceCalendar({
                                                         ? todayDesktopRef
                                                         : null
                                                 }
-                                                className={`min-w-16 border-b border-r border-[var(--color-border-soft)] px-2 py-2 text-center text-xs font-semibold ${
-                                                    isToday
-                                                        ? "bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
-                                                        : day.isSunday
-                                                          ? "bg-[#b4231805] text-[#b42318]"
-                                                          : day.isSaturday
+                                                title={
+                                                    holiday
+                                                        ? `${labels.companyHoliday}: ${holiday.name[lang]}`
+                                                        : undefined
+                                                }
+                                                className={`min-w-36 border-b border-r border-[var(--color-border-soft)] px-3 py-3 text-center text-xs font-semibold ${isToday
+                                                    ? "bg-[var(--color-brand-primary-muted)] text-[var(--color-brand-primary)]"
+                                                    : day.isSunday
+                                                        ? "bg-[#b4231805] text-[#b42318]"
+                                                        : day.isSaturday
                                                             ? "bg-[#f59e0b0d] text-[#9a5b00]"
                                                             : "bg-white text-[var(--color-text-secondary)]"
-                                                }`}
+                                                    }
+                                                    ${holiday ? "text-amber-500" : ""}`}
                                             >
-                                                <span className="block text-[9px] uppercase tracking-wider opacity-85">
-                                                    {day.weekday}
-                                                </span>
+                                                {!holiday ?
+                                                    <span className="block text-xs uppercase tracking-wider opacity-85">
+                                                        {day.weekday}
+                                                    </span> : null
+                                                }
                                                 <span
-                                                    className={`inline-block mt-0.5 text-xs font-bold px-1.5 py-0.5 rounded-full ${isToday ? "bg-[var(--color-brand-primary)] text-white" : ""}`}
+                                                    className={`inline-block text-[12pt] px-1.5 py-0.5 rounded-full ${isToday ? "text-[var(--color-brand-primary)] font-extrabold" : ""}`}
                                                 >
                                                     {day.label}
                                                 </span>
+                                                {holiday ? (
+                                                    <div className="max-w-36 whitespace-normal  text-xs font-semibold leading-3 text-amber-700">
+                                                        {holiday.name[lang]}
+                                                    </div>
+                                                ) : null}
                                             </th>
                                         );
                                     })}
@@ -608,17 +659,17 @@ export function TimeAttendanceCalendar({
                                         <td className="sticky left-0 z-[5] border-b border-r border-[var(--color-border-soft)] bg-white px-3 py-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                                             <div className="flex items-center gap-2">
                                                 <div
-                                                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xxs font-bold ${getAvatarBg(row.profile.full_name)}`}
+                                                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold ${getAvatarBg(row.profile.full_name)}`}
                                                 >
                                                     {getInitials(
                                                         row.profile.full_name,
                                                     )}
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <p className="truncate text-xs font-semibold text-[var(--color-text-primary)]">
+                                                    <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
                                                         {row.profile.full_name}
                                                     </p>
-                                                    <p className="truncate text-micro text-[var(--color-text-muted)]">
+                                                    <p className="truncate text-sm text-[var(--color-text-muted)]">
                                                         {
                                                             row.profile
                                                                 .employee_code
@@ -642,6 +693,9 @@ export function TimeAttendanceCalendar({
                                                 leaveDayMap.get(
                                                     `${row.profile.id}:${day.key}`,
                                                 ) || [];
+                                            const holiday = holidayMap.get(
+                                                day.key,
+                                            );
                                             const isToday =
                                                 day.key === todayKey;
                                             const isEligible =
@@ -652,27 +706,25 @@ export function TimeAttendanceCalendar({
                                             return (
                                                 <td
                                                     key={`${row.profile.id}-${day.key}`}
-                                                    className={`h-11 border-b border-r border-[var(--color-border-soft)] px-1.5 text-center tabular-nums transition-colors ${
-                                                        isToday
-                                                            ? "bg-[#0066cc05]"
-                                                            : day.isSunday
-                                                              ? "bg-[#b4231802]"
-                                                              : day.isSaturday
+                                                    className={`h-20 min-w-36 border-b border-r border-[var(--color-border-soft)] px-3 py-3 text-center tabular-nums transition-colors ${isToday
+                                                        ? "bg-[#0066cc05]"
+                                                        : day.isSunday
+                                                            ? "bg-[#b4231802]"
+                                                            : day.isSaturday
                                                                 ? "bg-[#f59e0b04]"
                                                                 : index % 2 ===
                                                                     0
-                                                                  ? "bg-white"
-                                                                  : "bg-[var(--color-surface-card)]"
-                                                    } ${day.isFuture ? "opacity-45" : ""}`}
+                                                                    ? "bg-white"
+                                                                    : "bg-[var(--color-surface-card)]"
+                                                        } ${day.isFuture && !holiday ? "opacity-45" : ""}`}
                                                 >
                                                     {!isEligible ? (
-                                                        <span className="text-micro font-medium text-[var(--color-text-muted)]">
+                                                        <span className="text-sm font-medium text-[var(--color-text-muted)]">
                                                             {txtNotApplicable}
                                                         </span>
                                                     ) : log ? (
                                                         <div className="flex flex-col items-center justify-center gap-1">
-                                                            <span className="inline-flex items-center gap-1.5 rounded-md bg-[#257a3e10] border border-[#257a3e20] px-2 py-0.5 text-micro font-semibold text-[#257a3e] transition-transform hover:scale-105 hover:bg-[#257a3e20]">
-                                                                <span className="h-1.5 w-1.5 rounded-full bg-[#257a3e]" />
+                                                            <span className="inline-flex items-center gap-1.5 rounded-md bg-[#257a3e10] border border-[#257a3e20] px-2 py-0.5 text-sm font-semibold text-[#257a3e] transition-transform hover:scale-105 hover:bg-[#257a3e20]">
                                                                 {formatCheckInTime(
                                                                     log.check_in_at,
                                                                 )}
@@ -692,7 +744,7 @@ export function TimeAttendanceCalendar({
                                                                 />
                                                             ) : null}
                                                             {dayLeaves.length >
-                                                            0 ? (
+                                                                0 ? (
                                                                 <AttendanceLeaveIndicator
                                                                     labels={
                                                                         labels
@@ -703,6 +755,17 @@ export function TimeAttendanceCalendar({
                                                                 />
                                                             ) : null}
                                                         </div>
+                                                    ) : holiday ? (
+                                                        <span
+                                                            className="inline-flex rounded-lg text-xs font-semibold text-amber-900"
+                                                            title={
+                                                                holiday.name[
+                                                                lang
+                                                                ]
+                                                            }
+                                                        >
+                                                            {labels.paidHoliday}
+                                                        </span>
                                                     ) : dayLeaves.length > 0 ? (
                                                         <AttendanceLeaveIndicator
                                                             labels={labels}
@@ -712,7 +775,7 @@ export function TimeAttendanceCalendar({
                                                         />
                                                     ) : isToday ? (
                                                         <div className="flex flex-col items-center justify-center gap-1">
-                                                            <span className="inline-flex items-center justify-center rounded-md border border-dashed border-[var(--color-brand-primary)] px-2 py-0.5 text-micro font-medium text-[var(--color-brand-primary)] animate-pulse">
+                                                            <span className="inline-flex items-center justify-center rounded-md border border-dashed border-[var(--color-brand-primary)] px-2 py-0.5 text-sm font-medium text-[var(--color-brand-primary)] animate-pulse">
                                                                 {labels.waitingShort ||
                                                                     (isVi
                                                                         ? "Chờ..."
@@ -739,10 +802,10 @@ export function TimeAttendanceCalendar({
                                                         </span>
                                                     ) : null}
                                                     {isEligible &&
-                                                    !log &&
-                                                    !isToday &&
-                                                    !day.isFuture &&
-                                                    lateReport ? (
+                                                        !log &&
+                                                        !isToday &&
+                                                        !day.isFuture &&
+                                                        lateReport ? (
                                                         <div className="mt-1 flex justify-center">
                                                             <LateReportChip
                                                                 label={
@@ -795,7 +858,7 @@ function AttendanceLeaveIndicator({
         <span
             title={title}
             aria-label={title}
-            className="inline-flex max-w-32 items-center gap-1.5 rounded-md bg-slate-50 px-1.5 py-1 text-[9px] font-semibold text-[var(--color-text-secondary)]"
+            className="inline-flex max-w-40 items-center gap-1.5 rounded-md bg-slate-50 px-1.5 py-1 text-xs font-semibold text-[var(--color-text-secondary)]"
         >
             <span
                 className={`h-2 w-2 shrink-0 rounded-full ${leaveDotClasses[primary.request_type]} ${pending ? "opacity-50 ring-1 ring-current ring-offset-1" : ""}`}
@@ -847,7 +910,7 @@ function LateReportChip({
         <span
             title={title}
             aria-label={title}
-            className="inline-flex max-w-[104px] items-center gap-1 rounded-md bg-[#f59e0b10] px-1.5 py-0.5 text-[9px] font-semibold text-[#936000]"
+            className="inline-flex max-w-[144px] items-center gap-1 rounded-md bg-[#f59e0b10] px-1.5 py-0.5 text-xs font-semibold text-[#936000]"
         >
             <AlertTriangle size={10} />
             {arrivalTime ? (

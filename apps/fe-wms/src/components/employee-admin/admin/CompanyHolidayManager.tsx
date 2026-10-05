@@ -4,9 +4,10 @@ import type {
   CompanyHoliday,
   UpsertCompanyHolidayInput,
 } from "@bduck/shared-types";
-import { CalendarPlus, Trash2 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
+import { CalendarPlus, Trash2 } from "lucide-react";
 import { useState } from "react";
+
 import { EmptyState } from "./AdminOverviewParts";
 
 interface CompanyHolidayManagerProps {
@@ -23,15 +24,27 @@ export function CompanyHolidayManager({
   onRemove,
 }: CompanyHolidayManagerProps) {
   const [date, setDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [nameVi, setNameVi] = useState("");
   const [nameZh, setNameZh] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const rangeDays =
+    date && endDate
+      ? (Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${date}T00:00:00Z`)) /
+          86400000 +
+        1
+      : 0;
+  const rangeValid =
+    Number.isInteger(rangeDays) && rangeDays >= 1 && rangeDays <= 366;
 
   const save = async () => {
-    if (busyId || !date || !nameVi.trim() || !nameZh.trim()) return;
+    if (busyId || !rangeValid || !nameVi.trim() || !nameZh.trim()) return;
+    setSaveError(null);
     const action = () =>
       onCreate({
         holiday_date: date,
+        holiday_end_date: endDate,
         name: { vi: nameVi.trim(), zh: nameZh.trim() },
         action_time: new Date(),
       });
@@ -53,9 +66,13 @@ export function CompanyHolidayManager({
         },
       });
       setDate("");
+      setEndDate("");
       setNameVi("");
       setNameZh("");
     } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : labels.holidaySaveError,
+      );
       console.error("[CompanyHolidayManager] save error:", error);
     } finally {
       setBusyId(null);
@@ -101,14 +118,50 @@ export function CompanyHolidayManager({
           </p>
         </div>
         <div className="mt-3 grid gap-2">
-          <input
-            type="date"
-            value={date}
-            disabled={Boolean(busyId)}
-            aria-label={labels.holidayDate}
-            onChange={(event) => setDate(event.target.value)}
-            className="h-11 rounded-xl border border-[var(--color-border-soft)] bg-white px-3 text-sm outline-none focus:border-[var(--color-brand-primary)]"
-          />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="grid gap-1 text-sm font-medium">
+              {labels.holidayStartDate}
+              <input
+                type="date"
+                value={date}
+                disabled={Boolean(busyId)}
+                aria-label={labels.holidayStartDate}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setDate(value);
+                  if (!endDate || endDate < value) setEndDate(value);
+                }}
+                className="h-11 rounded-xl border border-[var(--color-border-soft)] bg-white px-3 text-sm outline-none focus:border-[var(--color-brand-primary)]"
+              />
+            </label>
+            <label className="grid gap-1 text-sm font-medium">
+              {labels.holidayEndDate}
+              <input
+                type="date"
+                value={endDate}
+                min={date || undefined}
+                disabled={Boolean(busyId)}
+                aria-label={labels.holidayEndDate}
+                onChange={(event) => setEndDate(event.target.value)}
+                className="h-11 rounded-xl border border-[var(--color-border-soft)] bg-white px-3 text-sm outline-none focus:border-[var(--color-brand-primary)]"
+              />
+            </label>
+          </div>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            {rangeValid
+              ? labels.holidayRangeCount.replace("{count}", String(rangeDays))
+              : labels.holidayRangeHint}
+          </p>
+          {date && endDate && !rangeValid ? (
+            <p role="alert" className="text-sm text-red-700">
+              {labels.holidayRangeInvalid}
+            </p>
+          ) : null}
+          {saveError ? (
+            <p role="alert" className="text-sm text-red-700">
+              {saveError}
+            </p>
+          ) : null}
           <input
             value={nameVi}
             disabled={Boolean(busyId)}
@@ -128,7 +181,7 @@ export function CompanyHolidayManager({
           <button
             type="button"
             disabled={
-              Boolean(busyId) || !date || !nameVi.trim() || !nameZh.trim()
+              Boolean(busyId) || !rangeValid || !nameVi.trim() || !nameZh.trim()
             }
             onClick={() => void save()}
             className="h-11 rounded-xl bg-[var(--color-brand-primary)] text-sm font-semibold text-white disabled:opacity-50"

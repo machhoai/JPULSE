@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import ExcelJS from "exceljs";
+
 
 import {
   AttendanceLogStatus,
@@ -11,17 +11,19 @@ import {
   type AttendanceLeaveDay,
   type CompanyHoliday,
 } from "@bduck/shared-types";
+import ExcelJS from "exceljs";
+
+import type {
+  AttendanceDay,
+  AttendanceEmployeeRow,
+} from "@/utils/attendance";
+import { buildAttendanceDays } from "@/utils/attendance";
 
 import {
   buildTimeAttendanceWorkbook,
   isLateMorningCheckIn,
   resolveAttendanceDay,
 } from "./timeAttendanceExport";
-import type {
-  AttendanceDay,
-  AttendanceEmployeeRow,
-} from "@/utils/attendance";
-import { buildAttendanceDays } from "@/utils/attendance";
 
 const leaveDay = (
   portion: LeaveDayPortion,
@@ -126,6 +128,19 @@ test("counts company holidays as paid company leave", () => {
   assert.equal(holiday.status, "NL");
   assert.equal(holiday.holidayUnits, 1);
   assert.equal(resolve({ isHoliday: true, hasCheckIn: true }).status, "x");
+});
+
+test("counts declared weekend holidays without check-in and excludes ineligible employees", () => {
+  const holiday = resolve({ isHoliday: true, isWeekend: true });
+  assert.equal(holiday.status, "NL");
+  assert.equal(holiday.holidayUnits, 1);
+  assert.equal(holiday.unauthorizedUnits, 0);
+  const worked = resolve({ isHoliday: true, isWeekend: true, hasCheckIn: true });
+  assert.equal(worked.status, "x");
+  assert.equal(worked.workedUnits, 1);
+  assert.equal(worked.holidayUnits, 0);
+  assert.equal(resolve({ isHoliday: true, isEligible: false }).status, "");
+  assert.equal(resolve({ isWeekend: true }).status, "");
 });
 
 test("highlights only check-ins strictly after 08:45 and exempts morning leave", () => {
@@ -261,4 +276,21 @@ test("starts the status legend at E6 and leaves A6:D6 empty for week and month",
     assert.equal(savedSheet.getCell("E6").value, sheet.getCell("E6").value);
     assert.equal(savedSheet.getCell("M6").master.address, "E6");
   }
+});
+
+test("exports consecutive holidays including Saturday and Sunday as NL with paid totals", async () => {
+  const days = buildAttendanceDays("month", "2026-09").filter((day) =>
+    day.key >= "2026-09-04" && day.key <= "2026-09-06");
+  const workbook = buildTimeAttendanceWorkbook({
+    rows: [{ profile: { id: "profile-1", full_name: "Nhân viên", user_id: "user-1" },
+      user: { id: "user-1" } } as AttendanceEmployeeRow],
+    days, logs: [], leaveDays: [], lateReports: [], todayKey: "2026-09-30",
+    holidays: days.map((day) => ({ holiday_date: day.key } as CompanyHoliday)),
+  });
+  const reopened = new ExcelJS.Workbook();
+  await reopened.xlsx.load(await workbook.xlsx.writeBuffer());
+  const sheet = reopened.getWorksheet("Chấm công")!;
+  for (const cell of ["E9", "F9", "G9"]) assert.equal(sheet.getCell(cell).value, "NL");
+  assert.equal(sheet.getCell("L9").value, 3); // Paid company holidays.
+  assert.equal(sheet.getCell("M9").value, 3); // Total paid days.
 });

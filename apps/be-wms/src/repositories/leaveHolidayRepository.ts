@@ -2,7 +2,9 @@ import type {
   CompanyHoliday,
   UpsertCompanyHolidayInput,
 } from "@bduck/shared-types";
+
 import { db } from "../config/firebase.js";
+import { buildCompanyHolidayDates } from "../services/companyHolidayRange.js";
 
 const COLLECTION = "company_holidays";
 
@@ -25,9 +27,7 @@ export const findCompanyHolidays = async (
   return snapshot.docs
     .map(withId)
     .filter((holiday) => !holiday.is_deleted)
-    .sort((left, right) =>
-      left.holiday_date.localeCompare(right.holiday_date),
-    );
+    .sort((left, right) => left.holiday_date.localeCompare(right.holiday_date));
 };
 
 export const findCompanyHolidayById = async (
@@ -40,38 +40,51 @@ export const findCompanyHolidayById = async (
 export const upsertCompanyHoliday = async (
   input: UpsertCompanyHolidayInput,
   actorId: string,
-): Promise<{
-  previous: CompanyHoliday | null;
-  holiday: CompanyHoliday;
-}> =>
+): Promise<
+  {
+    previous: CompanyHoliday | null;
+    holiday: CompanyHoliday;
+  }[]
+> =>
   db.runTransaction(async (transaction) => {
-    const reference = db.collection(COLLECTION).doc(input.holiday_date);
-    const snapshot = await transaction.get(reference);
-    const previous = snapshot.exists ? withId(snapshot) : null;
-    if (previous && !previous.is_deleted) {
+    const dates = buildCompanyHolidayDates(
+      input.holiday_date,
+      input.holiday_end_date,
+    );
+    const references = dates.map((date) => db.collection(COLLECTION).doc(date));
+    // Read the entire range before writing: a duplicate rejects all days.
+    const snapshots = await transaction.getAll(...references);
+    const duplicate = snapshots.find(
+      (snapshot) => snapshot.exists && !snapshot.data()?.is_deleted,
+    );
+    if (duplicate) {
       throw {
         statusCode: 409,
         messages: {
-          vi: "Ngày này đã được cấu hình là ngày lễ.",
-          zh: "该日期已配置为节假日。",
+          vi: `Ngày ${duplicate.id} đã được cấu hình là ngày lễ. Chưa lưu dải ngày đã chọn.`,
+          zh: `日期 ${duplicate.id} 已配置为节假日。所选日期范围尚未保存。`,
         },
       };
     }
     const now = new Date();
-    const holiday: CompanyHoliday = {
-      id: reference.id,
-      holiday_date: input.holiday_date,
-      name: input.name,
-      created_by: previous?.created_by ?? actorId,
-      updated_by: actorId,
-      is_deleted: false,
-      created_at: previous?.created_at ?? now,
-      updated_at: now,
-      action_time: input.action_time,
-      sync_time: now,
-    };
-    transaction.set(reference, holiday);
-    return { previous, holiday };
+    return snapshots.map((snapshot, index) => {
+      const reference = references[index];
+      const previous = snapshot.exists ? withId(snapshot) : null;
+      const holiday: CompanyHoliday = {
+        id: reference.id,
+        holiday_date: dates[index],
+        name: input.name,
+        created_by: previous?.created_by ?? actorId,
+        updated_by: actorId,
+        is_deleted: false,
+        created_at: previous?.created_at ?? now,
+        updated_at: now,
+        action_time: input.action_time,
+        sync_time: now,
+      };
+      transaction.set(reference, holiday);
+      return { previous, holiday };
+    });
   });
 
 export const softDeleteCompanyHoliday = async (

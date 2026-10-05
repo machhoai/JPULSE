@@ -466,6 +466,7 @@ export function TimeAttendanceTab() {
                 rows={employeeRows}
                 logs={filteredLogs}
                 leaveDays={filteredLeaveDays}
+                holidays={holidays}
                 lateReports={lateReports}
                 loading={logsLoading || lateReportsLoading || leaveDaysLoading || holidaysLoading}
                 mode={mode}
