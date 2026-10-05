@@ -63,6 +63,7 @@ $RECYCLE.BIN/
 # ========================
 logs/
 .codex-tmp/
+.tmp/
 *.log
 npm-debug.log*
 pnpm-debug.log*
