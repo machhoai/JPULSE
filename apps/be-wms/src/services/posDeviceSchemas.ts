@@ -47,6 +47,7 @@ export const openPosDeviceSessionSchema = z.object({
 
 export const syncPosDeviceConfigSchema = openPosDeviceSessionSchema.extend({
   known_versions: z.object({
+    cash_drawer_settings: z.number().int().nonnegative().nullable().optional(),
     receipt_settings: z.number().int().nonnegative().nullable(),
     ticket_settings: z.number().int().nonnegative().nullable(),
     payment_settings: z.number().int().nonnegative().nullable(),

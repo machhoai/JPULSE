@@ -10,6 +10,7 @@ import type {
   PosTicketSettings,
 } from "@bduck/shared-types";
 
+import { posCashDrawerSettingsRepository } from "../repositories/posCashDrawerSettingsRepository.js";
 import { posCustomerDisplayRepository } from "../repositories/posCustomerDisplayRepository.js";
 import { posDeviceRepository } from "../repositories/posDeviceRepository.js";
 import { posPaymentSettingsRepository } from "../repositories/posPaymentSettingsRepository.js";
@@ -111,6 +112,7 @@ export const syncPosDeviceConfig = async (input: {
   knownVersions: PosDeviceConfigVersions;
 }): Promise<PosDeviceConfigSyncResult> => {
   const device = await requireActivePosDevice(input);
+  const cashDrawer = await posCashDrawerSettingsRepository.findByDevice(device.id, device.warehouse_id);
   const [receipt, ticket, payment, customerDisplay] = await Promise.all([
     posReceiptSettingsRepository.findByWarehouse(device.warehouse_id),
     posTicketSettingsRepository.findByWarehouse(device.warehouse_id),
@@ -118,7 +120,9 @@ export const syncPosDeviceConfig = async (input: {
     posCustomerDisplayRepository.findSettings(device.warehouse_id),
   ]);
   const versions = configVersions({ receipt, ticket, payment, customerDisplay });
+  versions.cash_drawer_settings = cashDrawer?.version ?? null;
   const changed = {
+    cash_drawer_settings: versions.cash_drawer_settings !== (input.knownVersions.cash_drawer_settings ?? null),
     receipt_settings: versions.receipt_settings !== input.knownVersions.receipt_settings,
     ticket_settings: versions.ticket_settings !== input.knownVersions.ticket_settings,
     payment_settings: versions.payment_settings !== input.knownVersions.payment_settings,
@@ -128,6 +132,7 @@ export const syncPosDeviceConfig = async (input: {
   return {
     versions,
     changed,
+    cash_drawer_settings: changed.cash_drawer_settings ? cashDrawer : null,
     receipt_settings: changed.receipt_settings
       ? toDevicePosSettings("receipt", receipt)
       : null,

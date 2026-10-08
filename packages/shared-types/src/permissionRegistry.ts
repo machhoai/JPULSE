@@ -223,6 +223,15 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
 
   // ── POS ──
   {
+    key: "pos.cash_drawer.open",
+    group: "pos",
+    label: { vi: "Mở két tiền JPOS", zh: "打开 JPOS 钱箱" },
+    description: {
+      vi: "Cho phép nhân viên thử và mở két tiền thủ công tại cửa hàng được cấp quyền. Cấu hình tập trung dùng quyền quản lý cấu hình POS.",
+      zh: "允许员工在获授权门店测试和手动打开钱箱；集中配置需要 POS 配置管理权限。",
+    },
+  },
+  {
     key: "pos.login",
     group: "pos",
     label: { vi: "Đăng nhập JPOS", zh: "登录 JPOS" },

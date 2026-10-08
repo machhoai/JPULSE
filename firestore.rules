@@ -683,6 +683,19 @@ service cloud.firestore {
     match /pos_device_enrollments/{enrollmentId} {
       allow read, write: if false;
     }
+    // Non-secret, per-device settings. Clients observe; only audited APIs mutate.
+    match /pos_cash_drawer_settings/{deviceId} {
+      allow get: if (exists(/databases/$(database)/documents/pos_cash_drawer_settings/$(deviceId)) && (
+        hasResourceFacility('warehouse_id', 'pos.settings.read') ||
+        hasResourceFacility('warehouse_id', 'pos.login')
+      )) || (
+        !exists(/databases/$(database)/documents/pos_cash_drawer_settings/$(deviceId)) &&
+        (hasFacilityPermission(get(/databases/$(database)/documents/pos_devices/$(deviceId)).data.warehouse_id, 'pos.settings.read') ||
+         hasFacilityPermission(get(/databases/$(database)/documents/pos_devices/$(deviceId)).data.warehouse_id, 'pos.login'))
+      );
+      allow list: if hasResourceFacility('warehouse_id', 'pos.settings.read');
+      allow write: if false;
+    }
     match /pos_receipt_settings/{warehouseId} {
       allow read, write: if false;
     }

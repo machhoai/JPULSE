@@ -2,9 +2,11 @@
 
 import { Gift, PackageSearch, Printer, QrCode, TicketCheck, UtensilsCrossed } from "lucide-react";
 
+import { usePosCashDrawerCopy } from "./usePosCashDrawerCopy";
 import { usePosManagementCopy } from "./usePosManagementCopy";
 
 export type SettingsSubTab =
+  | "cash-drawer"
   | "receipt"
   | "ticket"
   | "lucky-draw"
@@ -22,6 +24,7 @@ export function PosSettingsSubNav({
   onSelect,
 }: PosSettingsSubNavProps) {
   const copy = usePosManagementCopy();
+  const cashDrawerCopy = usePosCashDrawerCopy();
 
   const subTabs: Array<{
     id: SettingsSubTab;
@@ -34,6 +37,7 @@ export function PosSettingsSubNav({
     { id: "products", label: copy.subTabProducts, icon: PackageSearch },
     { id: "vouchers", label: copy.subTabVouchers, icon: TicketCheck },
     { id: "payment", label: copy.subTabPayment, icon: QrCode },
+    { id: "cash-drawer", label: cashDrawerCopy.title, icon: Printer },
   ];
 
   return (

@@ -1,4 +1,6 @@
 import type {
+  PosCashDrawerSettings,
+  PosCashDrawerSettingsInput,
   PosDevice,
   PosDeviceEnrollmentGrant,
   PosDeviceStatus,
@@ -33,7 +35,7 @@ const API_BASE_URL =
 interface ApiEnvelope<T> {
   success: boolean;
   data: T | null;
-  messages?: { vi?: string };
+  messages?: { vi?: string; zh?: string };
 }
 
 export type SafePosDevice = Omit<PosDevice, "credential_hash">;
@@ -71,7 +73,7 @@ export type PosLuckyDrawSettingsPayload = PosLuckyDrawSettingsInput;
 export type PosProductVisibilitySettingsPayload =
   PosProductVisibilitySettingsInput;
 
-async function callPosApi<T>(path: string, init?: RequestInit): Promise<T> {
+async function callPosApi<T>(path: string, init?: RequestInit, language: "vi" | "zh" = "vi"): Promise<T> {
   const response = await authenticatedFetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },
@@ -85,11 +87,11 @@ async function callPosApi<T>(path: string, init?: RequestInit): Promise<T> {
           ? Math.ceil(retryAfter)
           : 60;
       throw new Error(
-        `Thao tác quá nhanh. Vui lòng thử lại sau ${waitSeconds} giây.`,
+        language === "zh" ? `操作过快，请在 ${waitSeconds} 秒后重试。` : `Thao tác quá nhanh. Vui lòng thử lại sau ${waitSeconds} giây.`,
       );
     }
     throw new Error(
-      envelope.messages?.vi || "Không thể xử lý yêu cầu quản lý POS.",
+      envelope.messages?.[language] || (language === "zh" ? "无法处理 POS 管理请求。" : "Không thể xử lý yêu cầu quản lý POS."),
     );
   }
   return envelope.data;
@@ -117,6 +119,10 @@ const saveProductVisibilitySettings = (
 };
 
 export const posManagementApi = {
+  saveCashDrawerSettings: (deviceId: string, value: PosCashDrawerSettingsInput, language: "vi" | "zh" = "vi") =>
+    callPosApi<PosCashDrawerSettings>(`/api/pos/devices/${deviceId}/cash-drawer-settings`, {
+      method: "PUT", body: JSON.stringify(value),
+    }, language),
   listOrders: (warehouseId: string, query = "") =>
     callPosApi<PosOrderListResult>(
       `/api/pos/stores/${warehouseId}/orders${query ? `?${query}` : ""}`,
