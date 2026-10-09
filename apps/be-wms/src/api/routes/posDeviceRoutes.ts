@@ -1,5 +1,6 @@
 import { raw, Router, type Router as ExpressRouter } from "express";
 
+import { getPosCashDrawerSettingsHandler, savePosCashDrawerSettingsHandler } from "../controllers/posCashDrawerSettingsController.js";
 import {
   deletePosCustomerDisplayMediaHandler,
   getPosCustomerDisplaySettingsHandler,
@@ -131,6 +132,8 @@ router.put(
 router.put("/devices/ticket-settings", savePosTicketSettingsFromDeviceHandler);
 
 router.use(requireAuth);
+router.get("/devices/:deviceId/cash-drawer-settings", requireAnyScopedPermission("pos.settings.read"), getPosCashDrawerSettingsHandler);
+router.put("/devices/:deviceId/cash-drawer-settings", requireAnyScopedPermission("pos.settings.manage"), posSettingsMutationRateLimiter, savePosCashDrawerSettingsHandler);
 router.get(
   "/stores/:warehouseId/overview",
   requireAnyScopedPermission("pos.devices.read"),

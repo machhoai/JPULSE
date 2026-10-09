@@ -851,6 +851,34 @@ after(async () => {
   await environment.cleanup();
 });
 
+describe("cash drawer per-device configuration", () => {
+  it("allows scoped settings reads and denies cross-store reads and direct writes", async () => {
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await context.firestore().doc("pos_cash_drawer_settings/device-d").set({ device_id: "device-d", warehouse_id: "store-d", version: 1, auto_open_enabled: true, protocol: "ESCPOS", pin: 2, is_deleted: false });
+    });
+    const editor = environment.authenticatedContext("pos-settings-user").firestore();
+    const outsider = environment.authenticatedContext("user-a").firestore();
+    await assertSucceeds(getDoc(doc(editor, "pos_cash_drawer_settings", "device-d")));
+    await assertSucceeds(getDocs(query(collection(editor, "pos_cash_drawer_settings"), where("warehouse_id", "==", "store-d"))));
+    await assertFails(getDoc(doc(outsider, "pos_cash_drawer_settings", "device-d")));
+    await assertFails(updateDoc(doc(editor, "pos_cash_drawer_settings", "device-d"), { pin: 5 }));
+  });
+
+  it("allows a cashier to observe own-store device settings, including unconfigured devices", async () => {
+    await seedAccess("cashier-d", { "store-d": { "pos.login": true } });
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await context.firestore().doc("pos_devices/unconfigured-d").set({ warehouse_id: "store-d", status: "ACTIVE", is_deleted: false });
+      await context.firestore().doc("pos_cash_drawer_settings/device-d").set({ device_id: "device-d", warehouse_id: "store-d", is_deleted: false });
+    });
+    const cashier = environment.authenticatedContext("cashier-d").firestore();
+    await assertSucceeds(getDoc(doc(cashier, "pos_cash_drawer_settings", "device-d")));
+    const missing = await assertSucceeds(getDoc(doc(cashier, "pos_cash_drawer_settings", "unconfigured-d")));
+    assert.equal(missing.exists(), false);
+    await assertFails(getDoc(doc(cashier, "pos_devices", "unconfigured-d")));
+    await assertFails(setDoc(doc(cashier, "pos_cash_drawer_settings", "unconfigured-d"), { warehouse_id: "store-d" }));
+  });
+});
+
 describe("grant-aware Firestore rules", () => {
   it("enforces workplace permission and backend-only marketing voucher writes", async () => {
     const reader = environment.authenticatedContext("user-a").firestore();

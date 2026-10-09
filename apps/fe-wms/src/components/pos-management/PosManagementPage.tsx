@@ -1,17 +1,6 @@
 "use client";
 
-import {
-  ChevronDown,
-  History,
-  LayoutDashboard,
-  Megaphone,
-  MonitorSmartphone,
-  Settings2,
-  ShieldCheck,
-  ShoppingBag,
-  Store,
-  Users,
-} from "lucide-react";
+import { ChevronDown, ShieldCheck, Store } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import Forbidden403 from "@/components/shared/Forbidden403";
@@ -21,8 +10,8 @@ import { useUserStore } from "@/stores/useUserStore";
 
 import { PosAccessPanel } from "./PosAccessPanel";
 import { PosAdvertisingPanel } from "./PosAdvertisingPanel";
+import { PosConfigurationPanels } from "./PosConfigurationPanels";
 import { PosDevicePanel } from "./PosDevicePanel";
-import { PosLuckyDrawSettingsPanel } from "./PosLuckyDrawSettingsPanel";
 import {
   PosAuditLink,
   PosManagementSkeleton,
@@ -31,38 +20,23 @@ import {
 } from "./PosManagementSections";
 import { PosMobileStoreSheet } from "./PosMobileStoreSheet";
 import { PosOrderPanel } from "./PosOrderPanel";
-import { PosPaymentSettingsPanel } from "./PosPaymentSettingsPanel";
-import { PosProductVisibilityPanel } from "./PosProductVisibilityPanel";
-import { PosSettingsPanel } from "./PosSettingsPanel";
-import {
-  PosSettingsSubNav,
-  type SettingsSubTab,
-} from "./PosSettingsSubNav";
+import type { SettingsSubTab } from "./PosSettingsSubNav";
 import { PosStoreRail } from "./PosStoreRail";
-import { PosTicketSettingsPanel } from "./PosTicketSettingsPanel";
-import { PosVoucherSettingsPanel } from "./PosVoucherSettingsPanel";
-import { usePosAdvertisingCopy } from "./usePosAdvertisingCopy";
 import { usePosManagementCopy } from "./usePosManagementCopy";
-import { usePosOrderCopy } from "./usePosOrderCopy";
-
-type Tab =
-  | "overview"
-  | "devices"
-  | "orders"
-  | "settings"
-  | "advertising"
-  | "access"
-  | "audit";
+import {
+  usePosManagementTabs,
+  type PosManagementTab as Tab,
+} from "./usePosManagementTabs";
 
 export default function PosManagementPage() {
   const copy = usePosManagementCopy();
-  const advertisingCopy = usePosAdvertisingCopy();
-  const orderCopy = usePosOrderCopy();
+
   const { stores, loading: storesLoading } = useStores();
   const hasPermission = useUserStore((state) => state.hasPermission);
   const [selectedStoreId, setSelectedStoreId] = useState("");
   const [tab, setTab] = useState<Tab>("overview");
-  const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTab>("receipt");
+  const [settingsSubTab, setSettingsSubTab] =
+    useState<SettingsSubTab>("receipt");
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
 
   const activeStoreId = selectedStoreId || stores[0]?.id || "";
@@ -117,15 +91,7 @@ export default function PosManagementPage() {
     settings: canReadSettings,
   });
 
-  const tabs: Array<{ id: Tab; label: string; icon: typeof LayoutDashboard }> = [
-    { id: "overview", label: copy.overview, icon: LayoutDashboard },
-    { id: "devices", label: copy.devices, icon: MonitorSmartphone },
-    { id: "orders", label: orderCopy.tab, icon: ShoppingBag },
-    { id: "settings", label: copy.settings, icon: Settings2 },
-    { id: "advertising", label: advertisingCopy.tab, icon: Megaphone },
-    { id: "access", label: copy.access, icon: Users },
-    { id: "audit", label: copy.audit, icon: History },
-  ];
+  const tabs = usePosManagementTabs();
 
   if (!canEnter) return <Forbidden403 />;
   if (storesLoading) return <PosManagementSkeleton />;
@@ -272,62 +238,14 @@ export default function PosManagementPage() {
                 ))}
               {tab === "settings" &&
                 (canReadSettings ? (
-                  <div>
-                    <PosSettingsSubNav
-                      activeSubTab={settingsSubTab}
-                      onSelect={setSettingsSubTab}
-                    />
-                    {settingsSubTab === "receipt" && (
-                      <PosSettingsPanel
-                        key={`${activeStoreId}:${management.settings?.version ?? 0}`}
-                        warehouseId={activeStoreId}
-                        storeName={activeStore?.name || ""}
-                        settings={management.settings}
-                        canManage={canManageSettings}
-                        onChanged={management.refresh}
-                      />
-                    )}
-                    {settingsSubTab === "ticket" && (
-                      <PosTicketSettingsPanel
-                        key={`${activeStoreId}:${management.ticketSettings?.version ?? 0}:ticket`}
-                        warehouseId={activeStoreId}
-                        storeName={activeStore?.name || ""}
-                        settings={management.ticketSettings}
-                        canManage={canManageSettings}
-                        onChanged={management.refresh}
-                      />
-                    )}
-                    {settingsSubTab === "lucky-draw" && (
-                      <PosLuckyDrawSettingsPanel
-                        key={`${activeStoreId}:${management.luckyDrawView?.settings?.version ?? 0}:lucky-draw`}
-                        warehouseId={activeStoreId}
-                        view={management.luckyDrawView}
-                        canManage={canManageSettings}
-                        onChanged={management.refresh}
-                      />
-                    )}
-                    {settingsSubTab === "payment" && (
-                      <PosPaymentSettingsPanel
-                        key={`${activeStoreId}:payment`}
-                        devices={management.devices}
-                        canManage={canManageSettings}
-                      />
-                    )}
-                    {settingsSubTab === "products" && (
-                      <PosProductVisibilityPanel
-                        key={`${activeStoreId}:products`}
-                        warehouseId={activeStoreId}
-                        canManage={canManageSettings}
-                      />
-                    )}
-                    {settingsSubTab === "vouchers" && (
-                      <PosVoucherSettingsPanel
-                        key={`${activeStoreId}:vouchers`}
-                        warehouseId={activeStoreId}
-                        canManage={canManageSettings}
-                      />
-                    )}
-                  </div>
+                  <PosConfigurationPanels
+                    warehouseId={activeStoreId}
+                    storeName={activeStore?.name || ""}
+                    management={management}
+                    canManage={canManageSettings}
+                    activeSubTab={settingsSubTab}
+                    onSelect={setSettingsSubTab}
+                  />
                 ) : (
                   <PosNoAccess />
                 ))}

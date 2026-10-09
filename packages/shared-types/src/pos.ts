@@ -1,3 +1,4 @@
+import type { PosCashDrawerSettings } from "./posCashDrawer.js";
 import type {
   ISOTimestamped,
   LocalizedText,
@@ -57,6 +58,7 @@ export interface PosDeviceActivationResult {
 }
 
 export interface PosDeviceSessionResult {
+  cash_drawer_settings?: PosCashDrawerSettings | null;
   device: Omit<PosDevice, "credential_hash">;
   receipt_settings: PosReceiptSettings | null;
   ticket_settings: PosTicketSettings | null;
@@ -71,6 +73,7 @@ export interface PosDeviceHeartbeatResult {
 }
 
 export interface PosDeviceConfigVersions {
+  cash_drawer_settings?: number | null;
   receipt_settings: number | null;
   ticket_settings: number | null;
   payment_settings: number | null;
@@ -78,8 +81,10 @@ export interface PosDeviceConfigVersions {
 }
 
 export interface PosDeviceConfigSyncResult {
+  cash_drawer_settings?: PosCashDrawerSettings | null;
   versions: PosDeviceConfigVersions;
   changed: {
+    cash_drawer_settings?: boolean;
     receipt_settings: boolean;
     ticket_settings: boolean;
     payment_settings: boolean;
