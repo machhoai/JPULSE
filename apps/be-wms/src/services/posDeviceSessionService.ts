@@ -18,6 +18,7 @@ import { posReceiptSettingsRepository } from "../repositories/posReceiptSettings
 import { posTicketSettingsRepository } from "../repositories/posTicketSettingsRepository.js";
 
 import type { AuditMetadata } from "./auditService.js";
+import { readCashDrawerConfigSafely } from "./posCashDrawerConfigRead.js";
 import { getPosCustomerDisplaySettingsView } from "./posCustomerDisplayService.js";
 import { PosDeviceError } from "./posDeviceService.js";
 import type { PosReceiptSettingsInput } from "./posReceiptSettingsSchemas.js";
@@ -112,17 +113,21 @@ export const syncPosDeviceConfig = async (input: {
   knownVersions: PosDeviceConfigVersions;
 }): Promise<PosDeviceConfigSyncResult> => {
   const device = await requireActivePosDevice(input);
-  const cashDrawer = await posCashDrawerSettingsRepository.findByDevice(device.id, device.warehouse_id);
-  const [receipt, ticket, payment, customerDisplay] = await Promise.all([
+  const wantsCashDrawer = input.knownVersions.cash_drawer_settings !== undefined;
+  const [receipt, ticket, payment, customerDisplay, cashDrawerResult] = await Promise.all([
     posReceiptSettingsRepository.findByWarehouse(device.warehouse_id),
     posTicketSettingsRepository.findByWarehouse(device.warehouse_id),
     posPaymentSettingsRepository.findByDevice(device.id, device.warehouse_id),
     posCustomerDisplayRepository.findSettings(device.warehouse_id),
+    wantsCashDrawer
+      ? readCashDrawerConfigSafely(() => posCashDrawerSettingsRepository.findByDevice(device.id, device.warehouse_id))
+      : Promise.resolve({ loaded: false, settings: null }),
   ]);
+  const cashDrawer = cashDrawerResult.settings;
   const versions = configVersions({ receipt, ticket, payment, customerDisplay });
-  versions.cash_drawer_settings = cashDrawer?.version ?? null;
+  versions.cash_drawer_settings = cashDrawerResult.loaded ? cashDrawer?.version ?? null : input.knownVersions.cash_drawer_settings ?? null;
   const changed = {
-    cash_drawer_settings: versions.cash_drawer_settings !== (input.knownVersions.cash_drawer_settings ?? null),
+    cash_drawer_settings: cashDrawerResult.loaded && versions.cash_drawer_settings !== (input.knownVersions.cash_drawer_settings ?? null),
     receipt_settings: versions.receipt_settings !== input.knownVersions.receipt_settings,
     ticket_settings: versions.ticket_settings !== input.knownVersions.ticket_settings,
     payment_settings: versions.payment_settings !== input.knownVersions.payment_settings,
