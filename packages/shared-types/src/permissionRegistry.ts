@@ -901,6 +901,18 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
   },
 
   // ── Notifications ──
+  { key: "notifications.payroll.compose", group: "notifications", label: { vi: "Soạn email bảng công & lương", zh: "编写考勤工资邮件" },
+    description: { vi: "Soạn email bảng công & lương. Kiểm quyền riêng với dữ liệu lương.", zh: "编写考勤工资邮件；工资数据采用独立权限。" } },
+  { key: "notifications.payroll.download", group: "notifications", label: { vi: "Tải email bảng công & lương", zh: "下载考勤工资邮件" },
+    description: { vi: "Tải email bảng công & lương. Kiểm quyền riêng với dữ liệu lương.", zh: "下载考勤工资邮件；工资数据采用独立权限。" } },
+  { key: "notifications.payroll.send", group: "notifications", label: { vi: "Gửi email bảng công & lương", zh: "发送考勤工资邮件" },
+    description: { vi: "Gửi email bảng công & lương. Kiểm quyền riêng với dữ liệu lương.", zh: "发送考勤工资邮件；工资数据采用独立权限。" } },
+  { key: "notifications.payroll.history.read", group: "notifications", label: { vi: "Xem lịch sử email lương theo cửa hàng", zh: "查看门店工资邮件历史" },
+    description: { vi: "Xem lịch sử email lương theo cửa hàng. Kiểm quyền riêng với dữ liệu lương.", zh: "查看门店工资邮件历史；工资数据采用独立权限。" } },
+  { key: "notifications.payroll.templates.manage", group: "notifications", label: { vi: "Quản lý mẫu email bảng công & lương", zh: "管理考勤工资邮件模板" },
+    description: { vi: "Quản lý mẫu email bảng công & lương. Kiểm quyền riêng với dữ liệu lương.", zh: "管理考勤工资邮件模板；工资数据采用独立权限。" } },
+  { key: "notifications.email_signatures.manage", group: "notifications", label: { vi: "Quản lý chữ ký email dùng chung", zh: "管理共享邮件签名" },
+    description: { vi: "Quản lý chữ ký email dùng chung. Kiểm quyền riêng với dữ liệu lương.", zh: "管理共享邮件签名；工资数据采用独立权限。" } },
   {
     key: "notifications.read",
     group: "notifications",

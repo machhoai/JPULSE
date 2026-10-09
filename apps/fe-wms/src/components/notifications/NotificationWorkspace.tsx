@@ -11,13 +11,23 @@ import { useUsers } from "@/hooks/useUsers";
 import EmailNotificationForm from "./EmailNotificationForm";
 import InAppNotificationForm from "./InAppNotificationForm";
 import NotificationHistoryPanel from "./NotificationHistoryPanel";
+import EmailSignatureManager from "./EmailSignatureManager";
+import dynamic from "next/dynamic";
+import { useUserStore } from "@/stores/useUserStore";
+import { payrollEmailTranslations } from "@/lib/i18n/payrollEmailTranslations";
+const PayrollEmailWorkspace = dynamic(() => import("./payroll/PayrollEmailWorkspace"), {
+  loading: () => <div className="skeleton-pulse h-64 rounded bg-surface-subtle" />,
+});
 
-type ComposerChannel = "IN_APP" | "EMAIL";
+type ComposerChannel = "IN_APP" | "EMAIL" | "PAYROLL";
 
 const EMPTY_EMAIL_HTML = "";
 
 export default function NotificationWorkspace() {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
+  const hasPermission = useUserStore(s => s.hasPermission);
+  const canPayroll = ["notifications.payroll.compose", "notifications.payroll.send", "notifications.payroll.download",
+    "notifications.payroll.history.read", "notifications.payroll.templates.manage", "notifications.email_signatures.manage"].some(p => hasPermission(p));
   const text = t.notification;
   const {
     dispatches,
@@ -47,13 +57,14 @@ export default function NotificationWorkspace() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    if (!canSendInApp && !canSendEmail && canPayroll) { setChannel("PAYROLL"); return; }
     if (channel === "IN_APP" && !canSendInApp && canSendEmail) {
       setChannel("EMAIL");
     }
     if (channel === "EMAIL" && !canSendEmail && canSendInApp) {
       setChannel("IN_APP");
     }
-  }, [canSendEmail, canSendInApp, channel]);
+  }, [canSendEmail, canSendInApp, canPayroll, channel]);
 
   const showValidationToast = (description: string) => {
     gooeyToast.error(text.requiredContent, {
@@ -162,24 +173,25 @@ export default function NotificationWorkspace() {
     }
   };
 
-  const canCompose = canSendInApp || canSendEmail;
+  const canCompose = canSendInApp || canSendEmail || canPayroll;
   const inAppDisabled =
     !canSendInApp || isSubmitting || usersLoading || rolesLoading;
   const emailDisabled = !canSendEmail || isSubmitting;
 
   return (
     <div className="space-y-3">
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-lg font-bold leading-tight tracking-normal text-text-primary">
             {text.title}
           </h1>
           <p className="mt-0.5 text-sm text-text-muted">{text.subtitle}</p>
         </div>
+        <EmailSignatureManager />
       </header>
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
-        <div className="space-y-3 xl:col-span-2">
+        <div className={`space-y-3 ${channel === "PAYROLL" ? "xl:col-span-3" : "xl:col-span-2"}`}>
           {!canCompose ? (
             <section className="flex items-start gap-3 rounded-radius-md border border-border-subtle bg-surface-elevated p-4">
               <ShieldAlert className="h-5 w-5 shrink-0 text-accent-warning" />
@@ -223,9 +235,12 @@ export default function NotificationWorkspace() {
                     {text.emailTab}
                   </button>
                 )}
+                {canPayroll && <button type="button" onClick={() => setChannel("PAYROLL")}
+                  className={`flex h-8 items-center gap-2 rounded-radius-sm px-3 text-sm font-semibold ${channel === "PAYROLL" ? "bg-brand-primary text-white" : "text-text-secondary hover:bg-surface-subtle"}`}>
+                  {payrollEmailTranslations[lang].title}</button>}
               </div>
 
-              {channel === "IN_APP" && canSendInApp ? (
+              {channel === "PAYROLL" && canPayroll ? <PayrollEmailWorkspace /> : channel === "IN_APP" && canSendInApp ? (
                 <InAppNotificationForm
                   users={users}
                   roles={roles}
@@ -271,12 +286,12 @@ export default function NotificationWorkspace() {
           )}
         </div>
 
-        <NotificationHistoryPanel
+        {channel !== "PAYROLL" && <NotificationHistoryPanel
           dispatches={dispatches}
           isLoading={isLoading}
           canRead={canReadHistory}
           labels={text}
-        />
+        />}
       </div>
     </div>
   );

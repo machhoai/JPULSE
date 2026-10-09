@@ -11,6 +11,8 @@ export interface BrevoEmailAttachment {
 }
 
 interface SendBrevoEmailInput {
+  /** false: payroll snapshot already includes its selected signature. */
+  signature?: false | { html: string; text: string };
   to: string[];
   cc?: string[];
   bcc?: string[];
@@ -50,6 +52,7 @@ export async function sendBrevoEmail(
   const { apiKey, smtpLogin, senderEmail, senderName } = getBrevoConfig();
 
   const transporter = nodemailer.createTransport({
+    ...(input.signature === false ? { connectionTimeout: 30000, greetingTimeout: 30000, socketTimeout: 60000 } : {}),
     host: "smtp-relay.brevo.com",
     port: 587,
     secure: false, // true for 465, false for other ports
@@ -59,8 +62,8 @@ export async function sendBrevoEmail(
     },
   });
 
-  const signatureHtml = process.env.BREVO_EMAIL_SIGNATURE_HTML || "";
-  const signatureText = process.env.BREVO_EMAIL_SIGNATURE_TEXT || "";
+  const signatureHtml = input.signature === false ? "" : input.signature?.html ?? process.env.BREVO_EMAIL_SIGNATURE_HTML ?? "";
+  const signatureText = input.signature === false ? "" : input.signature?.text ?? process.env.BREVO_EMAIL_SIGNATURE_TEXT ?? "";
 
   const finalContent = applyBrevoEmailSignature(
     input.htmlContent,
@@ -84,10 +87,13 @@ export async function sendBrevoEmail(
 
     return { messageId: info.messageId };
   } catch (error: unknown) {
-    console.error("Nodemailer SMTP Error:", error);
+    if (input.signature === false) console.error("PAYROLL_SMTP_FAILED", { code: (error as { code?: string }).code });
+    else console.error("Nodemailer SMTP Error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
     throw {
       statusCode: 502,
+      code: (error as { code?: string }).code,
+      responseCode: (error as { responseCode?: number }).responseCode,
       messages: {
         vi: `Brevo SMTP gửi email thất bại: ${message}`,
         zh: `Brevo SMTP 邮件发送失败：${message}`,

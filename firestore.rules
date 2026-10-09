@@ -811,10 +811,30 @@ service cloud.firestore {
       allow create, delete: if false;
     }
     match /notification_dispatches/{docId} {
+      // Payroll bodies live in separate, server-encrypted storage.
       allow read: if isSystemAdmin()
         || (signedIn() && resource.data.created_by == request.auth.uid);
       allow write: if false;
     }
+    match /payroll_email_jobs/{docId} {
+      allow read: if hasResourceFacility('facility_id', 'notifications.payroll.send')
+        && resource.data.created_by == request.auth.uid;
+      allow write: if false;
+      match /items/{itemId} { allow read, write: if false; }
+    }
+    match /payroll_catalog/{docId} {
+      // Only a revision signal; actual template/signature content is authorized by the API.
+      allow read: if signedIn() && docId == 'version';
+      allow write: if false;
+    }
+    match /payroll_email_sent_records/{docId} {
+      allow read: if hasResourceFacility('facility_id', 'notifications.payroll.history.read');
+      allow write: if false;
+    }
+    match /payroll_email_drafts/{docId} { allow read, write: if false; }
+    match /payroll_email_templates/{docId} { allow read, write: if false; }
+    match /email_signatures/{docId} { allow read, write: if false; }
+    match /payroll_session_receipts/{docId} { allow read, write: if false; }
     match /notification_push_tokens/{docId} {
       allow read: if signedIn() && resource.data.user_id == request.auth.uid;
       allow create: if signedIn() && request.resource.data.user_id == request.auth.uid;
