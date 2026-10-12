@@ -3,6 +3,7 @@ import type { PayrollJobMetadata, PayrollJobItem, PayrollSnapshot } from "@bduck
 import { db } from "../config/firebase.js";
 import { payrollRef, writePayrollAudit } from "./payrollRepository.js";
 import { receiptRef } from "./payrollJobRepository.js";
+import { payrollHistoryId, payrollHistoryMetadata, touchPayrollHistory } from "./payrollHistoryRepository.js";
 export const payrollTime = (value: unknown) => value instanceof Date ? value.getTime() :
   value && typeof value === "object" && "toMillis" in value ? (value as { toMillis(): number }).toMillis() : 0;
 const leaseMs = 5 * 60 * 1000;
@@ -15,10 +16,17 @@ export async function claimPayrollItems(id: string) {
     const stale = await tx.get(ref.collection("items").where("status", "==", "PROCESSING"));
     const queued = await tx.get(ref.collection("items").where("status", "==", "QUEUED").orderBy("chunk").limit(25));
     const receipts = await Promise.all(stale.docs.filter(d => d.get("receipt_id")).map(d => tx.get(db.collection("payroll_session_receipts").doc(d.get("receipt_id")))));
+    const staleHistory = await Promise.all(stale.docs.map(d => tx.get(payrollRef("history", payrollHistoryId(id, d.id, d.get("attempt"))))));
     const now = new Date(); const token = randomUUID();
     stale.docs.forEach(d => tx.update(d.ref, { status: "UNKNOWN", error: {
       vi: "Worker bị gián đoạn trong lúc gửi. SMTP có thể đã nhận thư; cần đối chiếu trước khi gửi lại.",
       zh: "工作器在发送时中断；SMTP 可能已收到邮件，请核对后再重新发送。" }, updated_at: now }));
+    stale.docs.forEach((d, index) => {
+      const item = d.data() as PayrollJobItem;
+      tx.set(staleHistory[index].ref, { ...(staleHistory[index].exists ? {} : payrollHistoryMetadata(job, item, now)), submission_status: "UNKNOWN",
+        error: { vi: "Worker bị gián đoạn. Chưa xác định SMTP đã nhận thư hay chưa.", zh: "工作器中断，尚无法确认 SMTP 是否已收到邮件。" }, updated_at: now }, { merge: true });
+    });
+    if (stale.size) touchPayrollHistory(tx, job.facility_id);
     receipts.filter(d => d.exists && d.get("job_id") === id && d.get("status") === "PROCESSING").forEach(d => tx.update(d.ref, { status: "UNKNOWN", updated_at: now }));
     const after = { ...job, status: "PROCESSING" as const, lease_token: token, lease_until: new Date(Date.now() + leaseMs),
       unknown: job.unknown + stale.size, revision: job.revision + 1, updated_at: now, sync_time: now };
@@ -31,7 +39,9 @@ export async function completePayrollItem(job: PayrollJobMetadata, item: Payroll
   status: "SENT" | "FAILED" | "UNKNOWN" | "QUEUED", messageId: string | null, error: PayrollJobItem["error"]) {
   await db.runTransaction(async tx => {
     const ref = payrollRef("jobs", job.id); const itemRef = ref.collection("items").doc(item.id);
-    const [j, i] = await Promise.all([tx.get(ref), tx.get(itemRef)]);
+    const recordId = payrollHistoryId(job.id, item.id, item.attempt);
+    const historyRef = payrollRef("history", recordId);
+    const [j, i, beforeHistory] = await Promise.all([tx.get(ref), tx.get(itemRef), tx.get(historyRef)]);
     if (j.get("lease_token") !== token || i.get("status") !== "PROCESSING") return;
     const now = new Date(); const after = { ...i.data(), status, message_id: messageId, error, updated_at: now,
       ...(status === "QUEUED" ? { attempt: item.attempt + 1, next_retry_at: new Date(Date.now() + Math.min(60000, 5000 * 2 ** item.attempt)) } : {}) };
@@ -39,14 +49,12 @@ export async function completePayrollItem(job: PayrollJobMetadata, item: Payroll
     tx.update(ref, { sent: j.get("sent") + (status === "SENT" ? 1 : 0),
       failed: j.get("failed") + (status === "FAILED" ? 1 : 0), unknown: j.get("unknown") + (status === "UNKNOWN" ? 1 : 0),
       lease_until: new Date(Date.now() + leaseMs), updated_at: now, sync_time: now });
+    const historyPatch = { ...(beforeHistory.exists ? {} : payrollHistoryMetadata(job, item, now)), submission_status: status === "QUEUED" ? "FAILED" : status, message_id: messageId, error, updated_at: now, sync_time: now };
+    tx.set(historyRef, historyPatch, { merge: true });
+    writePayrollAudit(tx, "payroll_email_sent_records", recordId, job.created_by, job.facility_id, beforeHistory.exists ? beforeHistory.data()! : null, { ...beforeHistory.data(), ...historyPatch });
+    touchPayrollHistory(tx, job.facility_id);
     if (status === "SENT") {
-      const recordId = job.id + "_" + item.id + "_" + item.attempt;
-      const history = { id: recordId, facility_id: job.facility_id, job_id: job.id, created_by: job.created_by,
-        payload_path: item.payload_path, recipient_id: item.id, message_id: messageId,
-        action_time: job.action_time, sync_time: now, created_at: now, updated_at: now, is_deleted: false };
-      tx.set(payrollRef("history", recordId), history);
       tx.set(receiptRef(job.created_by, job.session_id, snapshot.email), { record_id: recordId, status: "SENT", job_id: job.id, updated_at: now });
-      writePayrollAudit(tx, "payroll_email_sent_records", recordId, job.created_by, job.facility_id, null, history);
     }
     if (status !== "SENT") tx.set(receiptRef(job.created_by, job.session_id, snapshot.email), {
       record_id: job.id + "_" + item.id + "_" + item.attempt, job_id: job.id, status: status === "QUEUED" ? "PROCESSING" : status, updated_at: now });
@@ -59,14 +67,25 @@ const id = claimed.job.id;
 return db.runTransaction(async tx => {
         const ref = payrollRef("jobs", id); const itemRef = ref.collection("items").doc(item.id);
         const receipt = receiptRef(claimed.job.created_by, claimed.job.session_id, snapshot.email);
-        const [j, i, prior] = await Promise.all([tx.get(ref), tx.get(itemRef), tx.get(receipt)]);
+        const historyRef = payrollRef("history", payrollHistoryId(id, item.id, item.attempt));
+        const [j, i, prior, history] = await Promise.all([tx.get(ref), tx.get(itemRef), tx.get(receipt), tx.get(historyRef)]);
         if (j.get("lease_token") !== claimed.token || i.get("status") !== "QUEUED") return false;
         if (prior.exists && prior.get("job_id") !== id && (prior.get("status") === "PROCESSING" ||
           ["SENT", "UNKNOWN"].includes(prior.get("status")) && !(claimed.job.confirmed_receipt_ids || []).includes(prior.get("record_id")))) {
           tx.update(itemRef, { status: "FAILED", error: { vi: "Người nhận vừa được gửi hoặc đang gửi bởi đợt khác trong phiên này. Hãy đối chiếu trước khi tạo đợt gửi mới.", zh: "收件人刚刚或正在本会话的其他任务中发送，请先核对再创建新任务。" }, updated_at: new Date() });
+          const failure = { vi: "Bị chặn để tránh gửi trùng với đợt khác trong phiên.", zh: "为避免与本会话另一任务重复发送，已阻止。" };
+          const metadata = { ...(history.exists ? {} : payrollHistoryMetadata(claimed.job, item, new Date())), submission_status: "FAILED", error: failure, updated_at: new Date() };
+          tx.set(historyRef, metadata, { merge: true }); touchPayrollHistory(tx, claimed.job.facility_id);
+          writePayrollAudit(tx, "payroll_email_sent_records", historyRef.id, claimed.job.created_by, claimed.job.facility_id, history.exists ? history.data()! : null, { ...history.data(), ...metadata });
           tx.update(ref, { failed: j.get("failed") + 1 }); return false;
         }
         tx.update(itemRef, { status: "PROCESSING", updated_at: new Date() });
+        if (!history.exists) {
+          const metadata = payrollHistoryMetadata(claimed.job, item, new Date());
+          tx.create(historyRef, metadata);
+          writePayrollAudit(tx, "payroll_email_sent_records", metadata.id, claimed.job.created_by, claimed.job.facility_id, null, metadata);
+          touchPayrollHistory(tx, claimed.job.facility_id);
+        }
         tx.set(receipt, { status: "PROCESSING", job_id: id, record_id: id + "_" + item.id + "_" + item.attempt, updated_at: new Date() });
         tx.update(ref, { lease_until: new Date(Date.now() + leaseMs) });
         return true;

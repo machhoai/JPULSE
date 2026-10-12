@@ -5,7 +5,7 @@ import { simpleParser } from "mailparser";
 import { composer, person, clock, workbookFixture } from "./fixtures.mjs";
 import { readPayrollWorkbook, detectPayrollMapping, parsePayrollRows, mergePayrollData, normalizePayrollName } from "../../../fe-wms/src/utils/payrollExcelImport.ts";
 import { payrollEligibleIds, resolvePayrollMatch } from "../../../fe-wms/src/utils/payrollRecipients.ts";
-import { payrollVariables, renderPayrollEmail, formatPayrollNumber, isPayrollBankAccountValid } from "@bduck/shared-types";
+import { payrollVariables, renderPayrollEmail, formatPayrollNumber, isPayrollBankAccountValid, payrollHistoryStatus, payrollHistoryDateBounds, payrollHistoryResendPolicy } from "@bduck/shared-types";
 import { composerSchema, recipientSchema, payrollId } from "../../dist/services/payroll/payrollSchemas.js";
 import { sanitizePayrollSignature } from "../../dist/services/payroll/payrollHtml.js";
 import { createPayrollMime } from "../../dist/services/payroll/payrollMimeService.js";
@@ -18,6 +18,23 @@ async function parse(options) {
   const roster=run("Bảng kê lương","roster"),salary=run("Bảng lương Parttime AMTP","salary"),attendance=run("Bảng công","attendance");
   return { original,book,roster,salary,attendance,people:mergePayrollData(roster,salary,attendance) };
 }
+
+test("PAY-HISTORY: delivered is success, SMTP accepted/unknown remains pending, bounce/failure is error",()=>{
+ assert.equal(payrollHistoryStatus({}),"PENDING");assert.equal(payrollHistoryStatus({submission_status:"SENT"}),"PENDING");
+ assert.equal(payrollHistoryStatus({submission_status:"UNKNOWN"}),"PENDING");assert.equal(payrollHistoryStatus({delivery_status:"DELIVERED"}),"SUCCESS");
+ assert.equal(payrollHistoryStatus({submission_status:"FAILED"}),"ERROR");assert.equal(payrollHistoryStatus({submission_status:"SENT",delivery_status:"SOFT_BOUNCE"}),"ERROR");
+ assert.equal(payrollHistoryStatus({submission_status:"UNKNOWN",delivery_status:"DELIVERED"}),"SUCCESS");
+});
+test("PAY-HISTORY: date bounds include Vietnam midnight and exclude the next day",()=>{
+ const b=payrollHistoryDateBounds({from:"2026-10-12",to:"2026-10-12"});
+ assert.equal(b.from.toISOString(),"2026-10-11T17:00:00.000Z");assert.equal(b.until.toISOString(),"2026-10-12T17:00:00.000Z");
+});
+test("PAY-RESEND: policy permits failures/delivered, rejects pending and requires another rejected address",()=>{
+ for(const record of [{},{submission_status:"SENT"},{submission_status:"UNKNOWN"},{delivery_status:"DEFERRED"}])assert.equal(payrollHistoryResendPolicy(record).allowed,false);
+ for(const record of [{submission_status:"FAILED"},{delivery_status:"SOFT_BOUNCE"}])assert.deepEqual(payrollHistoryResendPolicy(record),{allowed:true,requireDifferentEmail:false,delivered:false});
+ for(const delivery_status of ["HARD_BOUNCE","INVALID","BLOCKED"])assert.deepEqual(payrollHistoryResendPolicy({delivery_status}),{allowed:true,requireDifferentEmail:true,delivered:false});
+ assert.deepEqual(payrollHistoryResendPolicy({delivery_status:"DELIVERED"}),{allowed:true,requireDifferentEmail:false,delivered:true});
+});
 
 test("PAY-06: numeric display rounds to two decimals in HTML/text/MIME without altering source", async () => {
   const p = person();

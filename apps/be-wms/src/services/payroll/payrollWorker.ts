@@ -4,6 +4,7 @@ import { readPayrollPayload } from "./payrollCrypto.js";
 import { sendBrevoEmail } from "../brevoEmailService.js";
 import { dispatchPayrollJob } from "./payrollTaskDispatcher.js";
 import { preparePayrollJob } from "./payrollJobService.js";
+import { payrollHistoryId } from "../../repositories/payrollHistoryRepository.js";
 import { claimPayrollItems as claim, completePayrollItem as finish, beginPayrollItem, finalizePayrollJob, payrollTime as asTime } from "../../repositories/payrollWorkerRepository.js";
 function failure(error: unknown) {
   const e = error as { code?: string; responseCode?: number };
@@ -28,7 +29,7 @@ export async function processPayrollJob(id: string) {
       if (!allowed) continue;
       let result: { status: "SENT" | "FAILED" | "UNKNOWN" | "QUEUED"; message: string | null; error: PayrollJobItem["error"] };
       try { const sent = await sendBrevoEmail({ to: [snapshot.email], subject: snapshot.subject, htmlContent: snapshot.html,
-        textContent: snapshot.text, signature: false, messageId: `<payroll-${id}-${item.id}-${item.attempt}@jpulse>` });
+        textContent: snapshot.text, signature: false, messageId: `<payroll-${id}-${item.id}-${item.attempt}@jpulse>`, payrollHistoryId: payrollHistoryId(id, item.id, item.attempt) });
         result = { status: "SENT", message: sent.messageId, error: null };
       } catch (error) { const f = failure(error); result = { status: f.retryable && item.attempt < 3 ? "QUEUED" : f.status, message: null, error: f.messages }; }
       // A persistence error never re-enters SMTP. Retry the result transaction only.

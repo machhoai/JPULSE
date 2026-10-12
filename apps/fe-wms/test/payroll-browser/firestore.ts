@@ -12,4 +12,5 @@ export function onSnapshot(ref:{collection?:string;id?:string},fn:Callback){
  queueMicrotask(()=>fn({exists:()=>!!jobs.get(key),data:()=>jobs.get(key)||{}}));
  return()=>set.delete(fn);
 }
-export function publishJob(job:Record<string,unknown>){const id=String(job.id);jobs.set(id,job);subscribers.get(id)?.forEach(fn=>fn({exists:()=>true,data:()=>job}));subscribers.get("query")?.forEach(fn=>fn({exists:()=>false,data:()=>({})}));}
+export function publishJob(job:Record<string,unknown>){const id=String(job.id);jobs.set(id,job);subscribers.get(id)?.forEach(fn=>fn({exists:()=>true,data:()=>job}));subscribers.get("query")?.forEach(fn=>fn({exists:()=>false,data:()=>({})}));publishHistory(String(job.facility_id));}
+export function publishHistory(facility:string,id?:string){for(const key of [facility,id].filter(Boolean))subscribers.get(key!)?.forEach(fn=>fn({exists:()=>true,data:()=>({revision:Date.now()})}));}

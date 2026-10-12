@@ -862,6 +862,11 @@ service cloud.firestore {
       allow read: if signedIn() && docId == 'version';
       allow write: if false;
     }
+    match /payroll_history_signals/{facilityId} {
+      allow read: if hasFacilityPermission(facilityId, 'notifications.payroll.history.read');
+      allow write: if false;
+    }
+    match /payroll_delivery_events/{eventId} { allow read, write: if false; }
     match /payroll_email_sent_records/{docId} {
       allow read: if hasResourceFacility('facility_id', 'notifications.payroll.history.read');
       allow write: if false;

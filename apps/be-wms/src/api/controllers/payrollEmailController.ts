@@ -1,4 +1,4 @@
-import { fetchPayrollDrafts, fetchPayrollHistory, fetchPayrollHistorySnapshot } from "../../services/payroll/payrollQueryService.js";
+import { fetchPayrollDrafts, fetchPayrollHistory, fetchPayrollHistorySnapshot, fetchPayrollHistoryRecord } from "../../services/payroll/payrollQueryService.js";
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { ZipArchive } from "archiver";
@@ -12,6 +12,8 @@ import { createPayrollJob, getPayrollJobDetails, retryPayrollItems } from "../..
 import { authenticatePayrollWorker, recoverPayrollJobs } from "../../services/payroll/payrollTaskDispatcher.js";
 import { processPayrollJob } from "../../services/payroll/payrollWorker.js";
 import { sendBrevoEmail } from "../../services/brevoEmailService.js";
+import { receivePayrollDeliveryWebhook } from "../../services/payroll/payrollDeliveryWebhook.js";
+import { resendPayrollHistory } from "../../services/payroll/payrollResendService.js";
 import type { PayrollSnapshot } from "@bduck/shared-types";
 import { sendSuccess, sendError } from "../../utils/responseHelper.js";
 function handle(fn: (req: Request, res: Response) => Promise<unknown>) {
@@ -34,6 +36,7 @@ function handle(fn: (req: Request, res: Response) => Promise<unknown>) {
   };
 }
 const id = (req: Request) => payrollId.parse(req.params.id);
+export const payrollDeliveryWebhookHandler = handle(async (req, res) => sendSuccess(res, await receivePayrollDeliveryWebhook(req)));
 export const processPayrollJobHandler = handle(async (req, res) => {
   await authenticatePayrollWorker(req); await processPayrollJob(id(req)); sendSuccess(res, { processed: true });
 });
@@ -105,7 +108,16 @@ export const retryPayrollItemsHandler = handle(async (req, res) => {
 });
 export const fetchPayrollHistoryHandler = handle(async (req, res) => {
   const { access } = payrollActor(req); const facility = payrollId.parse(req.query.facility_id);
-  sendSuccess(res, await fetchPayrollHistory(facility, req.query.after ? payrollId.parse(req.query.after) : undefined, access));
+  const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v => Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0,10) === v);
+  const filters = z.object({ from: date.optional(), to: date.optional(), status: z.enum(["ALL","PENDING","SUCCESS","ERROR"]).optional() })
+    .parse(req.query);
+  if (filters.from && filters.to && filters.from > filters.to) throw { statusCode: 400, messages: { vi: "Từ ngày phải trước hoặc bằng đến ngày.", zh: "开始日期必须早于或等于结束日期。" } };
+  sendSuccess(res, await fetchPayrollHistory(facility, req.query.after ? payrollId.parse(req.query.after) : undefined, access, filters));
+});
+export const fetchPayrollHistoryRecordHandler = handle(async (req, res) => sendSuccess(res, await fetchPayrollHistoryRecord(id(req), payrollActor(req).access)));
+export const resendPayrollHistoryHandler = handle(async (req, res) => {
+  const { actor, access } = payrollActor(req);
+  sendSuccess(res, await resendPayrollHistory(id(req), req.body, actor, access), { vi: "Đã tiếp nhận gửi lại; hệ thống tiếp tục gửi ở nền.", zh: "已接受重发，系统将在后台继续发送。" }, 202);
 });
 export const exportPayrollHistoryHandler = handle(async (req, res) => {
   const { access } = payrollActor(req);

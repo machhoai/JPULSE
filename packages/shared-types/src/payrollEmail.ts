@@ -50,6 +50,8 @@ export interface PayrollDraftMetadata extends SoftDeletable, ISOTimestamped {
 }
 export type PayrollItemStatus = 'QUEUED' | 'PROCESSING' | 'SENT' | 'FAILED' | 'UNKNOWN';
 export interface PayrollJobMetadata extends SoftDeletable, ISOTimestamped {
+  resend_source_id?: string;
+  resend_destination_hash?: string;
   wake_at?: Date | null; confirmed_receipt_ids?: string[];
   preparation_path?: string; prepared_count?: number;
   id: string; facility_id: string; created_by: string; draft_id: string;

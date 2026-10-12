@@ -49,3 +49,12 @@ test("PAY-11 rules: clients cannot write payroll state or fetch private drafts/t
  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(),"payroll_catalog","version")));
  await assertSucceeds(getDoc(doc(db,"payroll_catalog","version")));
 });
+
+test("PAY-HISTORY rules: realtime signal scoped and webhook events server-only",async()=>{
+ const reader=env.authenticatedContext("reader").firestore();
+ await assertSucceeds(getDoc(doc(reader,"payroll_history_signals","store-a")));
+ await assertFails(getDoc(doc(reader,"payroll_history_signals","store-b")));
+ await assertFails(setDoc(doc(reader,"payroll_history_signals","store-a"),{revision:999}));
+ await assertFails(getDoc(doc(reader,"payroll_delivery_events","private-event")));
+ await assertFails(setDoc(doc(reader,"payroll_delivery_events","forged"),{status:"DELIVERED"}));
+});

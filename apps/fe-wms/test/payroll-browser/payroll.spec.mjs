@@ -5,7 +5,7 @@ async function setup(page,{count=3,missingEmail=-1,mismatchedProfile=false,realA
  const requests=[],drafts=new Map(),people=new Map();
  const baseComposer=createPayrollComposer();
  const template={id:"qa-template",name:"Mẫu cửa hàng QA",facility_id:"store-a",revision:1,composer:baseComposer};
- const state={templates:[template],signatures:[],default_signature:{html:"<p>QA default signature</p>",text:"QA default signature"}};
+ const state={templates:[template],signatures:[],history:[],default_signature:{html:"<p>QA default signature</p>",text:"QA default signature"}};
  let job=null;
  await page.route("**/*",async route=>{
   const url=new URL(route.request().url());
@@ -23,7 +23,15 @@ async function setup(page,{count=3,missingEmail=-1,mismatchedProfile=false,realA
   }
   if(path==="/catalog")data=state;
   else if(path==="/drafts")data=[...drafts.values()].map(d=>d.meta);
-  else if(path==="/history")data={records:[],cursor:null};
+  else if(path==="/history"){
+   const status=url.searchParams.get("status"),from=url.searchParams.get("from"),to=url.searchParams.get("to");
+   const records=state.history.filter(r=>r.facility_id===url.searchParams.get("facility_id")&&(!from||new Date(r.created_at)>=new Date(from+"T00:00:00+07:00"))&&(!to||new Date(r.created_at)<new Date(new Date(to+"T00:00:00+07:00").getTime()+86400000))&&(!status||status==="ALL"||(r.delivery_status==="DELIVERED"?"SUCCESS":r.submission_status==="FAILED"||["SOFT_BOUNCE","HARD_BOUNCE"].includes(r.delivery_status)?"ERROR":"PENDING")===status));
+   data={records,cursor:null};
+  } else if(method==="GET"&&path.startsWith("/history/"))data=state.history.find(r=>r.id===path.split("/")[2]);
+  else if(method==="POST"&&path.endsWith("/resend")){
+   job={id:"qa-job",facility_id:"store-a",created_by:"qa-browser",status:"PREPARING",total:1,sent:0,failed:0,unknown:0};
+   await page.evaluate(j=>window.__payrollQa.publishJob(j),job);data=job;
+  }
   else if(method==="PUT"&&/^\/drafts\/[^/]+$/.test(path)){
    const id=path.split("/")[2],old=drafts.get(id);const meta={id,revision:(old?.meta.revision||0)+1,facility_id:"store-a",template_id:"qa-template",name:body.name,created_by:"qa-browser"};
    drafts.set(id,{meta,content:body});data=meta;
@@ -317,6 +325,67 @@ test("PAY-18 E2E real API/emulator: import, encrypted draft, background worker m
  await expect(page.getByText("Đã gửi: 3/3",{exact:false})).toBeVisible();
  const metrics=await(await page.request.get("http://127.0.0.1:4408/__qa/metrics")).json();
  expect(metrics.mockOnly).toBe(true);expect(metrics.smtpCalls).toBe(3);expect(metrics.recipientCounts).toEqual([1,1,1]);
+});
+
+function historyFixtures(){
+ const make=(id,name,created_at,delivery_status,submission_status="SENT",reason=null)=>({id,facility_id:"store-a",job_id:"qa-history-job",created_at,delivery_status,submission_status,delivery_reason:reason,error:submission_status==="FAILED"?{vi:"QA SMTP lỗi 535",zh:"QA SMTP 535"}:null,attempt:1,delivery_updated_at:null,
+ snapshot:{name,email:id+"@example.invalid",subject:"Bảng lương QA "+name,html:"<p>Nội dung gốc QA "+name+"</p>",text:"QA",clock:created_at,recipient_id:id}});
+ return[make("qa-ok","QA Delivered","2026-10-12T01:00:00Z","DELIVERED"),make("qa-quota","QA Quota","2026-10-12T00:01:00Z","SOFT_BOUNCE","SENT","452 4.2.2 The recipient's inbox is out of storage space. OverQuotaTemp"),make("qa-pending","QA Pending","2026-10-11T17:30:00Z","PENDING"),make("qa-smtp","QA SMTP","2026-10-11T16:59:00Z","PENDING","FAILED")];
+}
+
+test("PAY-RESEND UI: soft bounce alternate email confirmation and single background request",async({page})=>{
+ const qa=await setup(page);qa.state.history=historyFixtures();await page.reload();
+ await page.getByRole("button").filter({hasText:"QA Quota"}).click();const detail=page.getByRole("dialog");
+ const send=detail.getByRole("button",{name:"Gửi lại email",exact:true});await expect(send).toBeDisabled();
+ await detail.getByLabel("Email nhận lần gửi lại",{exact:true}).fill("alternate@example.invalid");
+ await expect(detail.getByText(/Đổi địa chỉ nhận:/)).toContainText("alternate@example.invalid");
+ await detail.getByRole("checkbox").check();await send.click();
+ await expect.poll(()=>qa.requests.filter(r=>r.path.endsWith("/resend")).length).toBe(1);
+ const request=qa.requests.find(r=>r.path.endsWith("/resend"));expect(request.body.email).toBe("alternate@example.invalid");expect(request.body.confirmed).toBe(true);
+ await expect(send).toBeDisabled();await expect(detail.getByRole("status")).toContainText("xử lý ở nền");
+ await detail.screenshot({path:"../../.tmp/payroll-history-resend.png"});
+});
+
+test("PAY-RESEND UI: hard bounce requires changed address, delivered warns, pending has no send button",async({page})=>{
+ const qa=await setup(page);qa.state.history=historyFixtures();qa.state.history[1].delivery_status="HARD_BOUNCE";await page.reload();
+ await page.getByRole("button").filter({hasText:"QA Quota"}).click();let detail=page.getByRole("dialog");
+ await detail.getByRole("checkbox").check();await expect(detail.getByRole("button",{name:"Gửi lại email",exact:true})).toBeDisabled();
+ await detail.getByLabel("Email nhận lần gửi lại",{exact:true}).fill("new@example.invalid");await expect(detail.getByRole("checkbox")).not.toBeChecked();
+ await detail.getByRole("checkbox").check();await expect(detail.getByRole("button",{name:"Gửi lại email",exact:true})).toBeEnabled();
+ await page.keyboard.press("Escape");await page.getByRole("button").filter({hasText:"QA Delivered"}).click();detail=page.getByRole("dialog");
+ await expect(detail.getByText(/đã được giao thành công/)).toBeVisible();await detail.getByRole("checkbox").check();
+ await expect(detail.getByRole("button",{name:"Gửi lại email",exact:true})).toBeEnabled();
+ await page.keyboard.press("Escape");await page.getByRole("button").filter({hasText:"QA Pending"}).click();detail=page.getByRole("dialog");
+ await expect(detail.getByText(/Chưa thể gửi lại để tránh gửi trùng/)).toBeVisible();await expect(detail.getByRole("button",{name:"Gửi lại email",exact:true})).toHaveCount(0);
+ expect(qa.requests.some(r=>r.path.endsWith("/resend"))).toBe(false);
+});
+test("PAY-HISTORY UI: month/date/status filters, Vietnam day/month groups and error/content detail",async({page})=>{
+ const qa=await setup(page);qa.state.history=historyFixtures();
+ await page.getByLabel("Tháng gửi",{exact:true}).fill("2026-10");await page.evaluate(()=>window.__payrollQa.publishHistory("store-a"));
+ const ok=page.getByRole("button",{name:/QA Delivered/}),quota=page.getByRole("button",{name:/QA Quota/}),pending=page.getByRole("button",{name:/QA Pending/});
+ await expect(ok).toBeVisible();await expect(pending).toBeVisible();await expect(page.getByText("12/10/2026",{exact:true})).toBeVisible();await expect(page.getByText("11/10/2026",{exact:true})).toBeVisible();
+ await page.getByRole("combobox",{name:"Lọc trạng thái lịch sử",exact:true}).selectOption("SUCCESS");await expect(ok).toBeVisible();await expect(quota).toHaveCount(0);await expect(pending).toHaveCount(0);
+ await page.getByRole("combobox",{name:"Lọc trạng thái lịch sử",exact:true}).selectOption("ERROR");await expect(quota).toBeVisible();await expect(page.getByRole("button",{name:/QA SMTP/})).toBeVisible();
+ await page.getByLabel("Từ ngày",{exact:true}).fill("2026-10-12");await page.getByLabel("Đến ngày",{exact:true}).fill("2026-10-12");await expect(page.getByRole("button",{name:/QA SMTP/})).toHaveCount(0);
+ await page.getByRole("combobox",{name:"Nhóm lịch sử",exact:true}).selectOption("month");await expect(page.getByText("10/2026",{exact:true})).toBeVisible();
+ await quota.click();const detail=page.getByRole("dialog",{name:"Chi tiết email",exact:true});await expect(detail).toBeVisible();
+ await expect(detail.getByText(/Hộp thư người nhận đã đầy/)).toBeVisible();await detail.locator("summary").click();await expect(detail.getByText(/452 4.2.2 The recipient/)).toBeVisible();
+ await expect(page.frameLocator('iframe[title="Nội dung email lịch sử"]').getByText("Nội dung gốc QA QA Quota")).toBeVisible();
+ await detail.screenshot({path:"../../.tmp/payroll-history-detail.png"});
+ qa.state.history[1].delivery_status="DELIVERED";qa.state.history[1].delivery_reason=null;
+ await page.evaluate(()=>window.__payrollQa.publishHistory("store-a","qa-quota"));await expect(detail.getByText("Thành công",{exact:true})).toBeVisible();await expect(detail.getByText(/Hộp thư người nhận đã đầy/)).toHaveCount(0);
+ await page.keyboard.press("Escape");await expect(detail).toHaveCount(0);
+ expect(qa.requests.some(r=>r.path==="/jobs"||r.path.endsWith("/test"))).toBe(false);
+});
+test("PAY-HISTORY UI: history survives refresh without choosing composer template, mobile modal and access revocation",async({page})=>{
+ const qa=await setup(page);qa.state.history=historyFixtures();await page.reload();await page.setViewportSize({width:390,height:844});
+ await page.getByLabel("Tháng gửi",{exact:true}).fill("2026-10");await expect(page.getByRole("combobox",{name:"Mẫu nội dung",exact:true})).toHaveValue("");
+ const pending=page.getByRole("button",{name:/QA Pending/});await expect(pending).toBeVisible();await pending.click();
+ const detail=page.getByRole("dialog",{name:"Chi tiết email",exact:true});await expect(detail).toBeVisible();await expect(detail.getByText("Chờ kết quả",{exact:true})).toBeVisible();
+ expect(await detail.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+ await page.screenshot({path:"../../.tmp/payroll-history-mobile.png"});
+ await page.evaluate(()=>window.__payrollQa.revoke());await expect(detail).toHaveCount(0);await expect(pending).toHaveCount(0);
+ expect(qa.requests.some(r=>r.path==="/jobs"||r.path.endsWith("/test"))).toBe(false);
 });
 
 test("PAY-11 UI: permission revoked during pending draft load cannot restore salary data",async({page})=>{

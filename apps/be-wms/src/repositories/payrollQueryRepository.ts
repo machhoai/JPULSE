@@ -1,6 +1,6 @@
 import { db } from "../config/firebase.js";
 import { payrollCollections, payrollRef } from "./payrollRepository.js";
-import type { PayrollJobItem, PayrollJobMetadata } from "@bduck/shared-types";
+import { payrollHistoryDateBounds, type PayrollHistoryFilters, type PayrollJobItem, type PayrollJobMetadata, type PayrollDeliveryStatus, type PayrollItemStatus } from "@bduck/shared-types";
 export async function findPayrollCatalogRecords() {
   const [templates, signatures] = await Promise.all([
     db.collection(payrollCollections.templates).where("is_deleted", "==", false).get(),
@@ -27,19 +27,25 @@ export async function findPayrollDrafts(facility: string, actor: string) {
   const docs = await db.collection(payrollCollections.drafts).where("created_by", "==", actor).where("facility_id", "==", facility).where("is_deleted", "==", false).get();
   return docs.docs.map(d => d.data());
 }
-export async function findPayrollSentPage(facility: string, after?: string) {
-  let query = db.collection(payrollCollections.history).where("facility_id", "==", facility).where("is_deleted", "==", false).orderBy("created_at", "desc").limit(25);
-  if (after) { const cursor = await payrollRef("history", after).get(); if (cursor.exists && cursor.get("facility_id") === facility) query = query.startAfter(cursor); }
+export async function findPayrollSentPage(facility: string, after?: string, filters: PayrollHistoryFilters = {}, size = 25) {
+  let query = db.collection(payrollCollections.history).where("facility_id", "==", facility).where("is_deleted", "==", false).orderBy("created_at", "desc").limit(size);
+  const bounds = payrollHistoryDateBounds(filters);
+  if (bounds.from) query = query.where("created_at", ">=", bounds.from);
+  if (bounds.until) query = query.where("created_at", "<", bounds.until);
+  if (after) { const cursor = await payrollRef("history", after).get();
+    if (!cursor.exists || cursor.get("facility_id") !== facility) throw { statusCode: 400, messages: { vi: "Mốc phân trang không thuộc cửa hàng đang xem.", zh: "分页游标不属于当前门店。" } };
+    query = query.startAfter(cursor); }
   const docs = await query.get();
   return { entries: docs.docs.map(d => ({ ...d.data(), id: d.id, facility_id: d.get("facility_id") as string,
     job_id: d.get("job_id") as string, recipient_id: d.get("recipient_id") as string, payload_path: d.get("payload_path") as string,
     message_id: d.get("message_id") as string | null, created_at: d.get("created_at").toDate().toISOString() as string })),
-    cursor: docs.size === 25 ? docs.docs.at(-1)!.id : null };
+    cursor: docs.size === size ? docs.docs.at(-1)!.id : null };
 }
 export async function findPayrollSentRecord(id: string) {
   const doc = await payrollRef("history", id).get();
   if (!doc.exists || doc.get("is_deleted")) return null;
-  return { id, facility_id: doc.get("facility_id") as string, job_id: doc.get("job_id") as string,
+  return { ...doc.data(), id, facility_id: doc.get("facility_id") as string, job_id: doc.get("job_id") as string,
+    submission_status: doc.get("submission_status") as PayrollItemStatus | undefined, delivery_status: doc.get("delivery_status") as PayrollDeliveryStatus | undefined,
     recipient_id: doc.get("recipient_id") as string, payload_path: doc.get("payload_path") as string,
     message_id: doc.get("message_id") as string | null, created_at: doc.get("created_at").toDate() as Date };
 }

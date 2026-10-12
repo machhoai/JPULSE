@@ -11,6 +11,7 @@ export interface BrevoEmailAttachment {
 }
 
 interface SendBrevoEmailInput {
+  payrollHistoryId?: string;
   /** false: payroll snapshot already includes its selected signature. */
   signature?: false | { html: string; text: string };
   to: string[];
@@ -83,6 +84,7 @@ export async function sendBrevoEmail(
       html: finalContent.htmlContent,
       attachments: input.attachments,
       messageId: input.messageId,
+      headers: input.payrollHistoryId ? { "X-Mailin-custom": "payroll_history:" + input.payrollHistoryId } : undefined,
     });
 
     return { messageId: info.messageId };

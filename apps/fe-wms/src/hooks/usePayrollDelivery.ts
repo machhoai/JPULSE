@@ -1,23 +1,22 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { collection, doc, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
+import { useEffect, useRef, useState } from "react";
+import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { payrollApi, PayrollApiError, downloadPayrollZip } from "@/api/payrollEmailApi";
-import type { PayrollJobMetadata, PayrollSnapshot, PayrollItemStatus } from "@bduck/shared-types";
+import type { PayrollJobMetadata, PayrollItemStatus } from "@bduck/shared-types";
 import type { PayrollComposerState } from "./usePayrollComposer";
 import { payrollEligibleIds } from "@/utils/payrollRecipients";
+import { usePayrollHistory } from "./usePayrollHistory";
 import type { PayrollConfirmation } from "@/components/notifications/payroll/PayrollConfirmDialog";
 export interface PayrollProgressPerson { id: string; name: string; email: string; status: PayrollItemStatus; error: { vi: string; zh: string } | null }
-export interface PayrollHistoryRecord { id: string; created_at: string; snapshot: PayrollSnapshot }
 export function usePayrollDelivery(state: PayrollComposerState, confirm: (c: PayrollConfirmation) => void) {
   const { facility, hasPermission, lang, people, persist, run, text } = state;
   const [jobId, setJobId] = useState(""); const [job, setJob] = useState<PayrollJobMetadata | null>(null);
   const [progress, setProgress] = useState<PayrollProgressPerson[]>([]);
-  const [history, setHistory] = useState<PayrollHistoryRecord[]>([]); const [cursor, setCursor] = useState<string | null>(null);
-  const [historyError, setHistoryError] = useState("");
+  const historyState = usePayrollHistory(state);
   const session = useRef(""); const request = useRef("");
   useEffect(() => { session.current = crypto.randomUUID(); }, []);
-  useEffect(() => { setJobId(""); setJob(null); setProgress([]); setHistory([]); request.current = ""; session.current = crypto.randomUUID(); }, [state.userId, facility]);
+  useEffect(() => { setJobId(""); setJob(null); setProgress([]); request.current = ""; session.current = crypto.randomUUID(); }, [state.userId, facility]);
   useEffect(() => {
     if (!jobId) return;
     let disposed = false; let timer: ReturnType<typeof setTimeout>;
@@ -31,21 +30,6 @@ export function usePayrollDelivery(state: PayrollComposerState, confirm: (c: Pay
     }, e => state.setError(text.progress + ": " + e.code));
     return () => { disposed = true; clearTimeout(timer); unsubscribe(); };
   }, [jobId, lang, state.userId, facility]);
-  const loadHistory = useCallback(async (after?: string) => {
-    if (!facility || !hasPermission("notifications.payroll.history.read", facility)) return;
-    const page = await payrollApi<{ records: PayrollHistoryRecord[]; cursor: string | null }>("/history?facility_id=" + facility + (after ? "&after=" + after : ""), "GET", undefined, lang);
-    setHistory(old => after ? [...old, ...page.records] : page.records); setCursor(page.cursor); setHistoryError("");
-  }, [facility, hasPermission, lang]);
-  useEffect(() => {
-    setHistory([]); setCursor(null);
-    if (!facility || !hasPermission("notifications.payroll.history.read", facility)) return;
-    let disposed = false; let timer: ReturnType<typeof setTimeout>;
-    const unsubscribe = onSnapshot(query(collection(db, "payroll_email_sent_records"), where("facility_id", "==", facility),
-      where("is_deleted", "==", false), orderBy("created_at", "desc"), limit(25)), () => {
-        clearTimeout(timer); timer = setTimeout(() => { void loadHistory().catch(e => { if (!disposed) setHistoryError(e.message); }); }, 300);
-      }, e => { if (!disposed) setHistoryError(text.history + ": " + e.code); });
-    return () => { disposed = true; clearTimeout(timer); unsubscribe(); };
-  }, [facility, hasPermission, lang, loadHistory]);
   const selectedIds = () => { const eligible = payrollEligibleIds(people); return people.filter(p => p.selected && eligible.has(p.id)).map(p => p.id); };
   const send = (confirmation?: string) => void run(async () => {
     if (!navigator.onLine) throw new Error(text.offline);
@@ -85,5 +69,5 @@ export function usePayrollDelivery(state: PayrollComposerState, confirm: (c: Pay
   const retry = () => void run(async () => {
     await payrollApi("/jobs/" + jobId + "/retry", "POST", { recipient_ids: progress.filter(p => p.status === "FAILED").map(p => p.id) }, lang);
   });
-  return { job, jobId, progress, history, historyError, cursor, loadHistory, send, test, exportZip, retry };
+  return { job, jobId, progress, ...historyState, send, test, exportZip, retry };
 }
