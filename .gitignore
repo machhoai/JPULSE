@@ -62,13 +62,16 @@ $RECYCLE.BIN/
 # Logs
 # ========================
 logs/
-.codex-tmp/
-.tmp/
 *.log
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Temporary workspace files
+.tmp/
+.codex-tmp/
+codex-tmp/
 
 # Generated migration rehearsal reports (may contain production metadata)
 artifacts/marketing-voucher-migration/
