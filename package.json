@@ -8,6 +8,9 @@
         "node": ">=22.0.0"
     },
     "scripts": {
+        "test:payroll:unit": "pnpm --filter @bduck/shared-types build && pnpm --filter @bduck/be-wms build && node scripts/runPayrollTests.mjs unit",
+        "test:payroll:emulator": "pnpm --filter @bduck/shared-types build && pnpm --filter @bduck/be-wms build && firebase emulators:exec --config firebase.payroll-test.json --only firestore --project demo-payroll-qa \"node scripts/runPayrollTests.mjs emulator\"",
+        "test:payroll:browser": "pnpm --filter @bduck/shared-types build && pnpm --filter @bduck/be-wms build && firebase emulators:exec --config firebase.payroll-test.json --only firestore --project demo-payroll-qa \"pnpm --filter @bduck/fe-wms exec playwright test --config test/payroll-browser/playwright.config.mts\"",
         "--- DEV ---": "",
         "dev": "pnpm run --parallel --filter @bduck/fe-wms --filter @bduck/be-wms dev",
         "dev:wms": "pnpm run --parallel --filter @bduck/fe-wms --filter @bduck/be-wms dev",

@@ -66,6 +66,12 @@ const notificationPermissions = [
     "notifications.read",
     "notifications.send_in_app",
     "notifications.send_email",
+    "notifications.payroll.compose",
+    "notifications.payroll.download",
+    "notifications.payroll.send",
+    "notifications.payroll.history.read",
+    "notifications.payroll.templates.manage",
+    "notifications.email_signatures.manage",
 ];
 
 /**

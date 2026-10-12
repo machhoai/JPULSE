@@ -2,6 +2,41 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // BEGIN POS PAYMENT REALTIME
+    // Merge this block into the live shared ruleset; never deploy the POS-only
+    // firestore.rules file over bduck-system's rules.
+    function posPaymentWatchAllowed() {
+      let status = resource.data;
+      let actor = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let device = get(/databases/$(database)/documents/pos_devices/$(status.deviceId)).data;
+      let warehouse = get(/databases/$(database)/documents/warehouses/$(status.warehouseId)).data;
+      let access = get(/databases/$(database)/documents/user_access/$(request.auth.uid)).data;
+      return status.ownerUid == request.auth.uid
+        && request.time < status.expiresAt
+        && actor.status == 'ACTIVE' && actor.is_deleted == false
+        && device.status == 'ACTIVE' && device.get('is_deleted', false) != true
+        && device.warehouse_id == status.warehouseId
+        && warehouse.status == 'ACTIVE' && warehouse.type == 'STORE' && warehouse.get('is_deleted', false) != true
+        && access.is_deleted == false
+        && access.active_version_id is string && access.active_version_id.size() > 0
+        && (access.is_global_admin == true || posPaymentWatchGrant(access, status.warehouseId));
+    }
+    function posPaymentWatchGrant(access, warehouseId) {
+      let grant = get(/databases/$(database)/documents/user_access/$(request.auth.uid)/versions/$(access.active_version_id)/facilities/$(warehouseId)).data;
+      return grant.is_deleted == false
+        && grant.user_id == request.auth.uid && grant.facility_id == warehouseId
+        && grant.access_version_id == access.active_version_id && grant.access_version == access.access_version
+        && (grant.permissions.get('pos.login', false) == true || grant.permissions.get('*', false) == true);
+    }
+    match /pos_payment_status/{subscriptionId} {
+      allow get: if request.auth != null && posPaymentWatchAllowed();
+      allow list, create, update, delete: if false;
+    }
+    match /pos_payment_checks/{orderCode} {
+      allow read, write: if false;
+    }
+    // END POS PAYMENT REALTIME
+
     function signedIn() {
       return request.auth != null
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
@@ -811,10 +846,30 @@ service cloud.firestore {
       allow create, delete: if false;
     }
     match /notification_dispatches/{docId} {
+      // Payroll bodies live in separate, server-encrypted storage.
       allow read: if isSystemAdmin()
         || (signedIn() && resource.data.created_by == request.auth.uid);
       allow write: if false;
     }
+    match /payroll_email_jobs/{docId} {
+      allow read: if hasResourceFacility('facility_id', 'notifications.payroll.send')
+        && resource.data.created_by == request.auth.uid;
+      allow write: if false;
+      match /items/{itemId} { allow read, write: if false; }
+    }
+    match /payroll_catalog/{docId} {
+      // Only a revision signal; actual template/signature content is authorized by the API.
+      allow read: if signedIn() && docId == 'version';
+      allow write: if false;
+    }
+    match /payroll_email_sent_records/{docId} {
+      allow read: if hasResourceFacility('facility_id', 'notifications.payroll.history.read');
+      allow write: if false;
+    }
+    match /payroll_email_drafts/{docId} { allow read, write: if false; }
+    match /payroll_email_templates/{docId} { allow read, write: if false; }
+    match /email_signatures/{docId} { allow read, write: if false; }
+    match /payroll_session_receipts/{docId} { allow read, write: if false; }
     match /notification_push_tokens/{docId} {
       allow read: if signedIn() && resource.data.user_id == request.auth.uid;
       allow create: if signedIn() && request.resource.data.user_id == request.auth.uid;
