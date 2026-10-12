@@ -1,6 +1,6 @@
 # Bảng công và lương: bàn giao P0–P7
 
-Đã triển khai mã nguồn và chạy P8 kiểm thử không gửi email thật: 57 test PASS. Xem [báo cáo](./payroll-email-test-results.md) về phạm vi và giới hạn. Chưa rollout/deploy production.
+Đã triển khai mã nguồn và chạy P8 kiểm thử không gửi email thật. Xem [báo cáo](./payroll-email-test-results.md) về phạm vi và giới hạn. Production đã rollout ngày 12/10/2026 tại SHA `3bbac2f1`; xem [bàn giao production](./payroll-production-rollout-2026-10-12.md) về tài nguyên, kiểm chứng không gửi email và phần CI backend cần kết nối lại.
 
 ## Điểm vào và luồng dữ liệu
 
@@ -70,4 +70,4 @@ Worker production:
 
 Đã build shared-types/backend, typecheck backend/frontend, kiểm tra whitespace và chạy các suite unit, API, emulator, rules, dispatcher, browser/E2E. Next compile/static generation qua; standalone packaging bị Windows chặn symlink EPERM.
 
-Phạm vi test đã chạy nằm trong payroll-email-test-results.md. Còn chưa diễn tập đăng nhập thật, bucket IAM, queue/token Google thật, inbox rendering và rollout. Không thực hiện gửi email thật trong phiên kiểm thử này; không sửa môi trường production.
+Phạm vi test đã chạy nằm trong payroll-email-test-results.md. Rollout 12/10/2026 đã kiểm chứng queue/token Google thật và recovery bằng job không có người nhận; giữ khóa tương thích draft cũ. Chưa diễn tập phiên đăng nhập người dùng thực tế trên prod hoặc inbox rendering. Không gửi email thật trong kiểm thử.
