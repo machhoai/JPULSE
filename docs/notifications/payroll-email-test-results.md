@@ -2,6 +2,10 @@
 
 Ngày: 09/10/2026, Asia/Saigon. Phạm vi: P8 kiểm thử, không rollout.
 
+## Kiểm thử bổ sung 12/10/2026: code editor chữ ký và live preview
+
+22/22 unit, 19/19 browser, FE/BE typecheck và shared-types lint đạt. Kiểm tra số dòng/tô màu, nhập và sửa HTML cập nhật preview, select chữ ký đã lưu, reset sau lưu, readonly khi busy, mobile/Escape/quyền. Preview không gửi POST/PUT khi gõ, chặn script/event/URL/style không được phép và xử lý tên CSS trùng prototype. Đã xem ảnh desktop/mobile. Không deploy hoặc gửi email thật trong bước này.
+
 ## Kiểm thử bổ sung: nhắc bổ sung STK
 
 22/22 unit và 16/16 browser đạt, FE typecheck đạt. Các tình huống gồm thiếu/trống/không phải chữ số/toàn số 0/số âm/số thập phân/số không đọc chính xác/công thức thiếu cached result; số 0 đầu được giữ nguyên. HTML/text/MIME hiển thị “Cần bổ sung gấp”, cảnh báo có dòng/sheet/file, riêng lỗi STK không chặn người nhận mới import. Đã xem ảnh preview. Chỉ kiểm tra định dạng và khả năng đọc theo xác nhận của người dùng; không áp đặt độ dài hoặc xác minh với ngân hàng. Không gửi email thật.

@@ -1,5 +1,6 @@
 export const payrollEmailTranslations = {
   vi: {
+    signaturePreview: "Xem trước chữ ký", signaturePreviewEmpty: "Nhập HTML để xem trước chữ ký.", signatureCodeHint: "Tô màu cú pháp HTML, số dòng và gợi ý mã. Xem trước tự cập nhật khi nhập.",
     newSignature: "Thêm chữ ký mới", defaultSignatureHint: "Chữ ký mặc định hệ thống luôn có sẵn khi chọn chữ ký cho mẫu email.",
     title: "Bảng công & lương", previewEmpty: "Nhập dữ liệu và đối chiếu người nhận để xem trước email.", historyEmpty: "Chưa có email gửi thành công tại cửa hàng này.", template: "Mẫu nội dung", newTemplate: "Tạo mẫu mới", saveTemplate: "Lưu mẫu",
     name: "Tên", facility: "Cửa hàng", signature: "Chữ ký", defaultSignature: "Chữ ký mặc định hệ thống",
@@ -30,6 +31,7 @@ export const payrollEmailTranslations = {
     variables: "Biến: @name@, @tMonth@, @(tMonth-1)@, @tYear@, @(tYear-1)@",
   },
   zh: {
+    signaturePreview: "签名预览", signaturePreviewEmpty: "输入 HTML 以预览签名。", signatureCodeHint: "HTML 语法高亮、行号和代码提示。预览随输入自动更新。",
     newSignature: "添加新签名", defaultSignatureHint: "选择邮件模板签名时，系统默认签名始终可用。",
     title: "考勤与工资", previewEmpty: "请导入数据并核对收件人以预览邮件。", historyEmpty: "此门店暂无成功发送的邮件。", template: "内容模板", newTemplate: "新建模板", saveTemplate: "保存模板",
     name: "名称", facility: "门店", signature: "签名", defaultSignature: "系统默认签名", signatures: "签名管理",

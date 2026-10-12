@@ -224,6 +224,60 @@ test("PAY-09 UI custom named signature selectable and rendered exactly once",asy
  await expect(frame.getByText("QA default signature")).toHaveCount(0);
 });
 
+test("PAY-09 code editor: HTML highlighting, live preview, saved selection and reset",async({page})=>{
+ const qa=await setup(page);await page.getByRole("button",{name:"Quản lý chữ ký",exact:true}).click();
+ const manager=page.getByRole("dialog",{name:"Quản lý chữ ký",exact:true});
+ const code=manager.getByRole("textbox",{name:"Nội dung HTML",exact:true});
+ await expect(code).toBeVisible();await expect(manager.locator(".cm-lineNumbers")).toBeVisible();
+ const html='<table role="presentation"><tbody>\n<tr><td style="color:#123456;padding:8px"><strong>QA Live Signature</strong></td></tr>\n</tbody></table>';
+ await code.fill(html);
+ const preview=page.frameLocator('iframe[title="Xem trước chữ ký"]');
+ await expect(preview.getByText("QA Live Signature",{exact:true})).toBeVisible();
+ await expect(preview.locator("td")).toHaveCSS("color","rgb(18, 52, 86)");
+ expect(await manager.locator(".cm-line span").count()).toBeGreaterThan(0);
+ await code.press("ControlOrMeta+End");await page.keyboard.insertText('\n<p>QA updated live</p>');
+ await expect(preview.getByText("QA updated live",{exact:true})).toBeVisible();
+ expect(qa.requests.filter(r=>r.method==="POST"||r.method==="PUT")).toEqual([]);
+ await page.setViewportSize({width:1280,height:900});await manager.screenshot({path:"../../.tmp/email-signatures-code-desktop.png"});
+ await manager.getByLabel("Tên",{exact:true}).fill("QA Code Signature");
+ await manager.getByRole("button",{name:"Lưu",exact:true}).click();
+ await expect(manager.getByLabel("Tên",{exact:true})).toHaveValue("");
+ await expect(manager.getByText("Nhập HTML để xem trước chữ ký.",{exact:true})).toBeVisible();
+ await manager.getByRole("combobox",{name:"Chữ ký",exact:true}).selectOption(qa.state.signatures[0].id);
+ await expect(code).toContainText("QA updated live");await expect(preview.getByText("QA updated live",{exact:true})).toBeVisible();
+});
+
+test("PAY-09 signature preview: scripts, events, unsafe links/styles are blocked",async({page})=>{
+ const qa=await setup(page);await page.getByRole("button",{name:"Quản lý chữ ký",exact:true}).click();
+ const manager=page.getByRole("dialog",{name:"Quản lý chữ ký",exact:true});
+ const code=manager.getByRole("textbox",{name:"Nội dung HTML",exact:true});
+ await code.fill('<script>window.parent.__signatureExecuted=true</script><p onclick="window.parent.__signatureExecuted=true">QA Safe Preview</p><a href="javascript:alert(1)">QA Link</a><div style="color:#123456;background-image:url(https://blocked.invalid/x);position:fixed;constructor:boom;__proto__:boom">QA Styled</div><iframe src="https://blocked.invalid/"></iframe><form action="https://blocked.invalid/"><input name="secret"></form>');
+ const preview=page.frameLocator('iframe[title="Xem trước chữ ký"]');
+ await expect(preview.getByText("QA Safe Preview",{exact:true})).toBeVisible();
+ await expect(preview.locator("script,iframe,form,input,[onclick]")).toHaveCount(0);
+ await expect(preview.getByText("QA Link",{exact:true})).not.toHaveAttribute("href");
+ await expect(preview.getByText("QA Styled",{exact:true})).toHaveCSS("position","static");
+ await expect(preview.getByText("QA Styled",{exact:true})).toHaveCSS("background-image","none");
+ await expect(preview.getByText("QA Styled",{exact:true})).toHaveCSS("color","rgb(18, 52, 86)");
+ expect(await page.evaluate(()=>window.__signatureExecuted)).toBeUndefined();
+ await expect(code).toContainText("onclick");
+ expect(qa.requests.filter(r=>r.method==="POST"||r.method==="PUT")).toEqual([]);
+});
+
+test("PAY-09 code editor becomes read-only while signature is saving",async({page})=>{
+ await setup(page);await page.getByRole("button",{name:"Quản lý chữ ký",exact:true}).click();
+ const manager=page.getByRole("dialog",{name:"Quản lý chữ ký",exact:true});
+ const code=manager.getByRole("textbox",{name:"Nội dung HTML",exact:true});
+ await manager.getByLabel("Tên",{exact:true}).fill("QA Busy Signature");await code.fill("<p>QA Busy Preview</p>");
+ await expect(page.frameLocator('iframe[title="Xem trước chữ ký"]').getByText("QA Busy Preview")).toBeVisible();
+ let release;const gate=new Promise(resolve=>{release=resolve;});
+ await page.route("**/signatures/*",async route=>{await gate;await route.fallback();});
+ await manager.getByRole("button",{name:"Lưu",exact:true}).click();
+ await expect(code).toHaveAttribute("contenteditable","false");await expect(code).toHaveAttribute("aria-disabled","true");
+ release();await expect(manager.getByLabel("Tên",{exact:true})).toHaveValue("");
+ await expect(code).toHaveAttribute("contenteditable","true");
+});
+
 test("PAY-09 signature manager: header modal, Escape/focus, mobile width and revoked access",async({page})=>{
  await setup(page);
  const trigger=page.getByRole("button",{name:"Quản lý chữ ký",exact:true});
@@ -236,6 +290,8 @@ test("PAY-09 signature manager: header modal, Escape/focus, mobile width and rev
  await page.setViewportSize({width:390,height:844});
  await trigger.click();await expect(manager).toBeVisible();
  await expect(manager.getByLabel("Tên",{exact:true})).toBeVisible();
+ await manager.getByRole("textbox",{name:"Nội dung HTML",exact:true}).fill('<p style="color:#123456">QA Mobile Signature</p>');
+ await expect(page.frameLocator('iframe[title="Xem trước chữ ký"]').getByText("QA Mobile Signature")).toBeVisible();
  const bounds=await manager.boundingBox();expect(bounds.x).toBeGreaterThanOrEqual(0);expect(bounds.x+bounds.width).toBeLessThanOrEqual(390);
  expect(await manager.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
  await page.screenshot({path:"../../.tmp/email-signatures-mobile.png"});
