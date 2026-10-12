@@ -1,7 +1,7 @@
+import { isPayrollBankAccountValid } from './payrollBankAccount.js';
+import type { PayrollBlock, PayrollComposer, PayrollDeltaOp, PayrollRecipient } from './payrollEmail.js';
 import { PAYROLL_FIELDS, PAYROLL_BLOCK_LABELS } from './payrollEmailFields.js';
 import type { PayrollField } from './payrollEmailFields.js';
-import type { PayrollBlock, PayrollComposer, PayrollDeltaOp, PayrollRecipient } from './payrollEmail.js';
-import { isPayrollBankAccountValid } from './payrollBankAccount.js';
 
 export const escapePayrollHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g,
   (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
