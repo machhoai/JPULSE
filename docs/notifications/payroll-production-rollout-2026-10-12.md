@@ -27,11 +27,11 @@
 - [x] Xác minh project frontend, commit, môi trường và cấu hình deploy Vercel.
 - [x] Chuẩn bị secret V1 phù hợp với dữ liệu đã mã hóa; giữ nguyên các phiên bản khóa có dữ liệu.
 - [x] Tạo service account payroll và IAM tối thiểu; queue giới hạn concurrency/rate.
-- [ ] Bổ sung cấu hình Cloud Run, deploy rules/indexes đúng project, kiểm tra indexes sẵn sàng.
-- [ ] Deploy backend/frontend đúng commit; lưu thông tin rollback.
-- [ ] Tạo recovery scheduler OIDC; kiểm tra xác thực khi không có đợt gửi đang chạy.
-- [ ] Kiểm tra read-only/nháp/preview/export và quyền; không gọi gửi mẫu hoặc tạo job gửi thật.
-- [ ] Ghi kết quả thực tế, phần chưa xác minh và bàn giao.
+- [x] Bổ sung cấu hình Cloud Run, deploy rules/indexes đúng project, kiểm tra indexes sẵn sàng.
+- [x] Deploy backend/frontend đúng commit; lưu thông tin rollback.
+- [x] Tạo recovery scheduler OIDC; kiểm tra xác thực khi không có đợt gửi đang chạy.
+- [x] Kiểm tra read-only, tương thích nháp mã hóa, biên xác thực API và worker; không gọi gửi mẫu hoặc tạo job gửi thật.
+- [x] Ghi kết quả thực tế, phần chưa xác minh và bàn giao.
 
 ## Ràng buộc kiểm thử
 
@@ -48,3 +48,30 @@ Người dùng đã xác nhận triển khai hạ tầng tính phí theo sử d�
 - PR triển khai: https://github.com/machhoai/JPULSE/pull/2 .
 - Live Firestore có khối POS payment realtime ngoài repo; đã đưa khối này vào rules feature để giữ hành vi production khi bổ sung payroll.
 - Metadata: có một draft payroll và không có job payroll đang chờ tại thời điểm kiểm tra. Chưa bật Scheduler.
+
+## Kết quả rollout
+
+- PR #2 và #3 đã merge; commit production cuối: `3bbac2f144c8795705b69b2a05bcbe2ac2f4eef4`.
+- CI production GitHub run `38197588219`: SUCCESS. Hai lỗi import/order trong renderer đã được sửa, `lint:employee-contracts` local đạt.
+- Backend Cloud Build `69b3a63a-6255-4b5e-8d14-7ee423ef5601`: SUCCESS; source archive chỉ chứa file đã commit cần cho Dockerfile backend, không chứa env local.
+- Image backend có SHA trên; digest `sha256:a2ebe54a9f36277b1d3d70b8eef4481d8aa164e9483578a4054ff91ecca90057`.
+- Revision cuối `be-wms-00318-f26`, Ready, 100% traffic. Giữ toàn bộ cấu hình cũ; xác nhận riêng năm biến payroll và secret reference version 1 sau deploy.
+- Frontend Vercel deployment `dpl_8974PXrZuuXmsCJ487ufoSTJ2coL`: READY, production, cùng SHA; alias `erp.joyworldcityfuns.vn` đã trỏ deployment này.
+- Firestore ruleset mới `ed967fa2-fd7e-4af1-a54a-c58942bba927`, giữ rules POS hiện hữu. Hai index payroll đã tạo thành công (history và drafts); không xóa indexes khác.
+- Scheduler `payroll-email-recovery`: ENABLED, mỗi 5 phút, OIDC đúng service account/audience, timeout 120s.
+- Kiểm tra task trỏ job ID không tồn tại: HTTP 200 trên revision cuối, không có người nhận/không tạo email lịch sử. Recovery được kiểm tra lúc không có pending job: HTTP 200 cả chạy thủ công và lượt định kỳ 03:10 UTC (10:10 Asia/Saigon).
+- API catalog không có đăng nhập trả 401; trang `/notification` trả 200. Tương thích khóa với draft hiện có được xác minh trong bộ nhớ, không log dữ liệu.
+- Không tự cấp thêm quyền cho nhân viên; role có thể chọn các quyền payroll/chữ ký mới trong UI. Chưa kiểm tra bằng phiên đăng nhập thực tế trên prod hoặc gửi/inbox thật. Luồng nháp/preview/export có bằng chứng emulator/browser đã ghi trong báo cáo test.
+- Lỗi truyền env qua PowerShell ở revision setup đã được phát hiện bởi smoke test OIDC và sửa bằng tham số được quote đúng; không có dữ liệu mới bị mã hóa bằng khóa sai.
+
+## CI backend cần kết nối lại
+
+Cloud Build trigger cũ vẫn gắn `machhoai/bduck-system`, trong khi repo đã đổi tên thành `JPULSE`. Không có build tự động khi merge; cập nhật repo bằng CLI/API bị INVALID_ARGUMENT/FAILED_PRECONDITION. Rollout hiện tại đã hoàn tất bằng Cloud Build source archive. Cần kết nối lại repo GitHub trong Cloud Build Console rồi gắn trigger để các lần push sau tự deploy backend. Không thay đổi/xóa trigger cũ hoặc mở rộng quyền GitHub App để né lỗi.
+
+## Rollback và vận hành
+
+- Trước rollback, pause queue `payroll-emails` và scheduler `payroll-email-recovery`; kiểm tra job đang xử lý để tránh gửi lặp.
+- Revision backend trước payroll: `be-wms-00315-hww`; revision setup còn image cũ: `be-wms-00316-rnc`.
+- Frontend trước payroll: Vercel `dpl_FktgSKv96yBYvb8L13HwZ5GXMAfW` (SHA `8223f3a5`).
+- Giữ secret V1 và dữ liệu mã hóa; không xóa/ghi đè khóa khi rollback. Snapshot release rules trước rollout đã lưu dưới `.tmp` tại máy triển khai; ruleset trước là `a9f31595-350f-4014-b616-0b82bb1ba8d0`.
+- Chi phí mới đã được người dùng chấp thuận: Scheduler/Secret Manager ngoài free tier theo giá ở trên, cùng mức sử dụng Tasks, build, Cloud Run, Firestore, Storage/network. Không nâng gói Vercel/Brevo; không cam kết tổng hóa đơn cố định.
