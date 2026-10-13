@@ -4,7 +4,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { X, Download } from "lucide-react";
 import type { PayrollHistoryEntry } from "@bduck/shared-types";
 import type { PayrollText } from "@/lib/i18n/payrollEmailTranslations";
-import { payrollDeliveryReason } from "@/utils/payrollHistory";
+import { payrollDeliveryReason, payrollDeliveryFeedback } from "@/utils/payrollHistory";
 import PayrollHistoryStatusBadge from "./PayrollHistoryStatusBadge";
 import { payrollApi } from "@/api/payrollEmailApi";
 import { db } from "@/lib/firebase";
@@ -28,7 +28,8 @@ export default function PayrollHistoryDetail({ record: initial, state, text, lan
   }, [initial.id, initial.facility_id, lang, text.historyLiveError]);
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => { const element = dialog.current; element?.showModal(); return () => element?.close(); }, []);
-  const reason = record.delivery_reason;
+  const feedback = payrollDeliveryFeedback(record.delivery_status);
+  const reason = feedback ? record.delivery_reason : null;
   return <dialog ref={dialog} onCancel={close} aria-labelledby="payroll-history-detail-title" className="m-auto max-h-[90dvh] w-[90%] max-w-[1040px] overflow-y-auto rounded-2xl border border-border-subtle bg-surface-elevated p-4 text-text-primary shadow-xl backdrop:bg-black/30">
     <header className="flex items-center justify-between gap-3 border-b border-border-soft pb-3">
       <h3 id="payroll-history-detail-title" className="text-base font-semibold">{text.historyDetail}</h3>
@@ -43,10 +44,10 @@ export default function PayrollHistoryDetail({ record: initial, state, text, lan
     </div>
     {error && <p role="alert" className="mb-3 rounded-lg bg-error-bg p-3 text-sm text-error-text">{error}</p>}
     {record.error && <div role="alert" className="mb-3 rounded-lg bg-warning-bg p-3 text-sm text-warning-text">{record.error[lang]}</div>}
-    {reason && <section className="mb-3 space-y-2 rounded-lg border border-error-border bg-error-bg p-3">
-      <h4 className="text-sm font-semibold text-error-text">{text.historyDeliveryError}</h4>
-      <p className="text-sm text-error-text">{payrollDeliveryReason(reason, lang)}</p>
-      <details><summary className="cursor-pointer text-xs text-error-text">{text.historyRawError}</summary><pre className="mt-2 whitespace-pre-wrap break-words font-mono text-xs text-error-text">{reason}</pre></details>
+    {reason && <section className={`mb-3 space-y-2 rounded-lg border p-3 ${feedback === "DEFERRED" ? "border-warning-border bg-warning-bg text-warning-text" : "border-error-border bg-error-bg text-error-text"}`}>
+      <h4 className="text-sm font-semibold">{feedback === "DEFERRED" ? text.historyDeliveryDeferred : text.historyDeliveryError}</h4>
+      <p className="text-sm">{payrollDeliveryReason(reason, lang)}</p>
+      <details><summary className="cursor-pointer text-xs">{feedback === "DEFERRED" ? text.historyRawDeliveryInfo : text.historyRawError}</summary><pre className="mt-2 whitespace-pre-wrap break-words font-mono text-xs">{reason}</pre></details>
     </section>}
     <iframe title={text.historyContent} sandbox="" referrerPolicy="no-referrer" className="h-96 w-full rounded-lg border border-border-subtle bg-white" srcDoc={record.snapshot.html} />
     <PayrollHistoryResend key={record.id} record={record} state={state} />

@@ -333,6 +333,17 @@ function historyFixtures(){
  return[make("qa-ok","QA Delivered","2026-10-12T01:00:00Z","DELIVERED"),make("qa-quota","QA Quota","2026-10-12T00:01:00Z","SOFT_BOUNCE","SENT","452 4.2.2 The recipient's inbox is out of storage space. OverQuotaTemp"),make("qa-pending","QA Pending","2026-10-11T17:30:00Z","PENDING"),make("qa-smtp","QA SMTP","2026-10-11T16:59:00Z","PENDING","FAILED")];
 }
 
+test("PAY-HISTORY hotfix: delivered reason sent is informational, deferred warns and bounce still shows error",async({page})=>{
+ const qa=await setup(page);qa.state.history=historyFixtures();qa.state.history[0].delivery_reason="sent";
+ qa.state.history[2].delivery_status="DEFERRED";qa.state.history[2].delivery_reason="Temporary recipient server delay";await page.reload();
+ await page.getByRole("button").filter({hasText:"QA Delivered"}).click();let detail=page.getByRole("dialog");
+ await expect(detail.getByText("Thành công",{exact:true})).toBeVisible();await expect(detail.getByText("Lỗi giao thư",{exact:true})).toHaveCount(0);await expect(detail.getByText("Thông báo lỗi gốc",{exact:true})).toHaveCount(0);
+ await page.keyboard.press("Escape");await page.getByRole("button").filter({hasText:"QA Pending"}).click();detail=page.getByRole("dialog");
+ await expect(detail.getByText("Thư đang trì hoãn giao",{exact:true})).toBeVisible();await expect(detail.getByText("Lỗi giao thư",{exact:true})).toHaveCount(0);await expect(detail.getByText("Thông báo giao thư gốc",{exact:true})).toBeVisible();
+ await page.keyboard.press("Escape");await page.getByRole("button").filter({hasText:"QA Quota"}).click();detail=page.getByRole("dialog");await expect(detail.getByText("Lỗi giao thư",{exact:true})).toBeVisible();
+ expect(qa.requests.some(r=>r.path.endsWith("/resend")||r.path.endsWith("/test")||r.path==="/jobs")).toBe(false);
+});
+
 test("PAY-RESEND UI: soft bounce alternate email confirmation and single background request",async({page})=>{
  const qa=await setup(page);qa.state.history=historyFixtures();await page.reload();
  await page.getByRole("button").filter({hasText:"QA Quota"}).click();const detail=page.getByRole("dialog");

@@ -1,5 +1,7 @@
 export const payrollEmailTranslations = {
   vi: {
+    historyDeliveryDeferred: "Thư đang trì hoãn giao",
+    historyRawDeliveryInfo: "Thông báo giao thư gốc",
     historyResend: "Gửi lại email",
     historyResendEmail: "Email nhận lần gửi lại",
     historyResendPending: "Email đang chờ kết quả giao thư. Chưa thể gửi lại để tránh gửi trùng.",
@@ -66,6 +68,8 @@ export const payrollEmailTranslations = {
     variables: "Biến: @name@, @tMonth@, @(tMonth-1)@, @tYear@, @(tYear-1)@",
   },
   zh: {
+    historyDeliveryDeferred: "邮件暂缓投递",
+    historyRawDeliveryInfo: "原始投递信息",
     historyResend: "重新发送邮件",
     historyResendEmail: "重发收件邮箱",
     historyResendPending: "邮件尚在等待投递结果，为避免重复发送暂不能重发。",

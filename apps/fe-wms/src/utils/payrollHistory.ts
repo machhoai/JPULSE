@@ -1,3 +1,10 @@
+import type { PayrollDeliveryStatus } from "@bduck/shared-types";
+
+export function payrollDeliveryFeedback(status: PayrollDeliveryStatus) {
+  if (status === "DEFERRED") return "DEFERRED";
+  return ["SOFT_BOUNCE", "HARD_BOUNCE", "BLOCKED", "INVALID", "ERROR"].includes(status) ? "ERROR" : null;
+}
+
 export function payrollHistoryDay(value: string) {
   const parts = new Intl.DateTimeFormat("en", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(value));
   const get = (type: string) => parts.find(p => p.type === type)?.value || "";
