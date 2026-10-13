@@ -5,7 +5,7 @@ import { simpleParser } from "mailparser";
 import { composer, person, clock, workbookFixture } from "./fixtures.mjs";
 import { readPayrollWorkbook, detectPayrollMapping, parsePayrollRows, mergePayrollData, normalizePayrollName } from "../../../fe-wms/src/utils/payrollExcelImport.ts";
 import { payrollEligibleIds, resolvePayrollMatch } from "../../../fe-wms/src/utils/payrollRecipients.ts";
-import { payrollVariables, renderPayrollEmail, formatPayrollNumber, isPayrollBankAccountValid, payrollHistoryStatus, payrollHistoryDateBounds, payrollHistoryResendPolicy } from "@bduck/shared-types";
+import { payrollVariables, renderPayrollEmail, formatPayrollNumber, isPayrollBankAccountValid, payrollHistoryStatus, payrollHistoryDateBounds, payrollHistoryResendPolicy, payrollTrackingPatch } from "@bduck/shared-types";
 import { composerSchema, recipientSchema, payrollId } from "../../dist/services/payroll/payrollSchemas.js";
 import { sanitizePayrollSignature } from "../../dist/services/payroll/payrollHtml.js";
 import { createPayrollMime } from "../../dist/services/payroll/payrollMimeService.js";
@@ -28,6 +28,13 @@ test("PAY-HISTORY: delivered is success, SMTP accepted/unknown remains pending, 
 test("PAY-HISTORY: date bounds include Vietnam midnight and exclude the next day",()=>{
  const b=payrollHistoryDateBounds({from:"2026-10-12",to:"2026-10-12"});
  assert.equal(b.from.toISOString(),"2026-10-11T17:00:00.000Z");assert.equal(b.until.toISOString(),"2026-10-12T17:00:00.000Z");
+});
+test("PAY-TRACKING: first/last event timestamps independently handle older events and proxy tracking",()=>{
+ assert.deepEqual(payrollTrackingPatch('opened',200,{first_opened_at:100,last_opened_at:150}),{last_opened_at:200});
+ assert.deepEqual(payrollTrackingPatch('unique_opened',50,{first_opened_at:100,last_opened_at:200}),{first_opened_at:50});
+ assert.deepEqual(payrollTrackingPatch('proxy_open',100,{}),{first_proxy_opened_at:100,last_proxy_opened_at:100});
+ assert.deepEqual(payrollTrackingPatch('opened',100,{first_opened_at:100,last_opened_at:100}),{});
+ assert.deepEqual(payrollTrackingPatch('__proto__',100,{}),{});
 });
 test("PAY-RESEND: policy permits failures/delivered, rejects pending and requires another rejected address",()=>{
  for(const record of [{},{submission_status:"SENT"},{submission_status:"UNKNOWN"},{delivery_status:"DEFERRED"}])assert.equal(payrollHistoryResendPolicy(record).allowed,false);

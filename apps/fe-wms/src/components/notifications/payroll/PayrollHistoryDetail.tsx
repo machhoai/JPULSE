@@ -10,6 +10,7 @@ import { payrollApi } from "@/api/payrollEmailApi";
 import { db } from "@/lib/firebase";
 import type { PayrollComposerState } from "@/hooks/usePayrollComposer";
 import PayrollHistoryResend from "./PayrollHistoryResend";
+import PayrollHistoryTracking from "./PayrollHistoryTracking";
 
 interface DetailProps { record: PayrollHistoryEntry; state: PayrollComposerState; text: PayrollText; lang: "vi" | "zh"; close: () => void; download?: () => void; busy: boolean }
 export default function PayrollHistoryDetail({ record: initial, state, text, lang, close, download, busy }: DetailProps) {
@@ -43,6 +44,7 @@ export default function PayrollHistoryDetail({ record: initial, state, text, lan
       <p className="text-xs text-text-muted">{text.historySubmission}: {record.submission_status === "SENT" || !record.submission_status ? text.historyAccepted : record.submission_status === "FAILED" ? text.failed : record.submission_status === "UNKNOWN" ? text.unknown : text.processing}</p>
     </div>
     {error && <p role="alert" className="mb-3 rounded-lg bg-error-bg p-3 text-sm text-error-text">{error}</p>}
+    <PayrollHistoryTracking record={record} text={text} lang={lang} />
     {record.error && <div role="alert" className="mb-3 rounded-lg bg-warning-bg p-3 text-sm text-warning-text">{record.error[lang]}</div>}
     {reason && <section className={`mb-3 space-y-2 rounded-lg border p-3 ${feedback === "DEFERRED" ? "border-warning-border bg-warning-bg text-warning-text" : "border-error-border bg-error-bg text-error-text"}`}>
       <h4 className="text-sm font-semibold">{feedback === "DEFERRED" ? text.historyDeliveryDeferred : text.historyDeliveryError}</h4>

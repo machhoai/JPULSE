@@ -344,6 +344,17 @@ test("PAY-HISTORY hotfix: delivered reason sent is informational, deferred warns
  expect(qa.requests.some(r=>r.path.endsWith("/resend")||r.path.endsWith("/test")||r.path==="/jobs")).toBe(false);
 });
 
+test("PAY-TRACKING UI: sent/received/opened milestones and separate proxy label preserve bounce status",async({page})=>{
+ const qa=await setup(page);qa.state.history=historyFixtures();qa.state.history[0].tracking={sent_at:"2026-10-12T01:00:00Z",delivered_at:"2026-10-12T01:00:01Z",first_opened_at:"2026-10-12T01:02:00Z",last_opened_at:"2026-10-12T02:00:00Z"};
+ qa.state.history[1].tracking={first_proxy_opened_at:"2026-10-12T01:03:00Z"};await page.reload();
+ const row=page.getByRole("button").filter({hasText:"QA Delivered"});await expect(row).toContainText("Đã mở");await expect(row).toContainText("Đã nhận");await row.click();
+ let detail=page.getByRole("dialog"),tracking=detail.getByRole("region",{name:"Các mốc gửi, nhận và mở email"});await expect(tracking).toContainText("08:02:00");await expect(tracking).toContainText("Lượt mở gần nhất");
+ await page.keyboard.press("Escape");await page.getByRole("button").filter({hasText:"QA Quota"}).click();detail=page.getByRole("dialog");tracking=detail.getByRole("region",{name:"Các mốc gửi, nhận và mở email"});
+ await expect(detail.getByText("Soft bounce",{exact:true})).toBeVisible();await expect(tracking).toContainText("Mở qua proxy");await expect(tracking).toContainText("Chưa ghi nhận");
+ expect(qa.requests.some(r=>r.path.endsWith("/resend")||r.path.endsWith("/test")||r.path==="/jobs")).toBe(false);
+ await detail.screenshot({path:"../../.tmp/payroll-history-tracking.png"});
+});
+
 test("PAY-RESEND UI: soft bounce alternate email confirmation and single background request",async({page})=>{
  const qa=await setup(page);qa.state.history=historyFixtures();await page.reload();
  await page.getByRole("button").filter({hasText:"QA Quota"}).click();const detail=page.getByRole("dialog");

@@ -1,4 +1,4 @@
-import { payrollHistoryStatus, type PayrollHistoryFilters, type PayrollSnapshot, type PayrollDeliveryStatus, type PayrollItemStatus } from "@bduck/shared-types";
+import { payrollHistoryStatus, type PayrollHistoryFilters, type PayrollSnapshot, type PayrollDeliveryStatus, type PayrollItemStatus, type PayrollTrackingField } from "@bduck/shared-types";
 import type { AuthorizationService } from "../authorization/index.js";
 import { findPayrollDrafts, findPayrollSentPage, findPayrollSentRecord } from "../../repositories/payrollQueryRepository.js";
 import { assertPayroll } from "./payrollAccess.js";
@@ -27,9 +27,10 @@ export async function fetchPayrollHistory(facility: string, after: string | unde
   return { records: await Promise.all(entries.map(hydrateHistory)), cursor: next };
 }
 async function hydrateHistory(entry: Awaited<ReturnType<typeof findPayrollSentPage>>["entries"][number]) {
-    const metadata = entry as typeof entry & { submission_status?: PayrollItemStatus; delivery_status?: PayrollDeliveryStatus; delivery_payload_path?: string; delivery_updated_at?: { toDate(): Date }; attempt?: number; error?: { vi: string; zh: string } | null };
+    const metadata = entry as typeof entry & { tracking?: Partial<Record<PayrollTrackingField, { toDate(): Date }>>; submission_status?: PayrollItemStatus; delivery_status?: PayrollDeliveryStatus; delivery_payload_path?: string; delivery_updated_at?: { toDate(): Date }; attempt?: number; error?: { vi: string; zh: string } | null };
     const delivery = metadata.delivery_payload_path ? await readPayrollPayload<{ reason: string }>(metadata.delivery_payload_path, "delivery:" + entry.id + ":" + entry.facility_id) : null;
     return { ...entry, submission_status: metadata.submission_status || "SENT", delivery_status: metadata.delivery_status || "PENDING",
+      tracking: Object.fromEntries(Object.entries(metadata.tracking || {}).map(([field, value]) => [field, value.toDate().toISOString()])),
       delivery_updated_at: metadata.delivery_updated_at?.toDate?.().toISOString() || null, attempt: metadata.attempt || 1,
       error: metadata.error || null, delivery_reason: delivery?.reason || null,
       snapshot: await readPayrollPayload<PayrollSnapshot>(entry.payload_path, "snapshot:" + entry.job_id + ":" + entry.recipient_id + ":" + entry.facility_id) };

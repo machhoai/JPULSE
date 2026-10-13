@@ -163,3 +163,25 @@ test("PAY-HISTORY: failed SMTP remains visible with immutable content and error"
  const response=await request(s,"/history?facility_id="+s.facility+"&status=ERROR");assert.equal(response.status,200);const page=(await response.json()).data;
  assert.equal(page.records.length,1);assert.equal(page.records[0].submission_status,"FAILED");assert.ok(page.records[0].error.vi.includes("535"));assert.ok(page.records[0].snapshot.html);resetSmtp();
 });
+
+test("PAY-TRACKING: sent/delivered/opened timestamps, duplicate and out-of-order opens, bounce stays visible",async()=>{
+ const s=await sentScenario();const record=s.history.docs[0];const t=Math.floor(Date.now()/1000);
+ const event={email:s.people[0].email,"X-Mailin-custom":"payroll_history:"+record.id};
+ for(const [type,stamp] of [["request",t],["delivered",t+1],["opened",t+5],["unique_opened",t+2],["opened",t+5]])assert.equal((await webhookRequest({...event,event:type,ts_event:stamp})).status,200);
+ const detail=(await(await request(s,"/history/"+record.id)).json()).data;
+ assert.equal(detail.delivery_status,"DELIVERED");assert.equal(detail.tracking.sent_at,new Date(t*1000).toISOString());
+ assert.equal(detail.tracking.delivered_at,new Date((t+1)*1000).toISOString());assert.equal(detail.tracking.first_opened_at,new Date((t+2)*1000).toISOString());assert.equal(detail.tracking.last_opened_at,new Date((t+5)*1000).toISOString());
+ const events=await db.collection("payroll_delivery_events").where("record_id","==",record.id).get();assert.equal(events.size,4);
+ await webhookRequest({...event,event:"soft_bounce",ts_event:t+6,reason:"452 4.2.2 mailbox full"});await webhookRequest({...event,event:"opened",ts_event:t+7});
+ const after=(await(await request(s,"/history/"+record.id)).json()).data;assert.equal(after.delivery_status,"SOFT_BOUNCE");assert.equal(after.delivery_reason,"452 4.2.2 mailbox full");assert.equal(after.tracking.last_opened_at,new Date((t+7)*1000).toISOString());
+ assert.equal(smtp.calls.length,1);
+});
+
+test("PAY-TRACKING: proxy opens do not count as actual opens or delivered, wrong recipient ignored",async()=>{
+ const s=await sentScenario();const record=s.history.docs[0];const t=Math.floor(Date.now()/1000);
+ const event={email:s.people[0].email,"X-Mailin-custom":"payroll_history:"+record.id};
+ await webhookRequest({...event,event:"proxy_open",ts_epoch:(t+5)*1000});await webhookRequest({...event,event:"unique_proxy_open",ts_event:t+2});
+ await webhookRequest({...event,event:"opened",email:"other@example.invalid",ts_event:t+6});
+ const detail=(await(await request(s,"/history/"+record.id)).json()).data;assert.equal(detail.delivery_status,"PENDING");assert.equal(detail.tracking.first_opened_at,undefined);
+ assert.equal(detail.tracking.first_proxy_opened_at,new Date((t+2)*1000).toISOString());assert.equal(detail.tracking.last_proxy_opened_at,new Date((t+5)*1000).toISOString());assert.equal(smtp.calls.length,1);
+});
