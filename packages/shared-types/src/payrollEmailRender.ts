@@ -2,6 +2,7 @@ import { isPayrollBankAccountValid } from './payrollBankAccount.js';
 import type { PayrollBlock, PayrollComposer, PayrollDeltaOp, PayrollRecipient } from './payrollEmail.js';
 import { PAYROLL_FIELDS, PAYROLL_BLOCK_LABELS } from './payrollEmailFields.js';
 import type { PayrollField } from './payrollEmailFields.js';
+import { payrollInlineHtml, payrollLinesHtml } from './payrollRichText.js';
 
 export const escapePayrollHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -59,8 +60,9 @@ function textRuns(ops: PayrollDeltaOp[], person: PayrollRecipient, clock: string
         start: m.index!, end: m.index! + m[0].length,
         value: payrollVariables(m[0], person.name, clock)
     }));
-    let offset = 0;
-    return ops.map(op => {
+    let offset = 0, line = '';
+    const lines: { html: string; attributes: NonNullable<PayrollDeltaOp['attributes']> }[] = [];
+    for (const op of ops) {
         const raw = typeof op.insert === 'string' ? op.insert : '';
         let text = '';
         for (let i = 0; i < raw.length; i++) {
@@ -69,14 +71,14 @@ function textRuns(ops: PayrollDeltaOp[], person: PayrollRecipient, clock: string
             if (!sub) text += raw[i]; else if (position === sub.start) text += sub.value;
         }
         offset += raw.length;
-        let html = escapePayrollHtml(text).replace(/\n/g, '<br>');
-        const a = op.attributes ?? {};
-        if (a.bold) html = `<strong>${html}</strong>`;
-        if (a.italic) html = `<em>${html}</em>`;
-        if (a.underline) html = `<u>${html}</u>`;
-        if (typeof a.link === 'string' && /^https?:\/\//i.test(a.link)) html = `<a href="${escapePayrollHtml(a.link)}">${html}</a>`;
-        return html;
-    }).join('');
+        const parts = text.split('\n');
+        parts.forEach((part, index) => {
+            line += payrollInlineHtml(part, op.attributes);
+            if (index < parts.length - 1) { lines.push({ html: line, attributes: op.attributes ?? {} }); line = ''; }
+        });
+    }
+    if (line) lines.push({ html: line, attributes: {} });
+    return payrollLinesHtml(lines);
 }
 export function renderPayrollEmail(composer: PayrollComposer, person: PayrollRecipient, clock: string, signatureHtml = '', signatureText = '') {
     const subject = payrollVariables(composer.subject, person.name, clock).replace(/[\r\n]/g, ' ');
@@ -87,8 +89,8 @@ export function renderPayrollEmail(composer: PayrollComposer, person: PayrollRec
         else { flush(); body += table(op.insert.payroll, composer, person); }
     }
     flush();
-    const html = `<!doctype html><html lang="vi"><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><style>@media(max-width:600px){.payroll-content{padding:12px!important}.payroll-table{font-size:12px!important}.payroll-table td,.payroll-table th{padding:6px!important}.payroll-attendance thead{display:none}.payroll-attendance tbody,.payroll-attendance tr,.payroll-attendance td{display:block}.payroll-attendance tr{margin-bottom:12px}.payroll-attendance .payroll-mobile-label{display:inline!important}}</style></head><body style="margin:0;color:#0f172a;font-family:Arial,sans-serif"><main class="payroll-content" style="padding:24px;background:white;line-height:1.6">${body}<footer style="margin-top:24px">${signatureHtml}</footer></main></body></html>`;
-    const text = body.replace(/<br\s*\/?\s*>/gi, '\n').replace(/<\/(td|th|tr|h2|section)>/gi, '\n')
+    const html = `<!doctype html><html lang="vi"><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><style>@media(max-width:600px){.payroll-content{padding:12px!important}.payroll-table{font-size:12px!important}.payroll-table td,.payroll-table th{padding:6px!important}.payroll-attendance thead{display:none}.payroll-attendance tbody,.payroll-attendance tr,.payroll-attendance td{display:block}.payroll-attendance tr{margin-bottom:12px}.payroll-attendance .payroll-mobile-label{display:inline!important}}</style></head><body style="margin:0;color:#0f172a;font-family:Arial,sans-serif"><main class="payroll-content" style="padding:24px;background:white;font-size:14px;line-height:1.6">${body}<footer style="margin-top:24px">${signatureHtml}</footer></main></body></html>`;
+    const text = body.replace(/<a href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, '$2 ($1)').replace(/<[ou]l[^>]*>/gi, '\n').replace(/<br\s*\/?\s*>/gi, '\n').replace(/<\/(td|th|tr|h[1-3]|section|p|li|blockquote)>/gi, '\n')
         .replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'") + '\n' + signatureText;
     return { subject, html, text };
 }

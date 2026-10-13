@@ -65,6 +65,16 @@ process.env.PAYROLL_BREVO_WEBHOOK_SECRET="qa-webhook-secret-only-local-32-charac
 const webhookRequest=body=>fetch(base+"/webhooks/brevo",{method:"POST",headers:{authorization:"Bearer "+process.env.PAYROLL_BREVO_WEBHOOK_SECRET,"content-type":"application/json"},body:JSON.stringify(body)});
 async function sentScenario(count=1){resetSmtp();const s=await scenario(count);const job=await jobs.createPayrollJob(s.request,s.actor,s.access);await prepare(job);await worker.processPayrollJob(job.id);const history=await db.collection("payroll_email_sent_records").where("job_id","==",job.id).get();return{...s,job,history};}
 
+test("PAY-EDITOR API: saved Quill formats and mailto query preserved through preview and SMTP mock",async()=>{
+ resetSmtp();const s=await scenario();const link='mailto:qa@example.invalid?subject='+encodeURIComponent('Phản hồi lương')+'&body='+encodeURIComponent('Chào kế toán');
+ const composer={...s.content,ops:[{insert:'Liên hệ',attributes:{link,font:'serif',size:'large',color:'#ff0000'}},{insert:'\n',attributes:{align:'center'}},{insert:'Một'},{insert:'\n',attributes:{list:'ordered'}}]};
+ const saved=await request(s,'/drafts/'+s.draft,'PUT',{template_id:s.template,name:'QA formats',composer,clock:'2026-10-13T00:00:00Z',revision:s.meta.revision,recipient_ids:s.people.map(p=>p.id)});assert.equal(saved.status,200);const meta=(await saved.json()).data;
+ assert.equal((await request(s,'/drafts/'+s.draft+'/recipients/'+s.people[0].id,'PUT',{...s.people[0],draft_revision:meta.revision})).status,200);
+ const preview=await request(s,'/drafts/'+s.draft+'/preview','POST',{person_id:s.people[0].id});assert.equal(preview.status,200);const email=(await preview.json()).data;
+ assert.ok(email.html.includes(link.replace(/&/g,'&amp;')));assert.ok(email.html.includes('font-size:1.5em'));assert.ok(email.html.includes('text-align:center'));assert.ok(email.html.includes('<ol'));assert.ok(email.text.includes(link));
+ const sent=await request(s,'/drafts/'+s.draft+'/test','POST',{person_id:s.people[0].id,email:'qa@example.invalid'});assert.equal(sent.status,200);assert.equal(smtp.calls.length,1);assert.equal(smtp.calls[0].htmlContent,email.html);assert.equal(smtp.calls[0].textContent,email.text);
+});
+
 test("PAY-RESEND legacy: missing attempt uses exact history ID, completed recipient can resend, real newer attempts still blocked",async()=>{
  const s=await sentScenario();const r=s.history.docs[0];const {FieldValue}=await import('firebase-admin/firestore');
  await r.ref.update({attempt:FieldValue.delete(),submission_status:FieldValue.delete(),delivery_status:"DELIVERED"});

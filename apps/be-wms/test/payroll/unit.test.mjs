@@ -183,6 +183,20 @@ test("PAY-07: employee data escaped, CRLF subject sanitized, malicious links exc
   const r=renderPayrollEmail(c,p,clock);assert.ok(!r.html.includes("<img src=x"));assert.ok(!r.html.includes('href="javascript:'));
   assert.ok(!/[\r\n]/.test(r.subject));
 });
+test("PAY-EDITOR: mailto subject/body survives HTML, text and MIME; unsafe protocols and header injection removed",async()=>{
+ const c=composer(),link='mailto:qa@example.invalid?subject='+encodeURIComponent('Phản hồi bảng lương 09/2026')+'&body='+encodeURIComponent('Chào kế toán\nTôi cần đối chiếu');
+ c.ops=[{insert:'Phản hồi',attributes:{link}},{insert:'\n'}];const rendered=renderPayrollEmail(c,person(),clock);
+ assert.ok(rendered.html.includes('href="'+link.replace(/&/g,'&amp;')+'"'));assert.ok(rendered.text.includes(link));
+ const mime=await createPayrollMime({...rendered,name:person().name,email:person().email,clock,recipient_id:person().id});const parsed=await simpleParser(mime);assert.ok(parsed.html.includes('subject='));assert.ok(parsed.html.includes('mailto:qa@example.invalid'));assert.ok(parsed.text.includes(link));
+ for(const invalid of ['javascript:alert(1)','data:text/html,attack','mailto:qa@example.invalid?subject=Hello%0D%0ABcc:other@example.invalid']){c.ops=[{insert:'safe',attributes:{link:invalid}}];assert.ok(!renderPayrollEmail(c,person(),clock).html.includes('<a href='));}
+});
+test("PAY-EDITOR: inline and line formats render without Quill CSS; nested lists and CSS injection guarded",()=>{
+ const c=composer();c.ops=[{insert:'Styled',attributes:{font:'serif',size:'large',color:'#ff0000',background:'rgb(255, 255, 0)',strike:true,script:'super'}},{insert:'\n',attributes:{align:'center',header:2}},
+ {insert:'One'},{insert:'\n',attributes:{list:'ordered'}},{insert:'Nested'},{insert:'\n',attributes:{list:'bullet',indent:1}},{insert:'Two'},{insert:'\n',attributes:{list:'ordered'}},
+ {insert:'Quote'},{insert:'\n',attributes:{blockquote:true,indent:2}}, {insert:'unsafe',attributes:{color:'red;background:url(https://bad.invalid)',size:'99px',font:'evil;'}},{insert:'\n'}];
+ const r=renderPayrollEmail(c,person(),clock);for(const expected of ['font-family:Georgia','font-size:1.5em','color:#ff0000','background-color:rgb(255, 255, 0)','<s>','<sup>','text-align:center','<h2','<ol','<ul','<blockquote','margin-left:48px'])assert.ok(r.html.includes(expected),expected);
+ assert.ok(r.html.includes('Nested</li></ul></li><li'));assert.ok(!r.html.includes('bad.invalid'));assert.ok(!r.html.includes('99px'));assert.ok(!r.html.includes('evil;'));assert.match(r.text,/One\s+Nested\s+Two/);
+});
 test("PAY-09: sanitize signature strips scripts/events/style URL while preserving table formatting",()=>{
   const h=sanitizePayrollSignature('<script>alert(1)</script><table cellpadding="0"><tr><td style="color:#123456;padding:8px;background-image:url(https://evil.invalid)"><a href="javascript:alert(1)" onclick="x()">QA</a></td></tr></table>');
   assert.ok(!h.includes("script"));assert.ok(!h.includes("onclick"));assert.ok(!h.includes("javascript:"));assert.ok(!h.includes("background-image"));assert.ok(h.includes("padding:8px"));

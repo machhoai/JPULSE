@@ -1,4 +1,5 @@
 import React from "react";
+import Quill from "quill";
 import {createRoot} from "react-dom/client";
 import {GooeyToaster} from "goey-toast";
 import PayrollEmailWorkspace from "@/components/notifications/payroll/PayrollEmailWorkspace";
@@ -14,7 +15,9 @@ const actions=["compose","download","send","history.read","templates.manage"].ma
 useUserStore.setState({user:{id:"qa-browser",full_name:"QA Browser",email:"qa@example.invalid"} as never,
  permissions:{"store-a":Object.fromEntries([...actions,"notifications.email_signatures.manage"].map(x=>[x,true]))},
  isAuthenticated:true,authStatus:"VERIFIED" as never,accessStatus:"READY",hasUsableSessionSnapshot:true});
-(window as unknown as {__payrollQa:unknown}).__payrollQa={publishJob,publishHistory,logout:()=>useUserStore.getState().clearAuth(),
+(window as unknown as {__payrollQa:unknown}).__payrollQa={publishJob,publishHistory,setEditorContent:(ops:unknown)=>{
+ const instance=Quill.find(document.querySelector('.ql-container')!);if(!(instance instanceof Quill))throw new Error('QA_EDITOR_NOT_READY');instance.setContents(ops as never,'user');
+},logout:()=>useUserStore.getState().clearAuth(),
  restrictCompose:()=>useUserStore.setState({permissions:{"store-a":{"notifications.payroll.templates.manage":true}}}),
  restrictSignatures:()=>useUserStore.setState({permissions:{"store-a":Object.fromEntries(actions.map(x=>[x,true]))}}),
  revoke:()=>useUserStore.getState().revokeAccess(),setLang:(lang:"vi"|"zh")=>useAppSettingsStore.getState().setLanguage(lang)};

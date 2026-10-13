@@ -1,5 +1,8 @@
 export const payrollEmailTranslations = {
   vi: {
+    editorOrdered: "Đánh số", editorBullets: "Dấu đầu dòng", editorIndent: "Tăng thụt lề", editorOutdent: "Giảm thụt lề", editorSub: "Chỉ số dưới", editorSuper: "Chỉ số trên",
+    editorTools: "Font chữ|Cỡ chữ|Tiêu đề đoạn|Đậm|Nghiêng|Gạch chân|Gạch ngang|Màu chữ|Màu nền chữ|Chỉ số dưới/trên|Căn lề|Đánh số/dấu đầu dòng|Thụt lề|Trích dẫn|Chèn liên kết|Xóa định dạng",
+    editorFormatHint: "Định dạng nội dung bằng thanh công cụ. Link email có thể dùng mailto:diachi@example.com?subject=...; mã hóa khoảng trắng và tiếng Việt trong subject khi nhập URL.",
     historyDeliveryDeferred: "Thư đang trì hoãn giao",
     historyRawDeliveryInfo: "Thông báo giao thư gốc",
     historyTracking: "Các mốc gửi, nhận và mở email",
@@ -78,6 +81,9 @@ export const payrollEmailTranslations = {
     variables: "Biến: @name@, @tMonth@, @(tMonth-1)@, @tYear@, @(tYear-1)@",
   },
   zh: {
+    editorOrdered: "编号列表", editorBullets: "项目符号", editorIndent: "增加缩进", editorOutdent: "减少缩进", editorSub: "下标", editorSuper: "上标",
+    editorTools: "字体|字号|段落标题|加粗|斜体|下划线|删除线|文字颜色|文字背景|下标/上标|对齐|编号/项目符号|缩进|引用|插入链接|清除格式",
+    editorFormatHint: "使用工具栏设置正文格式。邮件链接可用 mailto:diachi@example.com?subject=...；输入 URL 时请对 subject 中的空格和中文进行编码。",
     historyDeliveryDeferred: "邮件暂缓投递",
     historyRawDeliveryInfo: "原始投递信息",
     historyTracking: "邮件发送、投递和打开时间",

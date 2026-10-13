@@ -27,8 +27,16 @@ export default function PayrollQuillEditor({ ops, onChange, requestChange, text,
         static value(node: HTMLElement) { return node.dataset.payroll; }
       }
       Constructor.register(PayrollEmbed, true);
-      instance = new Constructor(element.current, { theme: "snow", formats: ["bold", "italic", "underline", "link", "payroll"], modules: {
-        toolbar: [["bold", "italic", "underline"], ["link"], ["clean"]], history: { userOnly: true } } });
+      instance = new Constructor(element.current, { theme: "snow", formats: ["bold", "italic", "underline", "strike", "script", "font", "size", "color", "background", "header", "align", "list", "indent", "blockquote", "link", "payroll"], modules: {
+        toolbar: [[{ font: [] }, { size: ["small", false, "large", "huge"] }], [{ header: [1, 2, 3, false] }], ["bold", "italic", "underline", "strike"], [{ color: [] }, { background: [] }], [{ script: "sub" }, { script: "super" }], [{ align: [] }], [{ list: "ordered" }, { list: "bullet" }], [{ indent: "-1" }, { indent: "+1" }], ["blockquote", "link", "clean"]], history: { userOnly: true } } });
+      const toolbar = element.current.previousElementSibling;
+      const labels = text.editorTools.split("|");
+      const controls = ["font", "size", "header", "bold", "italic", "underline", "strike", "color", "background", "script", "align", "list", "indent", "blockquote", "link", "clean"];
+      controls.forEach((format, index) => toolbar?.querySelectorAll(`button.ql-${format},.ql-${format}.ql-picker > .ql-picker-label`).forEach(control => {
+        const value = control.getAttribute("value");
+        const label = format === "list" ? (value === "ordered" ? text.editorOrdered : text.editorBullets) : format === "indent" ? (value === "-1" ? text.editorOutdent : text.editorIndent) : format === "script" ? (value === "sub" ? text.editorSub : text.editorSuper) : labels[index];
+        control.setAttribute("aria-label", label); control.setAttribute("title", label);
+      }));
       instance.setContents(values.current as never, "silent"); editor.current = instance; setLoading(false);
       instance.on("text-change", (_delta, old, source) => {
         if (source !== "user" || !instance) return;
@@ -74,12 +82,13 @@ export default function PayrollQuillEditor({ ops, onChange, requestChange, text,
     quill.insertEmbed(index, "payroll", block, "user");
   };
   return <div className="space-y-3">
+    <p className="text-xs text-text-muted">{text.editorFormatHint}</p>
     <p className="rounded-lg bg-surface-card p-2 text-xs leading-relaxed text-text-muted">{text.variables}</p>
     <div className="flex flex-wrap gap-2">{(Object.keys(PAYROLL_BLOCK_LABELS) as PayrollBlock[]).map(block =>
       <button key={block} disabled={disabled || loading || ops.some(op => typeof op.insert !== "string" && op.insert.payroll === block)} className="inline-flex h-8 items-center justify-center gap-2 rounded-lg border border-border-subtle bg-surface-elevated px-3 text-sm font-medium text-text-secondary transition hover:bg-surface-base disabled:cursor-not-allowed disabled:opacity-50" onClick={() => insert(block)}>
         {text.blocks}: {PAYROLL_BLOCK_LABELS[block][lang === "zh" ? 1 : 0]}</button>)}</div>
     {loading && <div className="skeleton-pulse h-40 rounded-lg bg-surface-base" />}
-    <div className="overflow-hidden rounded-lg border border-border-subtle [&_.ql-toolbar]:border-0! [&_.ql-toolbar]:border-b! [&_.ql-toolbar]:border-border-subtle! [&_.ql-toolbar]:bg-surface-card [&_.ql-container]:border-0! [&_.ql-container]:font-body [&_.ql-editor]:text-sm">
+    <div className="overflow-hidden rounded-lg border border-border-subtle [&_.ql-toolbar]:border-0! [&_.ql-toolbar]:border-b! [&_.ql-toolbar]:border-border-subtle! [&_.ql-toolbar]:bg-surface-card [&_.ql-toolbar_button]:h-8! [&_.ql-toolbar_button]:w-8! [&_.ql-toolbar_.ql-picker]:h-8! [&_.ql-container]:border-0! [&_.ql-container]:font-body [&_.ql-editor]:text-sm">
     <div ref={element} className="min-h-64 rounded-b-lg bg-white text-sm [&_.ql-editor]:min-h-64" aria-label={text.content} />
     </div>
   </div>;

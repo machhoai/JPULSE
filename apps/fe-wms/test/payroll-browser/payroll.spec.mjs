@@ -141,6 +141,20 @@ test("PAY-08 Quill: text entry stable, cut/remove fixed table guarded, reject re
  await page.getByRole("button",{name:"Xác nhận",exact:true}).click();
  await expect(editor.locator(".payroll-fixed-table")).toHaveCount(0);
 });
+
+test("PAY-EDITOR UI: full toolbar, formatted Delta and mailto subject survive save/reopen and preview",async({page})=>{
+ const qa=await setup(page);await importData(page,qa);const editor=page.locator('.ql-editor');await expect(editor).toBeVisible();
+ for(const control of ['font','size','color','background','align','list','indent','strike','script','blockquote'])await expect(page.locator('.ql-toolbar .ql-'+control).first()).toBeVisible();
+ const link='mailto:qa@example.invalid?subject='+encodeURIComponent('Phản hồi công lương 09/2026')+'&body='+encodeURIComponent('Chào kế toán');
+ const ops=[{insert:'Phản hồi',attributes:{link,color:'#ff0000',size:'large',font:'serif'}},{insert:'\n',attributes:{align:'right'}},{insert:'Một'},{insert:'\n',attributes:{list:'ordered'}},{insert:'Hai'},{insert:'\n',attributes:{list:'bullet',indent:1}},...createPayrollComposer().ops.filter(o=>typeof o.insert!=='string')];
+ await page.evaluate(ops=>window.__payrollQa.setEditorContent(ops),ops);await expect(editor.locator('a')).toHaveAttribute('href',link);
+ const preview=page.frameLocator('iframe[title="Xem trước"]');await expect(preview.getByRole('link',{name:'Phản hồi'})).toHaveAttribute('href',link);await expect(preview.getByText('Phản hồi',{exact:true})).toHaveCSS('color','rgb(255, 0, 0)');await expect(preview.getByText('Phản hồi',{exact:true})).toHaveCSS('font-size',await editor.locator('a').evaluate(e=>getComputedStyle(e).fontSize));await expect(preview.locator('ol > li > ul > li')).toContainText('Hai');
+ await page.getByRole('button',{name:'Lưu bản nháp',exact:true}).click();await expect.poll(()=>qa.drafts.size).toBe(1);const saved=[...qa.drafts.values()][0].content.composer.ops;expect(saved.some(o=>o.attributes?.link===link)).toBe(true);
+ await expect.poll(()=>qa.people.size).toBe(3);await page.getByLabel('Mở bản nháp',{exact:true}).selectOption([...qa.drafts.keys()][0]);await expect(editor.locator('a')).toHaveAttribute('href',link);await expect(preview.getByRole('link',{name:'Phản hồi'})).toHaveAttribute('href',link);
+ expect(qa.requests.some(r=>r.path.endsWith('/test')||r.path==='/jobs')).toBe(false);
+ await page.locator('.ql-toolbar').locator('..').screenshot({path:'../../.tmp/payroll-editor-formats.png'});
+ await page.setViewportSize({width:390,height:844});await page.getByRole('navigation',{name:'Bảng công & lương'}).getByRole('button',{name:'Nội dung',exact:true}).click();await expect(editor).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);await page.locator('.ql-toolbar').scrollIntoViewIfNeeded();await page.screenshot({path:'../../.tmp/payroll-editor-formats-mobile.png'});
+});
 test("PAY-04: missing email blocks send, editing or deselecting resolves",async({page})=>{
  const qa=await setup(page,{missingEmail:1});await importData(page,qa);
  await expect(page.getByText(/Thiếu email tại dòng 11/)).toBeVisible();

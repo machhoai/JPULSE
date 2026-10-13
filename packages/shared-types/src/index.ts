@@ -23,6 +23,7 @@ export * from './payrollEmailRender.js';
 export * from './payrollBankAccount.js';
 export * from './payrollSignaturePolicy.js';
 export * from './payrollHistory.js';
+export * from './payrollRichText.js';
 export * from './workflow.js';
 export * from './permissionRegistry.js';
 export * from './process.js';
