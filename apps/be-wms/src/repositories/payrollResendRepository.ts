@@ -1,4 +1,4 @@
-import { payrollHistoryResendPolicy, type PayrollJobMetadata } from "@bduck/shared-types";
+import { payrollHistoryResendPolicy, payrollHistoryAttempt, type PayrollJobMetadata } from "@bduck/shared-types";
 import { db } from "../config/firebase.js";
 import { payrollRef, writePayrollAudit } from "./payrollRepository.js";
 import { payrollHistoryId, touchPayrollHistory } from "./payrollHistoryRepository.js";
@@ -21,7 +21,9 @@ export async function createPayrollResendRecord(job: PayrollJobMetadata, options
       payrollError("Địa chỉ cũ bị từ chối hoặc không hợp lệ. Hãy nhập email khác trước khi gửi lại.", "旧地址被拒绝或无效，请输入其他邮箱后重发。", 400);
     if (!options.confirmed) payrollError("Hãy xác nhận tên nhân viên và địa chỉ nhận trước khi gửi lại.", "重发前请确认员工姓名及收件邮箱。", 409);
     const originalItem = await tx.get(payrollRef("jobs", source.get("job_id")).collection("items").doc(source.get("recipient_id")));
-    if (originalItem.exists && (["QUEUED", "PROCESSING"].includes(originalItem.get("status")) || originalItem.get("attempt") !== source.get("attempt")))
+    const sourceAttempt = payrollHistoryAttempt({ id: sourceRef.id, job_id: source.get("job_id"), recipient_id: source.get("recipient_id"), attempt: source.get("attempt") });
+    if (sourceAttempt === null) payrollError("Không xác định được lần thử của email lịch sử này. Hãy liên hệ quản trị viên để đối chiếu dữ liệu trước khi gửi lại.", "无法确定此历史邮件的尝试次数，请联系管理员核对数据后重发。", 409);
+    if (originalItem.exists && (["QUEUED", "PROCESSING"].includes(originalItem.get("status")) || originalItem.get("attempt") !== sourceAttempt))
       payrollError("Đợt gốc đang gửi tiếp hoặc đã có lần thử mới hơn. Hãy mở lịch sử lần gửi mới nhất để đối chiếu.", "原任务仍在发送或已有更新的尝试，请查看最新发送记录。", 409);
     const activeId = source.get("resend_job_id") as string | undefined;
     if (activeId) {

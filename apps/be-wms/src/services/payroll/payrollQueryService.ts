@@ -1,4 +1,4 @@
-import { payrollHistoryStatus, type PayrollHistoryFilters, type PayrollSnapshot, type PayrollDeliveryStatus, type PayrollItemStatus, type PayrollTrackingField } from "@bduck/shared-types";
+import { payrollHistoryStatus, payrollHistoryAttempt, type PayrollHistoryFilters, type PayrollSnapshot, type PayrollDeliveryStatus, type PayrollItemStatus, type PayrollTrackingField } from "@bduck/shared-types";
 import type { AuthorizationService } from "../authorization/index.js";
 import { findPayrollDrafts, findPayrollSentPage, findPayrollSentRecord } from "../../repositories/payrollQueryRepository.js";
 import { assertPayroll } from "./payrollAccess.js";
@@ -31,7 +31,7 @@ async function hydrateHistory(entry: Awaited<ReturnType<typeof findPayrollSentPa
     const delivery = metadata.delivery_payload_path ? await readPayrollPayload<{ reason: string }>(metadata.delivery_payload_path, "delivery:" + entry.id + ":" + entry.facility_id) : null;
     return { ...entry, submission_status: metadata.submission_status || "SENT", delivery_status: metadata.delivery_status || "PENDING",
       tracking: Object.fromEntries(Object.entries(metadata.tracking || {}).map(([field, value]) => [field, value.toDate().toISOString()])),
-      delivery_updated_at: metadata.delivery_updated_at?.toDate?.().toISOString() || null, attempt: metadata.attempt || 1,
+      delivery_updated_at: metadata.delivery_updated_at?.toDate?.().toISOString() || null, attempt: payrollHistoryAttempt(metadata) ?? 1,
       error: metadata.error || null, delivery_reason: delivery?.reason || null,
       snapshot: await readPayrollPayload<PayrollSnapshot>(entry.payload_path, "snapshot:" + entry.job_id + ":" + entry.recipient_id + ":" + entry.facility_id) };
 }

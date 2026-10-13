@@ -31,6 +31,13 @@ export function payrollHistoryResendPolicy(record: { submission_status?: Payroll
   const status = payrollHistoryStatus(record);
   return { allowed: status !== 'PENDING', requireDifferentEmail: ['HARD_BOUNCE', 'INVALID', 'BLOCKED'].includes(record.delivery_status || ''), delivered: status === 'SUCCESS' };
 }
+export function payrollHistoryAttempt(record: { id: string; job_id: string; recipient_id: string; attempt?: number | null }): number | null {
+  if (Number.isSafeInteger(record.attempt) && (record.attempt ?? 0) > 0) return record.attempt!;
+  const prefix = record.job_id + '_' + record.recipient_id + '_';
+  const suffix = record.id.startsWith(prefix) ? record.id.slice(prefix.length) : '';
+  const value = /^[1-9]\d*$/.test(suffix) ? Number(suffix) : 0;
+  return Number.isSafeInteger(value) && value > 0 ? value : null;
+}
 export function payrollHistoryStatus(record: { submission_status?: PayrollItemStatus; delivery_status?: PayrollDeliveryStatus }): PayrollHistoryStatus {
   if (record.delivery_status === 'DELIVERED') return 'SUCCESS';
   if (['SOFT_BOUNCE', 'HARD_BOUNCE', 'BLOCKED', 'INVALID', 'ERROR'].includes(record.delivery_status || '') || record.submission_status === 'FAILED') return 'ERROR';

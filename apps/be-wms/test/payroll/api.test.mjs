@@ -65,6 +65,18 @@ process.env.PAYROLL_BREVO_WEBHOOK_SECRET="qa-webhook-secret-only-local-32-charac
 const webhookRequest=body=>fetch(base+"/webhooks/brevo",{method:"POST",headers:{authorization:"Bearer "+process.env.PAYROLL_BREVO_WEBHOOK_SECRET,"content-type":"application/json"},body:JSON.stringify(body)});
 async function sentScenario(count=1){resetSmtp();const s=await scenario(count);const job=await jobs.createPayrollJob(s.request,s.actor,s.access);await prepare(job);await worker.processPayrollJob(job.id);const history=await db.collection("payroll_email_sent_records").where("job_id","==",job.id).get();return{...s,job,history};}
 
+test("PAY-RESEND legacy: missing attempt uses exact history ID, completed recipient can resend, real newer attempts still blocked",async()=>{
+ const s=await sentScenario();const r=s.history.docs[0];const {FieldValue}=await import('firebase-admin/firestore');
+ await r.ref.update({attempt:FieldValue.delete(),submission_status:FieldValue.delete(),delivery_status:"DELIVERED"});
+ const detail=(await(await request(s,"/history/"+r.id)).json()).data;assert.equal(detail.attempt,1);
+ const item=db.collection("payroll_email_jobs").doc(s.job.id).collection("items").doc(s.people[0].id);
+ const input={email:"corrected@example.invalid",request_id:"legacy-resend",confirmed:true},path="/history/"+r.id+"/resend";
+ await item.update({attempt:2});assert.equal((await request(s,path,"POST",input)).status,409);
+ await item.update({attempt:1,status:"QUEUED"});assert.equal((await request(s,path,"POST",input)).status,409);
+ await item.update({status:"SENT"});const response=await request(s,path,"POST",input);assert.equal(response.status,202);
+ assert.equal(smtp.calls.length,1);assert.equal((await r.ref.get()).get("attempt"),undefined);
+});
+
 test("PAY-RESEND API: pending blocked, permissions scoped, hard bounce requires another email and confirmation",async()=>{
  const s=await sentScenario();const r=s.history.docs[0];const path="/history/"+r.id+"/resend";
  const input={email:s.people[0].email,request_id:"resend-policy-1",confirmed:true};
