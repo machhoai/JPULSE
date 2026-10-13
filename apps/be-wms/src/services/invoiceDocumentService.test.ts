@@ -18,6 +18,10 @@ import {
   canSafelyAutoRebaseInvoiceDocument,
   invoiceFinancialFingerprint,
   invoiceDocumentShouldRefreshFromSource,
+  invoiceSourceContentChanged,
+  invoiceSourceContentHash,
+  invoiceEditableContentFingerprint,
+  invoiceSourceProjectionHash,
   statusAfterInvoiceEdit,
   validationStateWithoutSourceMoneyComparison,
 } from "./invoiceDocumentPolicy.js";
@@ -123,7 +127,7 @@ test("draft edits remain ready to issue without an approval state", () => {
   });
 });
 
-test("an unedited draft refreshes when VAT configuration changes its calculation", () => {
+test("VAT configuration changes need confirmation even on an untouched draft", () => {
   const zeroVatLine = {
     ...sourceLine,
     vat_rate_name: "0%" as const,
@@ -137,19 +141,184 @@ test("an unedited draft refreshes when VAT configuration changes its calculation
         source_financial_fingerprint: invoiceFinancialFingerprint([
           zeroVatLine,
         ]),
-        calculation: { calculation_hash: "zero-vat" },
+        calculation: calculateInvoice([zeroVatLine], true, option),
         payment_method_name: "TM/CK",
         meinvoice_account_id: "account-1",
       },
       {
         source_financial_fingerprint: invoiceFinancialFingerprint([sourceLine]),
-        calculation: { calculation_hash: "ten-percent-vat" },
+        calculation: calculateInvoice([sourceLine], true, option),
         payment_method_name: "TM/CK",
         meinvoice_account_id: "account-1",
       },
     ),
-    true,
+    false,
   );
+});
+
+const comparableDraft = (line = sourceLine) => ({
+  status: InvoiceDocumentStatus.READY_TO_ISSUE,
+  source_payload_hash: "a".repeat(64),
+  source_financial_fingerprint: invoiceFinancialFingerprint([line]),
+  source_content_fingerprint: invoiceEditableContentFingerprint(
+    [line],
+    "TM/CK",
+  ),
+  content_edited: false,
+  financially_edited: false,
+  items: [line],
+  calculation: calculateInvoice([line], true, option),
+  payment_method_name: "TM/CK",
+  payment_time: "2026-10-12 19:57:29",
+  meinvoice_account_id: "account-1",
+  legal_entity_id: "legal-1",
+  issue_eligible: true,
+  validation_issues: [],
+});
+
+test("customer buyer submissions do not block equivalent JPOS to HKAPI enrichment", () => {
+  const posLine = {
+    ...sourceLine,
+    unit_price: 500000,
+    source_amount_without_vat: 454545,
+    source_vat_amount: 45455,
+    source_total_amount: 500000,
+  };
+  const current = {
+    ...comparableDraft(posLine),
+    edited_by: "public-customer",
+    edited_at: new Date(),
+    buyer: { full_name: "READY CARE", tax_code: "0317981545" },
+  };
+  const hkLine = {
+    ...posLine,
+    category_code: "1",
+    category_name: "Hàng hóa ảo",
+    discount_amount: 0,
+    source_amount_without_vat: 454545.45,
+    source_vat_amount: 45454.55,
+  };
+  const next = {
+    ...comparableDraft(hkLine),
+    source_payload_hash: "b".repeat(64),
+    payment_time: "2026-10-12 19:57:31",
+  };
+  assert.notEqual(
+    current.calculation?.calculation_hash,
+    next.calculation?.calculation_hash,
+  );
+  assert.equal(invoiceSourceContentChanged(current, next), false);
+  assert.equal(canSafelyAutoRebaseInvoiceDocument(current, next), true);
+  assert.equal(invoiceDocumentShouldRefreshFromSource(current, next), true);
+  assert.equal(
+    invoiceEditableContentFingerprint(current.items, "TM/CK"),
+    current.source_content_fingerprint,
+  );
+});
+
+test("buyer-only staff edits can refresh but content edits, reviews and active jobs cannot", () => {
+  const current = {
+    ...comparableDraft(),
+    edited_by: "staff",
+    edited_at: new Date(),
+  };
+  const next = { ...comparableDraft(), source_payload_hash: "b".repeat(64) };
+  assert.equal(canSafelyAutoRebaseInvoiceDocument(current, next), true);
+  for (const override of [
+    { content_edited: true },
+    { reviewed_at: new Date() },
+    { active_issue_job_id: "job" },
+    { financially_edited: true },
+    { status: InvoiceDocumentStatus.ISSUED },
+    { status: InvoiceDocumentStatus.SUBMITTING },
+  ]) {
+    assert.equal(
+      canSafelyAutoRebaseInvoiceDocument({ ...current, ...override }, next),
+      false,
+    );
+  }
+  assert.equal(
+    canSafelyAutoRebaseInvoiceDocument(
+      { ...current, edited_by: "public-customer", content_edited: true },
+      next,
+    ),
+    false,
+  );
+});
+
+test("actual invoice changes require confirmation even when invoice totals are unchanged", () => {
+  const current = comparableDraft();
+  for (const line of [
+    { ...sourceLine, item_name: "Khác" },
+    { ...sourceLine, item_code: "NEW" },
+    { ...sourceLine, unit_name: "Hộp" },
+    { ...sourceLine, quantity: 2, unit_price: 55000 },
+    { ...sourceLine, vat_rate_name: "8%" as const, vat_rate: 8 },
+    { ...sourceLine, unit_price: 111000 },
+  ]) {
+    const next = comparableDraft(line);
+    assert.equal(invoiceSourceContentChanged(current, next), true);
+    assert.equal(canSafelyAutoRebaseInvoiceDocument(current, next), false);
+  }
+  for (const override of [
+    { payment_method_name: "TM" },
+    { payment_time: "2026-10-13 00:00:00" },
+    { meinvoice_account_id: "other" },
+    { legal_entity_id: "other" },
+  ]) {
+    assert.equal(
+      invoiceSourceContentChanged(current, { ...current, ...override }),
+      true,
+    );
+  }
+});
+
+test("review hashes capture changed calculation and validation with unchanged source payload", () => {
+  const current = comparableDraft();
+  assert.notEqual(
+    invoiceSourceContentHash(current),
+    invoiceSourceContentHash(comparableDraft({ ...sourceLine, quantity: 2 })),
+  );
+  assert.notEqual(
+    invoiceSourceContentHash(current),
+    invoiceSourceContentHash({ ...current, issue_eligible: false }),
+  );
+  assert.notEqual(
+    invoiceSourceProjectionHash({ normalized_items: [sourceLine] }),
+    invoiceSourceProjectionHash({
+      normalized_items: [{ ...sourceLine, quantity: 2 }],
+    }),
+  );
+});
+
+test("bulk confirmation requires explicit unique selected snapshots", () => {
+  const id = "a".repeat(64);
+  const confirmation = {
+    source_order_document_id: id,
+    expected_revision: 3,
+    expected_source_payload_hash: "b".repeat(64),
+    expected_source_content_hash: "c".repeat(64),
+  };
+  const base = {
+    warehouse_id: "warehouse-1",
+    business_date: "2026-10-12",
+    selection_mode: "SELECTED",
+    source_order_ids: [id],
+    confirmations: [confirmation],
+  };
+  assert.equal(invoiceDocumentBulkRebaseSchema.safeParse(base).success, true);
+  for (const override of [
+    { selection_mode: "ALL_STALE" },
+    { source_order_ids: ["d".repeat(64)] },
+    { confirmations: [confirmation, confirmation] },
+    { confirmations: [{ ...confirmation, expected_revision: 0 }] },
+  ]) {
+    assert.equal(
+      invoiceDocumentBulkRebaseSchema.safeParse({ ...base, ...override })
+        .success,
+      false,
+    );
+  }
 });
 
 test("a financially edited draft is never overwritten by automatic refresh", () => {

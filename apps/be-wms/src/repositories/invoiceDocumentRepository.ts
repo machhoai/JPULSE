@@ -6,6 +6,7 @@ import type {
 import { db } from "../config/firebase.js";
 import {
   invoiceDocumentShouldRefreshFromSource,
+  invoiceSourceProjectionHash,
   validationStateWithoutSourceMoneyComparison,
 } from "../services/invoiceDocumentPolicy.js";
 
@@ -98,6 +99,7 @@ export const invoiceDocumentRepository = {
     sourceOrderDocumentId: string,
     expectedSourcePayloadHash: string,
     value: Record<string, unknown>,
+    expectedSourceProjectionHash?: string,
   ): Promise<{ created: boolean; document: Record<string, unknown> }> {
     const documentRef = documents.doc(sourceOrderDocumentId);
     const sourceRef = sourceOrders.doc(sourceOrderDocumentId);
@@ -113,7 +115,9 @@ export const invoiceDocumentRepository = {
         !source ||
         source.is_deleted === true ||
         source.source_payload_hash !== expectedSourcePayloadHash ||
-        source.warehouse_id !== value.warehouse_id
+        source.warehouse_id !== value.warehouse_id ||
+        (expectedSourceProjectionHash &&
+          invoiceSourceProjectionHash(source) !== expectedSourceProjectionHash)
       ) {
         throw serviceError(
           409,
@@ -141,6 +145,8 @@ export const invoiceDocumentRepository = {
             issue_eligible: value.issue_eligible,
             validation_issues: value.validation_issues,
             source_financial_fingerprint: value.source_financial_fingerprint,
+            source_content_fingerprint: value.source_content_fingerprint,
+            content_edited: false,
             mapping_version: value.mapping_version,
             calculation_version: value.calculation_version,
             status: value.status,
@@ -166,6 +172,8 @@ export const invoiceDocumentRepository = {
           transaction.update(sourceRef, {
             invoice_document_id: documentRef.id,
             invoice_document_status: refreshed.status,
+            invoice_document_source_payload_hash: refreshed.source_payload_hash,
+            invoice_document_stale: false,
             updated_at: now,
           });
           return { created: false, document: refreshed };
@@ -333,6 +341,7 @@ export const invoiceDocumentRepository = {
     expectedStatus: string,
     nextSourcePayloadHash: string,
     nextValue: Record<string, unknown>,
+    expectedSourceProjectionHash?: string,
   ) {
     const documentRef = documents.doc(id);
     const sourceRef = sourceOrders.doc(id);
@@ -349,7 +358,7 @@ export const invoiceDocumentRepository = {
         : undefined;
       assertScopedDocument(current, warehouseId);
       assertRevision(current!, expectedRevision);
-      if (current!.status !== expectedStatus) {
+      if (current!.status !== expectedStatus || current!.active_issue_job_id) {
         throw serviceError(
           409,
           "Trạng thái bản nháp đã thay đổi. Vui lòng tải lại.",
@@ -361,7 +370,9 @@ export const invoiceDocumentRepository = {
         !source ||
         source.is_deleted === true ||
         source.warehouse_id !== warehouseId ||
-        source.source_payload_hash !== nextSourcePayloadHash
+        source.source_payload_hash !== nextSourcePayloadHash ||
+        (expectedSourceProjectionHash &&
+          invoiceSourceProjectionHash(source) !== expectedSourceProjectionHash)
       ) {
         throw serviceError(
           409,

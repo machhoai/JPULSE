@@ -3,6 +3,7 @@ import { Router, type Request, type Router as ExpressRouter } from "express";
 import {
   bulkRebaseInvoiceDocumentsHandler,
   getInvoiceDocumentHandler,
+  listInvoiceDraftSourceChangesHandler,
   prepareInvoiceDocumentHandler,
   previewBulkIssueInvoiceDocumentHandler,
   previewInvoiceDocumentHandler,
@@ -58,6 +59,11 @@ router.post(
 );
 
 router.use(requireAuth);
+router.post(
+  "/source-orders/update-review",
+  requirePermission("invoices.read", bodyWarehouseId),
+  listInvoiceDraftSourceChangesHandler,
+);
 router.get(
   "/bulk-issues/display-config",
   requirePermission("invoices.bulk_issue", queryWarehouseId),

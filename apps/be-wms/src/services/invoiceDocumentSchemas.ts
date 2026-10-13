@@ -31,8 +31,35 @@ export const invoiceDocumentBulkRebaseSchema = z
     business_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     selection_mode: z.enum(["ALL_STALE", "SELECTED"]),
     source_order_ids: z.array(hashSchema).max(500).default([]),
+    confirmations: z
+      .array(
+        z.object({
+          source_order_document_id: hashSchema,
+          expected_revision: z.number().int().min(1),
+          expected_source_payload_hash: hashSchema,
+          expected_source_content_hash: hashSchema,
+        }),
+      )
+      .max(500)
+      .default([]),
   })
   .superRefine((value, ctx) => {
+    const confirmedIds = value.confirmations.map(
+      (item) => item.source_order_document_id,
+    );
+    if (
+      new Set(confirmedIds).size !== confirmedIds.length ||
+      (confirmedIds.length > 0 &&
+        (value.selection_mode !== "SELECTED" ||
+          confirmedIds.some((id) => !value.source_order_ids.includes(id))))
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["confirmations"],
+        message:
+          "Confirmations must be unique and belong to the explicit selection.",
+      });
+    }
     if (
       value.selection_mode === "SELECTED" &&
       value.source_order_ids.length === 0

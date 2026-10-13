@@ -12,6 +12,7 @@ import {
 import {
   bulkRebaseInvoiceDocuments,
   getInvoiceDocument,
+  listInvoiceDraftSourceChanges,
   prepareInvoiceDocumentFromSourceOrder,
   updateInvoiceDocument,
 } from "../../services/invoiceDocumentService.js";
@@ -62,6 +63,26 @@ const handleError = (res: Response, error: unknown) => {
     500,
     { code },
   );
+};
+
+export const listInvoiceDraftSourceChangesHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const input = invoiceDocumentBulkRebaseSchema.parse({
+      ...req.body,
+      selection_mode: "ALL_STALE",
+    });
+    const data = await listInvoiceDraftSourceChanges(
+      input.warehouse_id,
+      input.business_date,
+      requireRequestAuthorization(req),
+    );
+    return sendSuccess(res, data);
+  } catch (error) {
+    return handleError(res, error);
+  }
 };
 
 export const prepareInvoiceDocumentHandler = async (

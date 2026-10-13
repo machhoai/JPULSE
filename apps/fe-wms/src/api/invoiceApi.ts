@@ -96,6 +96,43 @@ export interface InvoiceBulkRebaseResult {
   }>;
 }
 
+export interface InvoiceDraftSourceChange {
+  source_order_document_id: string;
+  warehouse_id: string;
+  business_date: string;
+  order_number: string;
+  buyer_name: string;
+  expected_revision: number;
+  expected_source_payload_hash: string;
+  expected_source_content_hash: string;
+  reason: "CONTENT_CHANGED" | "EDITED_DRAFT";
+  before: InvoiceDraftSourceContent;
+  after: InvoiceDraftSourceContent;
+}
+
+export interface InvoiceDraftSourceContent {
+  items: Array<{
+    source_item_id: string | null;
+    item_code: string | null;
+    item_name: string;
+    unit_name: string;
+    quantity: number;
+    unit_price: number;
+    discount: number;
+    vat_rate_name: string;
+    amount_without_vat: number;
+    vat_amount: number;
+    total_amount: number;
+  }>;
+  total_amount_without_vat: number | null;
+  total_vat_amount: number | null;
+  total_amount: number | null;
+  payment_method_name: string;
+  payment_date: string | null;
+  meinvoice_account_id: string | null;
+  legal_entity_id: string | null;
+}
+
 export type InvoiceLedgerEntryView = Omit<
   InvoiceLedgerEntry,
   "last_reconciled_at"
@@ -492,6 +529,7 @@ export const invoiceApi = {
     warehouseId: string,
     businessDate: string,
     sourceOrderIds: string[] = [],
+    confirmations: InvoiceDraftSourceChange[] = [],
   ) =>
     request<InvoiceBulkRebaseResult>(
       "/api/invoices/source-orders/rebase-bulk",
@@ -502,6 +540,24 @@ export const invoiceApi = {
           business_date: businessDate,
           selection_mode: sourceOrderIds.length > 0 ? "SELECTED" : "ALL_STALE",
           source_order_ids: sourceOrderIds,
+          confirmations: confirmations.map((item) => ({
+            source_order_document_id: item.source_order_document_id,
+            expected_revision: item.expected_revision,
+            expected_source_payload_hash: item.expected_source_payload_hash,
+            expected_source_content_hash: item.expected_source_content_hash,
+          })),
+        }),
+      },
+    ),
+
+  listDraftSourceChanges: (warehouseId: string, businessDate: string) =>
+    request<InvoiceDraftSourceChange[]>(
+      "/api/invoices/source-orders/update-review",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          warehouse_id: warehouseId,
+          business_date: businessDate,
         }),
       },
     ),

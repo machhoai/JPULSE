@@ -39,8 +39,8 @@ const copy = {
     loadError: "Không thể tải bản nháp hóa đơn.",
     revision: "Revision",
     sourceStale:
-      "Dữ liệu JPOS/HKAPI đã thay đổi. Hãy cập nhật dữ liệu và kiểm tra revision mới.",
-    rebase: "Cập nhật draft từ HKAPI",
+      "Bản nháp chưa khớp dữ liệu đơn hàng mới nhất. Bấm Cập nhật dữ liệu ở trang quản lý; các đơn cần xác nhận được gom trong danh sách Cần kiểm tra thay đổi. Khi cập nhật, thông tin người mua được giữ nguyên.",
+    rebase: "Cập nhật hóa đơn từ dữ liệu mới",
     buyer: "Thông tin người mua",
     fullName: "Tên người mua",
     legalName: "Tên đơn vị",
@@ -85,8 +85,9 @@ const copy = {
     preparing: "正在生成草稿…",
     loadError: "无法加载发票草稿。",
     revision: "修订版本",
-    sourceStale: "HKAPI 数据已更改，请重新同步并生成新修订版本。",
-    rebase: "从 HKAPI 更新草稿",
+    sourceStale:
+      "草稿与最新订单数据不一致。请在管理页面更新数据，并在需要检查变化列表中批量确认。买方信息将保留。",
+    rebase: "使用最新数据更新发票",
     buyer: "买方信息",
     fullName: "购买人姓名",
     legalName: "单位名称",
@@ -474,7 +475,7 @@ export function InvoiceDraftWorkflow({
             type="button"
             onClick={() => void handlePrepare()}
             disabled={!canPrepare || working !== null}
-            className="mt-1.5 inline-flex h-8 w-fit items-center gap-1.5 rounded-lg bg-rose-700 px-2.5 text-xs font-semibold text-white disabled:opacity-45"
+            className="mt-1.5 inline-flex h-8 w-fit items-center gap-1.5 rounded-lg bg-amber-700 px-2.5 text-xs font-semibold text-white disabled:opacity-45"
           >
             {working === "prepare" ? (
               <LoaderCircle className="animate-spin" size={13} />

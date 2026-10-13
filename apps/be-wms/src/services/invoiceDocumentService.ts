@@ -23,6 +23,12 @@ import { buildInitialInvoiceDocument } from "./invoiceDocumentDraftBuilder.js";
 import {
   canEditInvoiceDocument,
   canSafelyAutoRebaseInvoiceDocument,
+  invoiceDocumentNeedsSourceUpdate,
+  invoiceEditableContentFingerprint,
+  invoiceSourceContent,
+  invoiceSourceContentChanged,
+  invoiceSourceContentHash,
+  invoiceSourceProjectionHash,
   statusAfterInvoiceEdit,
   vatRateValue,
 } from "./invoiceDocumentPolicy.js";
@@ -89,6 +95,7 @@ export const ensureInitialInvoiceDocument = async (
     String(value.source_order_document_id),
     String(value.source_payload_hash),
     value,
+    invoiceSourceProjectionHash(sourceOrder),
   );
 };
 
@@ -118,6 +125,8 @@ export const prepareInvoiceDocumentFromSourceOrder = async (
   auditMetadata?: AuditMetadata,
   options?: {
     safeAutoRebase?: boolean;
+    expectedRevision?: number;
+    expectedSourceContentHash?: string;
     context?: {
       storeConfig: MeInvoiceStoreConfig;
       account: StoredMeInvoiceAccount;
@@ -151,7 +160,40 @@ export const prepareInvoiceDocumentFromSourceOrder = async (
     sourceOrderDocumentId,
     warehouseId,
   );
-  if (existing && existing.source_payload_hash !== expectedSourcePayloadHash) {
+  const seed = buildInitialInvoiceDocument(
+    sourceOrder,
+    storeConfig,
+    account,
+    actorId,
+  );
+  if (
+    options?.expectedRevision !== undefined &&
+    existing?.revision !== options.expectedRevision
+  ) {
+    throw serviceError(
+      409,
+      "Bản nháp đã thay đổi. Hãy tải lại danh sách kiểm tra.",
+      "草稿已更改，请重新加载检查列表。",
+      "INVOICE_REVISION_CONFLICT",
+    );
+  }
+  if (
+    options?.expectedSourceContentHash &&
+    (!seed ||
+      invoiceSourceContentHash(seed) !== options.expectedSourceContentHash)
+  ) {
+    throw serviceError(
+      409,
+      "Dữ liệu cần cập nhật đã thay đổi. Hãy kiểm tra lại.",
+      "待更新的数据已更改，请重新检查。",
+      "INVOICE_SOURCE_STALE",
+    );
+  }
+  if (
+    existing &&
+    (existing.source_payload_hash !== expectedSourcePayloadHash ||
+      (seed && invoiceDocumentNeedsSourceUpdate(existing, seed)))
+  ) {
     const existingStatus = existing.status as InvoiceDocumentStatus;
     if (!canEditInvoiceDocument(existingStatus)) {
       throw serviceError(
@@ -163,21 +205,15 @@ export const prepareInvoiceDocumentFromSourceOrder = async (
     }
     if (
       options?.safeAutoRebase &&
-      !canSafelyAutoRebaseInvoiceDocument(existing)
+      (!seed || !canSafelyAutoRebaseInvoiceDocument(existing, seed))
     ) {
       throw serviceError(
         409,
-        "Draft đã được chỉnh sửa hoặc review và cần xác nhận thủ công.",
+        "Hóa đơn có thay đổi nội dung hoặc đã được chỉnh sửa. Hãy kiểm tra thay đổi trước khi cập nhật.",
         "草稿已编辑或审核，需要人工确认。",
         "INVOICE_AUTO_REBASE_REQUIRES_REVIEW",
       );
     }
-    const seed = buildInitialInvoiceDocument(
-      sourceOrder,
-      storeConfig,
-      account,
-      actorId,
-    );
     if (!seed) {
       throw serviceError(
         422,
@@ -194,6 +230,8 @@ export const prepareInvoiceDocumentFromSourceOrder = async (
       existingStatus,
       expectedSourcePayloadHash,
       {
+        legal_entity_id: seed.legal_entity_id,
+        meinvoice_account_id: seed.meinvoice_account_id,
         source_order_number: seed.source_order_number,
         source_payload_hash: expectedSourcePayloadHash,
         source_action_time: seed.source_action_time,
@@ -207,6 +245,8 @@ export const prepareInvoiceDocumentFromSourceOrder = async (
         issue_eligible: seed.issue_eligible,
         validation_issues: seed.validation_issues,
         source_financial_fingerprint: seed.source_financial_fingerprint,
+        source_content_fingerprint: seed.source_content_fingerprint,
+        content_edited: false,
         financially_edited: false,
         mapping_version: seed.mapping_version,
         calculation_version: seed.calculation_version,
@@ -222,6 +262,7 @@ export const prepareInvoiceDocumentFromSourceOrder = async (
         updated_by: actorId,
         updated_at: now,
       },
+      invoiceSourceProjectionHash(sourceOrder),
     );
     await logAudit({
       entity_type: "INVOICE_DOCUMENT",
@@ -284,6 +325,77 @@ export const prepareInvoiceDocumentFromSourceOrder = async (
   return getInvoiceDocument(sourceOrderDocumentId, warehouseId, authorization);
 };
 
+export const listInvoiceDraftSourceChanges = async (
+  warehouseId: string,
+  businessDate: string,
+  authorization: AuthorizationService,
+) => {
+  authorization.assert("invoices.read", warehouseId);
+  const orders = await invoiceOrderRepository.listOrders(
+    warehouseId,
+    businessDate,
+  );
+  const documents = await invoiceDocumentRepository.getDocuments(
+    orders.flatMap((order) =>
+      typeof order.invoice_document_id === "string"
+        ? [order.invoice_document_id]
+        : [],
+    ),
+    warehouseId,
+  );
+  const documentsById = new Map(
+    documents
+      .filter(
+        (document) =>
+          canEditInvoiceDocument(document.status as InvoiceDocumentStatus) &&
+          !document.active_issue_job_id,
+      )
+      .map((document) => [String(document.id), document]),
+  );
+  if (documentsById.size === 0) return [];
+  const { storeConfig, account } = await loadInvoiceContext(warehouseId);
+  return orders.flatMap((order) => {
+    const document = documentsById.get(String(order.invoice_document_id));
+    if (
+      !document ||
+      !canEditInvoiceDocument(document.status as InvoiceDocumentStatus) ||
+      document.active_issue_job_id
+    )
+      return [];
+    const next = buildInitialInvoiceDocument(
+      order,
+      storeConfig,
+      account,
+      "source-review",
+    );
+    if (
+      !next ||
+      !invoiceDocumentNeedsSourceUpdate(document, next) ||
+      canSafelyAutoRebaseInvoiceDocument(document, next)
+    )
+      return [];
+    return [
+      {
+        source_order_document_id: String(order.id),
+        warehouse_id: warehouseId,
+        business_date: businessDate,
+        order_number: String(order.order_number ?? order.source_order_id),
+        buyer_name: String(
+          (document.buyer as InvoiceDraftBuyer | undefined)?.full_name ?? "",
+        ),
+        expected_revision: Number(document.revision),
+        expected_source_payload_hash: String(order.source_payload_hash),
+        expected_source_content_hash: invoiceSourceContentHash(next),
+        reason: invoiceSourceContentChanged(document, next)
+          ? "CONTENT_CHANGED"
+          : "EDITED_DRAFT",
+        before: invoiceSourceContent(document),
+        after: invoiceSourceContent(next),
+      },
+    ];
+  });
+};
+
 export type InvoiceBulkRebaseItemStatus =
   | "REBASED"
   | "UNCHANGED"
@@ -337,20 +449,31 @@ export const bulkRebaseInvoiceDocuments = async (
   const documentsById = new Map(
     documents.map((document) => [String(document.id), document]),
   );
+  const { storeConfig, account } = await loadInvoiceContext(input.warehouse_id);
+  const confirmations = new Map(
+    input.confirmations.map((item) => [item.source_order_document_id, item]),
+  );
+  const hasSourceChanges = (order: JsonRecord, document: JsonRecord) => {
+    const next = buildInitialInvoiceDocument(
+      order,
+      storeConfig,
+      account,
+      actorId,
+    );
+    return (
+      document.source_payload_hash !== order.source_payload_hash ||
+      Boolean(next && invoiceDocumentNeedsSourceUpdate(document, next))
+    );
+  };
   const candidates = scopedOrders.filter((order) => {
     if (input.selection_mode !== "ALL_STALE") return true;
     const document = documentsById.get(String(order.invoice_document_id));
-    return Boolean(
-      document && document.source_payload_hash !== order.source_payload_hash,
-    );
+    return Boolean(document && hasSourceChanges(order, document));
   });
   const staleCandidateCount = candidates.filter((order) => {
     const document = documentsById.get(String(order.invoice_document_id));
-    return Boolean(
-      document && document.source_payload_hash !== order.source_payload_hash,
-    );
+    return Boolean(document && hasSourceChanges(order, document));
   }).length;
-  const { storeConfig, account } = await loadInvoiceContext(input.warehouse_id);
 
   const items: InvoiceBulkRebaseResult["items"] = new Array(candidates.length);
   let candidateCursor = 0;
@@ -372,7 +495,7 @@ export const bulkRebaseInvoiceDocuments = async (
             code: "DOCUMENT_NOT_PREPARED",
           };
         }
-        if (document.source_payload_hash === order.source_payload_hash) {
+        if (!hasSourceChanges(order, document)) {
           return {
             source_order_document_id: id,
             order_number: orderNumber,
@@ -380,24 +503,21 @@ export const bulkRebaseInvoiceDocuments = async (
             code: null,
           };
         }
-        if (!canSafelyAutoRebaseInvoiceDocument(document)) {
-          return {
-            source_order_document_id: id,
-            order_number: orderNumber,
-            status: "SKIPPED" as const,
-            code: "INVOICE_AUTO_REBASE_REQUIRES_REVIEW",
-          };
-        }
+        const confirmation = confirmations.get(String(order.id));
         try {
           await prepareInvoiceDocumentFromSourceOrder(
             id,
             input.warehouse_id,
-            String(order.source_payload_hash),
+            confirmation?.expected_source_payload_hash ??
+              String(order.source_payload_hash),
             actorId,
             authorization,
             auditMetadata,
             {
-              safeAutoRebase: true,
+              safeAutoRebase: !confirmation,
+              expectedRevision: confirmation?.expected_revision,
+              expectedSourceContentHash:
+                confirmation?.expected_source_content_hash,
               context: { storeConfig, account },
             },
           );
@@ -636,6 +756,16 @@ export const updateInvoiceDocument = async (
     input.expected_source_payload_hash,
     {
       revision: input.expected_revision + 1,
+      content_edited: current.source_content_fingerprint
+        ? current.source_content_fingerprint !==
+          invoiceEditableContentFingerprint(
+            nextItems,
+            input.payment_method_name,
+          )
+        : current.content_edited === true ||
+          canonicalJson(current.items) !== canonicalJson(nextItems) ||
+          current.payment_method_name !== input.payment_method_name ||
+          Boolean(current.edited_at && current.edited_by !== "public-customer"),
       buyer: input.buyer,
       payment_method_name: input.payment_method_name,
       items: nextItems,

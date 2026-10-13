@@ -584,7 +584,7 @@ export const syncInvoiceOrdersForDate = async (
           );
           const existing = existingById.get(id);
           try {
-            await prepareInvoiceDocumentFromSourceOrder(
+            const preparedDocument = await prepareInvoiceDocumentFromSourceOrder(
               id,
               warehouseId,
               write.source_payload_hash,
@@ -601,7 +601,7 @@ export const syncInvoiceOrdersForDate = async (
             );
             return !existing
               ? "CREATED"
-              : existing.source_payload_hash !== write.source_payload_hash
+              : Number(preparedDocument.revision) > Number(existing.revision)
                 ? "REBASED"
                 : "UNCHANGED";
           } catch (error) {

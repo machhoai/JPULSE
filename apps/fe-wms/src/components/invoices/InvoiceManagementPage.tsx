@@ -55,6 +55,7 @@ import {
   InvoiceLedgerPanel,
   type InvoiceIssuedStatistics,
 } from "./InvoiceLedgerPanel";
+import { InvoiceSourceUpdateReview } from "./InvoiceSourceUpdateReview";
 import {
   canSelectForInvoiceIssue,
   invoiceBusinessStatus,
@@ -109,7 +110,7 @@ const copy = {
     retry: "Thử lại",
     syncFailed: "Cập nhật dữ liệu chưa hoàn tất",
     syncDescription:
-      "Đơn hàng, bản nháp và kết quả đối chiếu MISA đã được cập nhật.",
+      "Bản nháp an toàn được cập nhật tự động, giữ thông tin người mua. Những đơn cần xác nhận nằm trong danh sách Cần kiểm tra thay đổi.",
     previewReady: "Đã tạo bản xem trước",
     previewFailed: "Không thể xem trước hóa đơn",
     matchedMisa: "Khớp MISA",
@@ -161,7 +162,7 @@ const copy = {
     unchanged: "未变化",
     retry: "重试",
     syncFailed: "发票同步失败",
-    syncDescription: "当天全部订单已保存并重新执行预检。",
+    syncDescription: "安全草稿已自动更新并保留买方信息。需确认的订单位于需要检查变化列表。",
     previewReady: "预览已生成",
     previewFailed: "无法预览发票",
     matchedMisa: "MISA 匹配",
@@ -292,6 +293,10 @@ export default function InvoiceManagementPage() {
     useState<InvoiceSourceOrderView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<InvoiceSyncResult | null>(null);
+  const [sourceUpdateRefreshToken, setSourceUpdateRefreshToken] = useState(0);
+  const [sourceUpdateSummary, setSourceUpdateSummary] = useState<string | null>(
+    null,
+  );
   const [selectedIssueIds, setSelectedIssueIds] = useState<string[]>([]);
   const [query, setQuery] = useState(() => initialQueryValue("q"));
   const [attentionFilter, setAttentionFilter] =
@@ -394,6 +399,7 @@ export default function InvoiceManagementPage() {
 
   useEffect(() => {
     setSelectedIssueIds([]);
+    setSourceUpdateSummary(null);
   }, [activeStoreId, businessDate, businessDateTo]);
 
   useEffect(() => {
@@ -421,9 +427,11 @@ export default function InvoiceManagementPage() {
     setSyncing(true);
     setError(null);
     setSyncResult(null);
+    setSourceUpdateSummary(null);
     try {
       const operation = (async () => {
         let lastResult: InvoiceSyncResult | null = null;
+        const draftCounts = { created: 0, updated: 0 };
         for (const date of selectedDates) {
           lastResult = await invoiceApi.syncSourceOrders(
             activeStoreId,
@@ -431,10 +439,17 @@ export default function InvoiceManagementPage() {
             InvoiceOrderSyncPurpose.ISSUE,
             canReconcile,
           );
+          draftCounts.created += lastResult.draft_created_count;
+          draftCounts.updated += lastResult.draft_rebased_count;
         }
         if (!lastResult) throw new Error("INVOICE_DATE_RANGE_EMPTY");
         setSyncResult(selectedDates.length === 1 ? lastResult : null);
         await loadOrders();
+        setSourceUpdateSummary(
+          lang === "vi"
+            ? `Đã tạo ${draftCounts.created} và tự cập nhật ${draftCounts.updated} hóa đơn nháp, giữ thông tin người mua. Các đơn cần xác nhận được gom trong danh sách “Cần kiểm tra thay đổi”.`
+            : `已创建 ${draftCounts.created} 并自动更新 ${draftCounts.updated} 张草稿，保留买方信息。需确认的订单已汇总在“需要检查变化”列表。`,
+        );
         return lastResult;
       })();
       await showToast.promise(operation, {
@@ -454,6 +469,7 @@ export default function InvoiceManagementPage() {
         invoiceErrorToast(syncError, "UPDATE", d.syncFailed).description,
       );
     } finally {
+      setSourceUpdateRefreshToken((current) => current + 1);
       setSyncing(false);
     }
   };
@@ -783,6 +799,23 @@ export default function InvoiceManagementPage() {
           syncResult={syncResult}
         />
       )}
+      {sourceUpdateSummary && (
+        <p
+          role="status"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900"
+        >
+          {sourceUpdateSummary}
+        </p>
+      )}
+
+      <InvoiceSourceUpdateReview
+        warehouseId={activeStoreId}
+        dates={selectedDates}
+        refreshToken={sourceUpdateRefreshToken}
+        canPrepare={canPrepare && !syncing}
+        lang={lang}
+        onChanged={loadOrders}
+      />
 
       <InvoiceBulkIssuePanel
         ref={bulkIssueRef}

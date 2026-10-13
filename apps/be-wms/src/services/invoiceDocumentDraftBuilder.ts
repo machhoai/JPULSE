@@ -6,8 +6,13 @@ import {
   type InvoiceSourceOrderLine,
   type MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
+
 import type { StoredMeInvoiceAccount } from "../repositories/meInvoiceConfigRepository.js";
-import { invoiceFinancialFingerprint } from "./invoiceDocumentPolicy.js";
+
+import {
+  invoiceEditableContentFingerprint,
+  invoiceFinancialFingerprint,
+} from "./invoiceDocumentPolicy.js";
 import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
 import { parseJoyworldDate } from "./invoiceOrderSyncUtils.js";
 
@@ -44,8 +49,8 @@ const documentStatusFromPreparation = (
   issueEligible
     ? InvoiceDocumentStatus.READY_TO_ISSUE
     : status === InvoicePreparationStatus.NEEDS_TAX_CONFIGURATION
-    ? InvoiceDocumentStatus.NEEDS_TAX_CONFIGURATION
-    : InvoiceDocumentStatus.NEEDS_CORRECTION;
+      ? InvoiceDocumentStatus.NEEDS_TAX_CONFIGURATION
+      : InvoiceDocumentStatus.NEEDS_CORRECTION;
 
 export const buildInitialInvoiceDocument = (
   sourceOrder: JsonRecord,
@@ -79,8 +84,7 @@ export const buildInitialInvoiceDocument = (
     legal_entity_id: account.legal_entity_id,
     meinvoice_account_id: account.id,
     source_order_document_id: sourceOrderDocumentId,
-    source_system:
-      sourceOrder.source_system === "JPOS" ? "JPOS" : "JOYWORLD",
+    source_system: sourceOrder.source_system === "JPOS" ? "JPOS" : "JOYWORLD",
     source_order_id: sourceOrderId,
     source_order_number: sourceOrder.order_number ?? null,
     local_order_id: sourceOrder.local_order_id ?? null,
@@ -104,14 +108,23 @@ export const buildInitialInvoiceDocument = (
       email: "",
     },
     payment_method_name:
-      sourceOrder.mapped_payment_method
-      ?? storeConfig.default_payment_method_name
-      ?? "",
+      sourceOrder.mapped_payment_method ??
+      storeConfig.default_payment_method_name ??
+      "",
     items,
     calculation: sourceOrder.calculation ?? null,
     issue_eligible: preflight.issue_eligible === true,
     validation_issues: preflight.issues ?? [],
     source_financial_fingerprint: invoiceFinancialFingerprint(items),
+    source_content_fingerprint: invoiceEditableContentFingerprint(
+      items,
+      String(
+        sourceOrder.mapped_payment_method ??
+          storeConfig.default_payment_method_name ??
+          "",
+      ),
+    ),
+    content_edited: false,
     financially_edited: false,
     mapping_version: sourceOrder.mapping_version,
     calculation_version: sourceOrder.calculation_version,
