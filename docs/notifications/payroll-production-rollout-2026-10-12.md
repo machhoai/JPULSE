@@ -58,6 +58,7 @@ Người dùng đã xác nhận triển khai hạ tầng tính phí theo sử d�
 - Revision cuối `be-wms-00318-f26`, Ready, 100% traffic. Giữ toàn bộ cấu hình cũ; xác nhận riêng năm biến payroll và secret reference version 1 sau deploy.
 - Frontend Vercel deployment `dpl_8974PXrZuuXmsCJ487ufoSTJ2coL`: READY, production, cùng SHA; alias `erp.joyworldcityfuns.vn` đã trỏ deployment này.
 - Firestore ruleset mới `ed967fa2-fd7e-4af1-a54a-c58942bba927`, giữ rules POS hiện hữu. Hai index payroll đã tạo thành công (history và drafts); không xóa indexes khác.
+- Bổ sung sau sự cố đợt 8 email ngày 12/10: hai index COLLECTION `items` (`status+chunk`, `status+next_retry_at`) ban đầu bị bỏ sót khi lọc tên collection. Đã tạo đủ, mở lại queue và xác nhận đợt gốc COMPLETED với 8 SENT/8 history. Xem [báo cáo sự cố](./payroll-worker-index-incident-2026-10-12.md).
 - Scheduler `payroll-email-recovery`: ENABLED, mỗi 5 phút, OIDC đúng service account/audience, timeout 120s.
 - Kiểm tra task trỏ job ID không tồn tại: HTTP 200 trên revision cuối, không có người nhận/không tạo email lịch sử. Recovery được kiểm tra lúc không có pending job: HTTP 200 cả chạy thủ công và lượt định kỳ 03:10 UTC (10:10 Asia/Saigon).
 - API catalog không có đăng nhập trả 401; trang `/notification` trả 200. Tương thích khóa với draft hiện có được xác minh trong bộ nhớ, không log dữ liệu.
