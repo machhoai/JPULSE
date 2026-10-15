@@ -298,6 +298,24 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     },
   },
   {
+    key: "pos.members.edit",
+    group: "pos",
+    label: { vi: "Chỉnh sửa hồ sơ thành viên", zh: "会员资料管理" },
+    description: { vi: "Chỉnh sửa hồ sơ thành viên trong phạm vi cửa hàng được phân quyền.", zh: "在授权门店范围内管理会员资料。" },
+  },
+  {
+    key: "pos.members.history",
+    group: "pos",
+    label: { vi: "Xem lịch sử chỉnh sửa thành viên", zh: "会员资料管理" },
+    description: { vi: "Xem lịch sử chỉnh sửa thành viên trong phạm vi cửa hàng được phân quyền.", zh: "在授权门店范围内管理会员资料。" },
+  },
+  {
+    key: "pos.members.retry_sync",
+    group: "pos",
+    label: { vi: "Thử lại đồng bộ hồ sơ thành viên", zh: "会员资料管理" },
+    description: { vi: "Thử lại đồng bộ hồ sơ thành viên trong phạm vi cửa hàng được phân quyền.", zh: "在授权门店范围内管理会员资料。" },
+  },
+  {
     key: "pos.members.compensate",
     group: "pos",
     label: { vi: "Nạp bù tài khoản thành viên", zh: "会员账户补偿充值" },
@@ -305,6 +323,12 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
       vi: "Nạp bù điểm chơi cho thành viên tại cửa hàng và ghi nhật ký kiểm toán.",
       zh: "在门店为会员补充游戏点数并记录审计日志。",
     },
+  },
+  {
+    key: "pos.members.return_card",
+    group: "pos",
+    label: { vi: "Gỡ liên kết thẻ thành viên", zh: "会员退卡" },
+    description: { vi: "Gỡ liên kết thẻ thành viên thông thường, không hoàn cọc, trong phạm vi điểm bán được phân quyền.", zh: "在授权门店解除普通会员卡绑定，不退押金。" },
   },
   {
     key: "pos.shift.close",

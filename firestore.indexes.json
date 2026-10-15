@@ -1,6 +1,78 @@
 {
   "indexes": [
     {
+      "collectionGroup": "pos_members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "shopId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "phone",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "pos_members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "shopId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "warehouseId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "phone",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "pos_members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "shopId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "hkImportUnassigned",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "phone",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "pos_member_registration_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "shopId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "warehouseId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "state",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "phone",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "marketing_voucher_campaigns",
       "queryScope": "COLLECTION",
       "fields": [
@@ -1688,9 +1760,118 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "pos_members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "warehouseId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "shopId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "phone",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "pos_member_profile_changes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "memberUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "revision",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "pos_member_profile_changes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "memberUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "revision",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "pos_member_profile_changes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nextAttemptAt",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": [
+    {
+      "collectionGroup": "pos_member_card_return_jobs",
+      "fieldPath": "items",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_member_card_return_jobs",
+      "fieldPath": "requestHash",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_member_card_return_jobs",
+      "fieldPath": "lease",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_member_registration_requests",
+      "fieldPath": "input",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_member_registration_requests",
+      "fieldPath": "fingerprint",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_member_registration_requests",
+      "fieldPath": "lease",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_member_registration_requests",
+      "fieldPath": "fullName",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_member_registration_requests",
+      "fieldPath": "phone",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_member_registration_requests",
+      "fieldPath": "lastError",
+      "indexes": []
+    },
     {
       "collectionGroup": "marketing_voucher_codes",
       "fieldPath": "distributed_to_phone",
@@ -1790,6 +1971,51 @@
     {
       "collectionGroup": "pos_members",
       "fieldPath": "updatedBy",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_members",
+      "fieldPath": "nickName",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_members",
+      "fieldPath": "remoteSnapshot",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_members",
+      "fieldPath": "syncLease",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_member_profile_changes",
+      "fieldPath": "before",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_member_profile_changes",
+      "fieldPath": "after",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_members",
+      "fieldPath": "hkSnapshot",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_members",
+      "fieldPath": "hkImportHash",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_members",
+      "fieldPath": "hkImportedAt",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "pos_member_import_state",
+      "fieldPath": "hashes",
       "indexes": []
     }
   ]
