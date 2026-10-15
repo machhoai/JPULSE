@@ -64,12 +64,26 @@ export function detectPayrollMapping(book: PayrollWorkbook, sheetName: string): 
   });
   return { sheet: sheetName, start_row: header + 1, columns };
 }
-export function previewPayrollColumns(book: PayrollWorkbook, mapping: PayrollSourceMapping) {
+export interface PayrollColumnPreview { column: string; sample: string; header: string }
+// Imported workbooks are read-only; don't rescan every cell while typing a field name.
+const columnPreviewCache = new WeakMap<ExcelJS.Worksheet, Map<number, PayrollColumnPreview[]>>();
+export function previewPayrollColumns(book: PayrollWorkbook, mapping: PayrollSourceMapping): PayrollColumnPreview[] {
   const sheet = book.workbook.getWorksheet(mapping.sheet)!;
-  return Array.from({ length: Math.min(sheet.columnCount, 100) }, (_, i) => ({
-    column: sheet.getColumn(i + 1).letter, sample: sheet.getRow(mapping.start_row).getCell(i + 1).text,
-    header: sheet.getRow(Math.max(mapping.start_row - 1, 1)).getCell(i + 1).text,
+  const cached = columnPreviewCache.get(sheet)?.get(mapping.start_row); if (cached) return cached;
+  const used = new Set<number>();
+  const samples = new Map<number, string>();
+  sheet.eachRow((row, index) => row.eachCell((cell, column) => {
+    if (cell.value == null || !cell.text.trim()) return;
+    used.add(column);
+    if (index >= mapping.start_row && !samples.has(column)) samples.set(column, cell.text);
   }));
+  const columns = [...used].sort((a, b) => a - b).map(column => ({
+    column: sheet.getColumn(column).letter, sample: samples.get(column) ?? '',
+    header: sheet.getRow(Math.max(mapping.start_row - 1, 1)).getCell(column).text,
+  }));
+  const cache = columnPreviewCache.get(sheet) ?? new Map<number, PayrollColumnPreview[]>();
+  cache.set(mapping.start_row, columns); columnPreviewCache.set(sheet, cache);
+  return columns;
 }
 export interface PayrollParsedRow { name: string; values: Record<string, PayrollValue>; source: PayrollSource; issues: PayrollIssue[] }
 export function parsePayrollRows(book: PayrollWorkbook, mapping: PayrollSourceMapping, kind: PayrollImportKind) {

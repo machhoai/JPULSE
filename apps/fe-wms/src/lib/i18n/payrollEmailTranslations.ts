@@ -1,5 +1,13 @@
 export const payrollEmailTranslations = {
   vi: {
+    customFieldHint: "Thêm trường, chọn cột rồi bấm Đọc và đối chiếu để lấy dữ liệu mới. Chỉ cột đã map mới được đưa vào email.",
+    customFields: "Trường tùy chỉnh", customFieldName: "Tên trường mới", addField: "Thêm trường",
+    customFieldNameError: "Tên trường không được trống, trùng với trường trong cùng bảng hoặc dài quá 160 ký tự.",
+    reorderField: "Sắp xếp trường", reorderHint: "Kéo tay nắm để sắp xếp, hoặc nhấn Space rồi dùng phím mũi tên và Space để hoàn tất. Thứ tự và trạng thái ẩn/hiện được lưu cùng mẫu.",
+    fieldDragStart: "Đang di chuyển", fieldDragEnd: "Đã sắp xếp", fieldDragCancel: "Đã hủy sắp xếp",
+    deliverySettings: "Địa chỉ phản hồi và bản sao", replyTo: "Email nhận phản hồi (Reply-To)", copyCc: "CC", copyBcc: "BCC",
+    deliveryHint: "Không bắt buộc. Ngăn cách nhiều email bằng dấu phẩy hoặc chấm phẩy. Reply-To trống sẽ dùng địa chỉ gửi. Cấu hình được lưu cùng mẫu/bản nháp.",
+    copyWarning: "CC/BCC nhận bản sao từng email kèm dữ liệu công & lương của nhân viên. CC hiển thị với người nhận, BCC được ẩn. Gửi email mẫu cho mình sẽ bỏ CC/BCC. Trạng thái lịch sử chỉ theo dõi người nhận chính.",
     editorOrdered: "Đánh số", editorBullets: "Dấu đầu dòng", editorIndent: "Tăng thụt lề", editorOutdent: "Giảm thụt lề", editorSub: "Chỉ số dưới", editorSuper: "Chỉ số trên",
     editorTools: "Font chữ|Cỡ chữ|Tiêu đề đoạn|Đậm|Nghiêng|Gạch chân|Gạch ngang|Màu chữ|Màu nền chữ|Chỉ số dưới/trên|Căn lề|Đánh số/dấu đầu dòng|Thụt lề|Trích dẫn|Chèn liên kết|Xóa định dạng",
     editorFormatHint: "Định dạng nội dung bằng thanh công cụ. Link email có thể dùng mailto:diachi@example.com?subject=...; mã hóa khoảng trắng và tiếng Việt trong subject khi nhập URL.",
@@ -81,6 +89,14 @@ export const payrollEmailTranslations = {
     variables: "Biến: @name@, @tMonth@, @(tMonth-1)@, @tYear@, @(tYear-1)@",
   },
   zh: {
+    customFieldHint: "添加字段并选择列后，点击读取并核对以获取新数据。只有已映射的列才会显示在邮件中。",
+    customFields: "自定义字段", customFieldName: "新字段名称", addField: "添加字段",
+    customFieldNameError: "字段名称不能为空、不能与同表字段重名，且不得超过160个字符。",
+    reorderField: "排序字段", reorderHint: "拖动手柄排序，或按空格后用方向键调整，再按空格完成。排序和显示设置随模板保存。",
+    fieldDragStart: "正在移动", fieldDragEnd: "已排序", fieldDragCancel: "已取消排序",
+    deliverySettings: "回复及抄送地址", replyTo: "回复邮箱 (Reply-To)", copyCc: "CC", copyBcc: "BCC",
+    deliveryHint: "可选。多个邮箱用逗号或分号分隔。Reply-To 留空时使用发件地址。配置随模板/草稿保存。",
+    copyWarning: "CC/BCC 将收到每位员工考勤及工资邮件的副本。CC 对收件人可见，BCC 隐藏。发送测试邮件时不抄送。历史状态仅跟踪主收件人。",
     editorOrdered: "编号列表", editorBullets: "项目符号", editorIndent: "增加缩进", editorOutdent: "减少缩进", editorSub: "下标", editorSuper: "上标",
     editorTools: "字体|字号|段落标题|加粗|斜体|下划线|删除线|文字颜色|文字背景|下标/上标|对齐|编号/项目符号|缩进|引用|插入链接|清除格式",
     editorFormatHint: "使用工具栏设置正文格式。邮件链接可用 mailto:diachi@example.com?subject=...；输入 URL 时请对 subject 中的空格和中文进行编码。",

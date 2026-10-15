@@ -12,6 +12,7 @@ export interface BrevoEmailAttachment {
 
 interface SendBrevoEmailInput {
   payrollHistoryId?: string;
+  replyTo?: string;
   /** false: payroll snapshot already includes its selected signature. */
   signature?: false | { html: string; text: string };
   to: string[];
@@ -77,6 +78,7 @@ export async function sendBrevoEmail(
     const info = await transporter.sendMail({
       from: `"${senderName}" <${senderEmail}>`,
       to: input.to.join(", "),
+      replyTo: input.replyTo || undefined,
       cc: input.cc ? input.cc.join(", ") : undefined,
       bcc: input.bcc ? input.bcc.join(", ") : undefined,
       subject: input.subject,
@@ -87,6 +89,10 @@ export async function sendBrevoEmail(
       headers: input.payrollHistoryId ? { "X-Mailin-custom": "payroll_history:" + input.payrollHistoryId } : undefined,
     });
 
+    // SMTP may accept a copy while rejecting the employee: never mark that employee sent.
+    const rejected = (info.rejected ?? []).map(address => (typeof address === "string" ? address : address.address).toLowerCase());
+    if (input.signature === false && input.to.some(address => rejected.includes(address.toLowerCase())))
+      throw Object.assign(new Error("SMTP đã từ chối người nhận chính dù có thể đã chấp nhận địa chỉ CC/BCC."), { code: "EENVELOPE" });
     return { messageId: info.messageId };
   } catch (error: unknown) {
     if (input.signature === false) console.error("PAYROLL_SMTP_FAILED", { code: (error as { code?: string }).code });

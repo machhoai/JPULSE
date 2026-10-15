@@ -1,3 +1,4 @@
+import { assertPayrollCustomRecipient } from "./payrollCustomRecipient.js";
 import { softRemovePayrollCatalog, writePayrollRecipient } from "../../repositories/payrollManagementRepository.js";
 import { findPayrollCatalogRecords, findPayrollFacilityRecord, findPayrollRecipientRecord, findPayrollRecipientPage } from "../../repositories/payrollQueryRepository.js";
 import type { EmailSignature, PayrollEmailTemplate, PayrollDraftMetadata, PayrollDraftContent, PayrollRecipient } from "@bduck/shared-types";
@@ -68,6 +69,8 @@ export async function savePayrollRecipient(draftId: string, id: string, body: un
   const { action_time, ...person } = recipientSchema.parse(body);
   if (person.draft_revision !== draft.revision) payrollError("Bản nháp đã đổi trong lúc lưu người nhận. Hãy lưu lại toàn bộ bản nháp.", "保存收件人时草稿已更改，请重新保存整个草稿。", 409);
   if (person.id !== id) payrollError("Mã người nhận không khớp bản ghi.", "收件人编号不匹配。");
+  const content = await readPayrollPayload<PayrollDraftContent>(draft.payload_path, `draft:${draftId}:${draft.facility_id}:${actor}`);
+  assertPayrollCustomRecipient(content.composer, person);
   const path = await storePayrollPayload(`recipient:${draftId}:${id}:${draft.facility_id}`, person);
   const payloadHash = createHash("sha256").update(JSON.stringify(person)).digest("hex");
   await writePayrollRecipient(draft, id, path, payloadHash, actor, action_time);

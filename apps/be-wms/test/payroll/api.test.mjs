@@ -31,6 +31,32 @@ test("PAY-11 API: unauthenticated and missing store permission denied, malformed
   assert.equal((await request(s,"/drafts/invalid.id")).status,400);
   const other={...s,actor:"other-actor"};assert.equal((await request(other,"/drafts/"+s.draft)).status,403);
 });
+
+test("PAY-CUSTOM API: template/draft persistence, registered source data, preview, ZIP and encrypted history",async()=>{
+ resetSmtp();const s=await scenario();
+ const ids={roster:'custom_roster_'+'1'.repeat(32),salary:'custom_salary_'+'2'.repeat(32),attendance:'custom_attendance_'+'3'.repeat(32)};
+ const composer={...s.content,custom_fields:Object.entries(ids).map(([source,id])=>({source,id,label:'Bổ sung '+source})),field_order:{},fields:structuredClone(s.content.fields),mappings:{}};
+ for(const [source,block] of Object.entries({roster:'employee-info',salary:'payslip',attendance:'attendance'})){
+  composer.fields[block]=[ids[source],...composer.fields[block]];composer.field_order[block]=composer.fields[block];
+  composer.mappings[source]={sheet:'QA '+source,start_row:2,columns:{[ids[source]]:'CW'}};
+ }
+ const bad=await request(s,'/templates/'+s.template,'PUT',{name:'Mẫu tùy chỉnh',facility_id:s.facility,composer:{...composer,custom_fields:composer.custom_fields.map(field=>field.source==='salary'?{...field,label:'Thực nhận'}:field)},revision:1});assert.equal(bad.status,400);assert.match((await bad.json()).messages.vi,/không trùng/);
+ const template=await request(s,'/templates/'+s.template,'PUT',{name:'Mẫu tùy chỉnh',facility_id:s.facility,composer,revision:1});assert.equal(template.status,200);
+ const catalog=(await(await request(s,'/catalog')).json()).data;assert.deepEqual(catalog.templates.find(t=>t.id===s.template).composer.custom_fields,composer.custom_fields);
+ const body={template_id:s.template,name:'Custom draft',composer,clock:'2026-10-09T03:00:00.000Z',revision:s.meta.revision,recipient_ids:s.people.map(p=>p.id)};
+ const saved=await request(s,'/drafts/'+s.draft,'PUT',body);assert.equal(saved.status,200);const meta=(await saved.json()).data;
+ const person={...s.people[0],values:{...s.people[0].values,[ids.roster]:'Dữ liệu riêng',[ids.salary]:250.567},attendance:[{date:'01/09/2026',[ids.attendance]:'Theo ngày'}],draft_revision:meta.revision};
+ assert.equal((await request(s,'/drafts/'+s.draft+'/recipients/'+person.id,'PUT',{...person,values:{...person.values,['custom_salary_'+'f'.repeat(32)]:'Chưa khai báo'}})).status,400);
+ assert.equal((await request(s,'/drafts/'+s.draft+'/recipients/'+person.id,'PUT',person)).status,200);
+ const opened=(await(await request(s,'/drafts/'+s.draft)).json()).data;assert.deepEqual(opened.content.composer.field_order,composer.field_order);
+ const preview=(await(await request(s,'/drafts/'+s.draft+'/preview','POST',{person_id:person.id})).json()).data;
+ assert.ok(preview.html.includes('Dữ liệu riêng'));assert.ok(preview.html.includes('250,57'));assert.ok(preview.html.includes('Theo ngày'));assert.ok(preview.html.indexOf('Bổ sung roster')<preview.html.indexOf('Họ tên'));
+ const exported=await request(s,'/drafts/'+s.draft+'/export','POST',{recipient_ids:[person.id]});assert.equal(exported.status,200);
+ const zip=await JSZip.loadAsync(await exported.arrayBuffer());const mail=await simpleParser(await Object.values(zip.files).find(file=>!file.dir).async('nodebuffer'));assert.equal(mail.html,preview.html);
+ const job=await jobs.createPayrollJob({...s.request,draft_revision:meta.revision},s.actor,s.access);await prepare(job);await worker.processPayrollJob(job.id);assert.equal(smtp.calls[0].htmlContent,preview.html);
+ const history=await db.collection('payroll_email_sent_records').where('job_id','==',job.id).get();assert.equal(history.size,1);assert.ok(!JSON.stringify(history.docs[0].data()).includes('Dữ liệu riêng'));
+ const detail=(await(await request(s,'/history/'+history.docs[0].id)).json()).data;assert.equal(detail.snapshot.html,preview.html);
+});
 test("PAY-12 API: real ZIP contains only selected employees and parseable personal MIME, no history",async()=>{
   resetSmtp();const s=await scenario(3);
   const response=await request(s,"/drafts/"+s.draft+"/export","POST",{recipient_ids:[s.people[0].id,s.people[2].id]});
@@ -55,6 +81,33 @@ test("PAY-11 API: test-send/download privileges independent",async()=>{
   const s=await scenario();const composeOnly=["notifications.payroll.compose"];
   assert.equal((await request(s,"/drafts/"+s.draft+"/test","POST",{person_id:s.people[0].id,email:"qa@example.invalid"},composeOnly)).status,403);
   assert.equal((await request(s,"/drafts/"+s.draft+"/export","POST",{recipient_ids:[s.people[0].id]},composeOnly)).status,403);
+});
+
+test("PAY-ROUTING API: save, preview, safe test-send, export, worker, history and resend preserve headers",async()=>{
+ resetSmtp(); const s=await scenario();
+ const composer={...s.content,reply_to:"reply@example.invalid",cc:["copy@example.invalid"],bcc:["hidden@example.invalid"]};
+ const body={template_id:s.template,name:"Routing QA",composer,clock:"2026-10-09T03:00:00.000Z",revision:s.meta.revision,recipient_ids:s.people.map(p=>p.id)};
+ const bad=await request(s,"/drafts/"+s.draft,"PUT",{...body,composer:{...composer,cc:["wrong"]}});
+ assert.equal(bad.status,400);assert.match((await bad.json()).messages.vi,/CC #1/);
+ const saved=await request(s,"/drafts/"+s.draft,"PUT",body);assert.equal(saved.status,200);const meta=(await saved.json()).data;
+ for(const person of s.people) assert.equal((await request(s,"/drafts/"+s.draft+"/recipients/"+person.id,"PUT",{...person,draft_revision:meta.revision})).status,200);
+ const preview=await request(s,"/drafts/"+s.draft+"/preview","POST",{person_id:s.people[0].id});assert.equal(preview.status,200);
+ const snapshot=(await preview.json()).data;assert.equal(snapshot.reply_to,composer.reply_to);assert.deepEqual(snapshot.cc,composer.cc);assert.deepEqual(snapshot.bcc,composer.bcc);
+ const tested=await request(s,"/drafts/"+s.draft+"/test","POST",{person_id:s.people[0].id,email:"qa@example.invalid"});assert.equal(tested.status,200);
+ assert.equal(smtp.calls[0].replyTo,composer.reply_to);assert.equal(smtp.calls[0].cc,undefined);assert.equal(smtp.calls[0].bcc,undefined);
+ const exported=await request(s,"/drafts/"+s.draft+"/export","POST",{recipient_ids:[s.people[0].id]});assert.equal(exported.status,200);
+ const zip=await JSZip.loadAsync(await exported.arrayBuffer());const file=Object.values(zip.files).find(f=>!f.dir);const mail=await simpleParser(await file.async("nodebuffer"));
+ assert.equal(mail.replyTo.value[0].address,composer.reply_to);assert.equal(mail.cc.value[0].address,composer.cc[0]);assert.equal(mail.bcc.value[0].address,composer.bcc[0]);
+ resetSmtp();const job=await jobs.createPayrollJob({...s.request,draft_revision:meta.revision},s.actor,s.access);await prepare(job);await worker.processPayrollJob(job.id);
+ assert.equal(smtp.calls.length,1);assert.equal(smtp.calls[0].replyTo,composer.reply_to);assert.deepEqual(smtp.calls[0].cc,composer.cc);assert.deepEqual(smtp.calls[0].bcc,composer.bcc);
+ const records=await db.collection("payroll_email_sent_records").where("job_id","==",job.id).get();const record=records.docs[0];
+ const detail=(await(await request(s,"/history/"+record.id)).json()).data;assert.deepEqual(detail.snapshot.bcc,composer.bcc);
+ const copyEvent=await webhookRequest({event:"hard_bounce",email:composer.cc[0],"X-Mailin-custom":"payroll_history:"+record.id,ts_event:Math.floor(Date.now()/1000)});
+ assert.equal(copyEvent.status,200);assert.equal((await record.ref.get()).get("delivery_status"),"PENDING");
+ await record.ref.update({delivery_status:"DELIVERED"});
+ const resent=await request(s,"/history/"+record.id+"/resend","POST",{email:"other@example.invalid",request_id:"routing-resend",confirmed:true});assert.equal(resent.status,202);
+ const resendJob=(await resent.json()).data;await prepare(resendJob);await worker.processPayrollJob(resendJob.id);
+ assert.equal(smtp.calls.length,2);assert.equal(smtp.calls[1].replyTo,composer.reply_to);assert.deepEqual(smtp.calls[1].cc,composer.cc);assert.deepEqual(smtp.calls[1].bcc,composer.bcc);
 });
 test("PAY-14 API: internal worker requires dedicated identity, ordinary sender cannot bypass auth",async()=>{
   const response=await fetch(base+"/internal/jobs/qa-job",{method:"POST",headers:{authorization:"Bearer qa-actor"}});

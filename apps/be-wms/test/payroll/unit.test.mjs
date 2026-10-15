@@ -3,13 +3,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { simpleParser } from "mailparser";
 import { composer, person, clock, workbookFixture } from "./fixtures.mjs";
-import { readPayrollWorkbook, detectPayrollMapping, parsePayrollRows, mergePayrollData, normalizePayrollName } from "../../../fe-wms/src/utils/payrollExcelImport.ts";
+import { readPayrollWorkbook, detectPayrollMapping, previewPayrollColumns, parsePayrollRows, mergePayrollData, normalizePayrollName } from "../../../fe-wms/src/utils/payrollExcelImport.ts";
 import { payrollEligibleIds, resolvePayrollMatch } from "../../../fe-wms/src/utils/payrollRecipients.ts";
 import { payrollVariables, renderPayrollEmail, formatPayrollNumber, isPayrollBankAccountValid, payrollHistoryStatus, payrollHistoryDateBounds, payrollHistoryResendPolicy, payrollTrackingPatch, payrollHistoryAttempt } from "@bduck/shared-types";
 import { composerSchema, recipientSchema, payrollId } from "../../dist/services/payroll/payrollSchemas.js";
 import { sanitizePayrollSignature } from "../../dist/services/payroll/payrollHtml.js";
 import { createPayrollMime } from "../../dist/services/payroll/payrollMimeService.js";
 import { applyBrevoEmailSignature } from "../../dist/services/brevoEmailSignature.js";
+import { payrollHiddenPeople, payrollHiddenLabels } from "../../../fe-wms/src/utils/payrollFieldVisibility.ts";
+import { payrollOrderedFields } from "@bduck/shared-types";
 import { mailSafety } from "./noMailGuard.mjs";
 async function parse(options) {
   const original = await workbookFixture(options);
@@ -18,6 +20,61 @@ async function parse(options) {
   const roster=run("Bảng kê lương","roster"),salary=run("Bảng lương Parttime AMTP","salary"),attendance=run("Bảng công","attendance");
   return { original,book,roster,salary,attendance,people:mergePayrollData(roster,salary,attendance) };
 }
+
+test("PAY-ROUTING: optional headers, normalization, deduplication and MIME retain Reply-To/CC/BCC", async () => {
+  const c = { ...composer(), reply_to: " Payroll@Example.invalid ", cc: ["copy@example.invalid", "COPY@example.invalid", person().email], bcc: ["copy@example.invalid", "hidden@example.invalid"] };
+  const parsed = composerSchema.parse(c);
+  const rendered = renderPayrollEmail(parsed, person(), clock);
+  assert.equal(rendered.reply_to, "payroll@example.invalid");
+  assert.deepEqual(rendered.cc, ["copy@example.invalid"]);
+  assert.deepEqual(rendered.bcc, ["hidden@example.invalid"]);
+  const mail = await simpleParser(await createPayrollMime({ ...rendered, email: person().email, name: person().name, clock, recipient_id: person().id }));
+  assert.equal(mail.replyTo.value[0].address, rendered.reply_to);
+  assert.equal(mail.cc.value[0].address, rendered.cc[0]);
+  assert.equal(mail.bcc.value[0].address, rendered.bcc[0]);
+  assert.deepEqual(renderPayrollEmail(composer(), person(), clock).cc, []);
+  for (const patch of [{ reply_to: "wrong" }, { cc: ["wrong"] }, { bcc: ["a@example.invalid\r\nBcc: leak@example.invalid"] }])
+    assert.equal(composerSchema.safeParse({ ...composer(), ...patch }).success, false);
+});
+
+test("PAY-CUSTOM: all nonempty Excel columns including >100, safe labels, source data, order, visibility and rematching", async () => {
+ const {workbook,file}=await workbookFixture(); const book={workbook,file};
+ const keys={roster:'custom_roster_'+'a'.repeat(32),salary:'custom_salary_'+'b'.repeat(32),attendance:'custom_attendance_'+'c'.repeat(32)};
+ const sheets={roster:'Bảng kê lương',salary:'Bảng lương Parttime AMTP',attendance:'Bảng công'};
+ const roster=workbook.getWorksheet(sheets.roster);roster.getCell('CW9').value='Thông tin bổ sung';roster.getCell('CW11').value='R11';roster.getCell('CW10').value='R10';
+ workbook.getWorksheet(sheets.salary).getCell('M3').value=123.456;
+ workbook.getWorksheet(sheets.attendance).getCell('Q4').value='Chấm công riêng';
+ const c=composer();c.custom_fields=Object.entries(keys).map(([source,id])=>({id,source,label:source==='roster'?'<img src=x onerror=alert(1)>':'Trường riêng'}));
+ for(const kind of Object.keys(sheets)){const mapping=detectPayrollMapping(book,sheets[kind]);mapping.columns[keys[kind]]=kind==='roster'?'CW':kind==='salary'?'M':'Q';c.mappings[kind]=mapping;}
+ const columns=previewPayrollColumns(book,c.mappings.roster);assert.ok(columns.some(col=>col.column==='CW'));assert.ok(!columns.some(col=>col.column==='CV'));
+ const people=mergePayrollData(parsePayrollRows(book,c.mappings.roster,'roster'),parsePayrollRows(book,c.mappings.salary,'salary'),parsePayrollRows(book,c.mappings.attendance,'attendance'));
+ const person=people[0];assert.equal(person.values[keys.roster],'R10');assert.equal(person.values[keys.salary],123.456);assert.equal(person.attendance[0][keys.attendance],'Chấm công riêng');
+ c.fields['employee-info']=[keys.roster,'name'];c.fields.payslip=[keys.salary,'net'];c.fields.attendance=[keys.attendance,'date'];
+ c.field_order={'employee-info':[keys.roster,'name'],payslip:[keys.salary,'net'],attendance:[keys.attendance,'date']};
+ assert.equal(composerSchema.safeParse(c).success,true);assert.equal(recipientSchema.safeParse(person).success,true);
+ const rendered=renderPayrollEmail(c,person,clock);assert.ok(rendered.html.includes('&lt;img'));assert.ok(!rendered.html.includes('<img src=x'));assert.ok(rendered.html.includes('123,46'));assert.ok(rendered.html.includes('Chấm công riêng'));
+ assert.ok(rendered.html.indexOf('&lt;img')<rendered.html.indexOf('Họ tên'));assert.ok(rendered.html.indexOf('Trường riêng')<rendered.html.indexOf('Thực nhận'));
+ const hidden=structuredClone(c);hidden.fields.payslip=['net'];assert.equal(payrollHiddenPeople(c,hidden,[person]).length,1);assert.ok(payrollHiddenLabels(c,hidden,[person],'vi').includes('Phiếu lương: Trường riêng'));
+ assert.equal(payrollOrderedFields(hidden,'payslip')[0],keys.salary);assert.ok(!renderPayrollEmail(hidden,person,clock).html.includes('123,46'));
+ const priorError={code:'CELL_ERROR',severity:'ERROR',field:keys.salary,source:person.source,messages:{vi:'Lỗi cũ',zh:'旧错误'}};
+ const rematched=resolvePayrollMatch({...person,issues:[...person.issues,priorError]},{name:person.name,values:{[keys.salary]:999},source:person.source,issues:[]},{name:person.name,rows:[{[keys.attendance]:'Mới'}],source:person.source,issues:[]});
+ assert.ok(!rematched.issues.some(issue=>issue.messages.vi==='Lỗi cũ'));assert.equal(rematched.values[keys.salary],999);assert.equal(rematched.values[keys.roster],'R10');assert.equal(rematched.attendance[0][keys.attendance],'Mới');
+ const cleared=resolvePayrollMatch(rematched,{name:person.name,values:{},source:person.source,issues:[]},{name:person.name,rows:[],source:person.source,issues:[]});assert.equal(cleared.values[keys.salary],null);
+});
+
+test("PAY-CUSTOM schema: rejects forged/prototype keys, source mismatches, duplicate names/orders and unregistered fields",()=>{
+ const id='custom_salary_'+'a'.repeat(32),c={...composer(),custom_fields:[{id,source:'salary',label:'Phụ cấp riêng'}]};
+ assert.equal(composerSchema.safeParse(c).success,true);
+ for(const patch of [
+  {custom_fields:[{id,source:'roster',label:'Phụ cấp riêng'}]},
+  {custom_fields:[{id,source:'salary',label:'Thực nhận'}]},
+  {custom_fields:[...c.custom_fields,{id:'custom_salary_'+'b'.repeat(32),source:'salary',label:' PHỤ CẤP RIÊNG '}]},
+  {fields:{...c.fields,payslip:[id,id]}},
+  {fields:{...c.fields,attendance:[id]}},
+  {mappings:{roster:{sheet:'Sheet1',start_row:2,columns:{[id]:'A'}}}},
+  {field_order:{payslip:['custom_salary_'+'f'.repeat(32)]}},
+ ]) assert.equal(composerSchema.safeParse({...c,...patch}).success,false,JSON.stringify(patch));
+});
 
 test("PAY-HISTORY: delivered is success, SMTP accepted/unknown remains pending, bounce/failure is error",()=>{
  assert.equal(payrollHistoryStatus({}),"PENDING");assert.equal(payrollHistoryStatus({submission_status:"SENT"}),"PENDING");

@@ -1,23 +1,26 @@
 import { z } from "zod";
-import { PAYROLL_FIELDS } from "@bduck/shared-types";
+import { PAYROLL_FIELDS, payrollCustomFieldSource } from "@bduck/shared-types";
+import { payrollDataField, payrollCustomFieldsSchema, validatePayrollCustomFields } from "./payrollCustomFieldSchemas.js";
 export const payrollId = z.string().regex(/^[a-zA-Z0-9_-]{1,120}$/);
 const safeText = z.string().max(20000).refine(v => !/[\u0000]|\$(?:where|ne|nin|regex)\b/.test(v));
 const actionTime = z.iso.datetime().transform(v => new Date(v)).optional();
-const field = z.enum(Object.keys(PAYROLL_FIELDS) as [string, ...string[]]);
-const fieldKey = z.string().refine(f => Object.hasOwn(PAYROLL_FIELDS, f));
+const field = payrollDataField;
+const fieldKey = payrollDataField;
 function fieldRecord<T extends z.ZodType>(value: T) {
   // Check the original JSON before Zod removes prototype-related keys.
   return z.preprocess(raw => raw && typeof raw === "object" &&
-    Object.keys(raw).some(key => !Object.hasOwn(PAYROLL_FIELDS, key)) ? undefined : raw, z.record(fieldKey, value));
+    Object.keys(raw).some(key => !Object.hasOwn(PAYROLL_FIELDS, key) && !payrollCustomFieldSource(key)) ? undefined : raw, z.record(fieldKey, value));
 }
 const block = z.enum(["employee-info", "attendance", "payslip"]);
 const op = z.object({ insert: z.union([safeText, z.object({ payroll: block }).strict()]),
   attributes: z.record(z.string(), z.union([z.string().max(2000), z.number(), z.boolean()])).optional() }).strict();
-export const composerSchema = z.object({ subject: z.string().min(1).max(500).refine(v => !/[\r\n]/.test(v)),
+const routingEmail = z.string().trim().toLowerCase().email({ message: "Địa chỉ email không hợp lệ / 邮箱地址无效" }).max(320).refine(v => !/[\r\n\u0000]/.test(v));
+const copyEmails = z.array(routingEmail).transform(values => [...new Set(values)]).optional();
+export const composerSchema = z.object({ custom_fields: payrollCustomFieldsSchema, field_order: z.object({ "employee-info": z.array(field).optional(), attendance: z.array(field).optional(), payslip: z.array(field).optional() }).strict().optional(), reply_to: z.union([z.literal(""), routingEmail]).optional(), cc: copyEmails, bcc: copyEmails, subject: z.string().min(1).max(500).refine(v => !/[\r\n]/.test(v)),
   ops: z.array(op).refine(ops => { const blocks = ops.flatMap(o => typeof o.insert === "string" ? [] : [o.insert.payroll]); return new Set(blocks).size === blocks.length; }, "Mỗi bảng chỉ được chèn một lần / 每个表格只能插入一次"), fields: z.object({ "employee-info": z.array(field), attendance: z.array(field), payslip: z.array(field) }),
   signature_id: payrollId.nullable(), mappings: z.record(z.string().regex(/^[a-z_-]+$/), z.object({
     sheet: z.string().max(200), start_row: z.number().int().positive(),
-    columns: fieldRecord(z.string().regex(/^[A-Z]{1,3}$/)) })) });
+    columns: fieldRecord(z.string().regex(/^[A-Z]{1,3}$/)) })) }).superRefine(validatePayrollCustomFields);
 export const sourceSchema = z.object({ file: z.string().max(300), sheet: z.string().max(200),
   row: z.number().int().positive(), column: z.string().max(20).optional() });
 const value = z.union([z.string().max(10000), z.number().finite(), z.null()]);

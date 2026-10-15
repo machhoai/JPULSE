@@ -11,7 +11,7 @@ export function person(index = 0, overrides = {}) {
     issues: [], ...overrides };
 }
 export function composer() { return createPayrollComposer(); }
-export async function workbookFixture({ count = 3, missingEmail = -1, reordered = false, formula = "cached", duplicateName = false, mismatchedProfile = false, bankAccount } = {}) {
+export async function workbookFixture({ count = 3, missingEmail = -1, reordered = false, formula = "cached", duplicateName = false, mismatchedProfile = false, bankAccount, customColumns = false } = {}) {
   const wb = new ExcelJS.Workbook();
   const roster = wb.addWorksheet("Bảng kê lương");
   roster.getCell("B1").value = "CÔNG TY QA";
@@ -32,6 +32,11 @@ export async function workbookFixture({ count = 3, missingEmail = -1, reordered 
     attendance.addRow([21,"21/09/2026","T2","Ca 1","Ngày thường","08:00","15:00",7,7,0,0,"Đủ giờ","Đúng giờ","Đúng giờ","GPS","KHÔNG GỬI"]);
     attendance.addRow([22,"22/09/2026","T3","Ca 2","Ngày thường","15:00","22:00",7,7,0,0,"Đủ giờ","Đúng giờ","Đúng giờ","GPS"]);
     attendance.addRow(["TỔNG",null,null,null,null,null,null,14,14]);
+  }
+  if (customColumns) {
+    roster.getCell('CW9').value='Mã nội bộ';salary.getCell('M2').value='Phụ cấp riêng';
+    for(let i=0;i<count;i++) { roster.getRow(i+10).getCell(101).value='NV-'+i;salary.getRow(i+3).getCell(13).value=250.567+i;
+      attendance.getRow(3+i*5).getCell(17).value='Ghi chú ca';attendance.getRow(4+i*5).getCell(17).value='Theo ngày '+i; }
   }
   roster.getRow(count + 10).values = ["TỔNG",null,null,null,999999999];
   if (mismatchedProfile) { salary.getCell("B3").value = "Tên lương khác cần đối chiếu";

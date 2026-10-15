@@ -43,3 +43,5 @@ export * from './posCashDrawer.js';
 export * from './posVouchers.js';
 export * from './revenue.js';
 export * from './revenueProducts.js';
+
+export * from './payrollCustomFields.js';

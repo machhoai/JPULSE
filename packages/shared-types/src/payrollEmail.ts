@@ -28,7 +28,16 @@ export interface PayrollRecipient {
 export interface PayrollSourceMapping {
   sheet: string; start_row: number; columns: Record<string, string>;
 }
-export interface PayrollComposer {
+export interface PayrollDeliveryOptions {
+  reply_to?: string; cc?: string[]; bcc?: string[];
+}
+export type PayrollImportSource = 'roster' | 'salary' | 'attendance';
+export interface PayrollCustomField {
+  id: string; label: string; source: PayrollImportSource;
+}
+export interface PayrollComposer extends PayrollDeliveryOptions {
+  custom_fields?: PayrollCustomField[];
+  field_order?: Partial<Record<PayrollBlock, string[]>>;
   subject: string; ops: PayrollDeltaOp[];
   fields: Record<PayrollBlock, string[]>; signature_id: string | null;
   mappings: Record<string, PayrollSourceMapping>;
@@ -59,7 +68,7 @@ export interface PayrollJobMetadata extends SoftDeletable, ISOTimestamped {
   total: number; sent: number; failed: number; unknown: number; revision: number;
   enqueue_pending: boolean; lease_until: Date | null; lease_token: string | null;
 }
-export interface PayrollSnapshot {
+export interface PayrollSnapshot extends PayrollDeliveryOptions {
   name: string; email: string; subject: string; html: string; text: string;
   clock: string; recipient_id: string;
 }

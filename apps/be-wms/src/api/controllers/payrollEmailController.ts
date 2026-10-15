@@ -23,6 +23,17 @@ function handle(fn: (req: Request, res: Response) => Promise<unknown>) {
       const e = error as { statusCode?: number; messages?: { vi: string; zh: string }; data?: unknown };
       if (res.headersSent) { res.destroy(); return; }
       if (error instanceof z.ZodError) {
+        const custom = error.issues.filter(issue => ["custom_fields", "field_order"].includes(String(issue.path[1])));
+        if (custom.length) {
+          const positions = [...new Set(custom.map(issue => typeof issue.path[2] === "number" ? String(issue.path[2] + 1) : String(issue.path[2] ?? "")))].join(", ");
+          sendError(res, { vi: "Cấu hình trường dữ liệu chưa hợp lệ (" + positions + "). Tên trường phải có 1–160 ký tự, không trùng trong cùng bảng; mỗi trường phải thuộc đúng nguồn và chỉ xuất hiện một lần trong thứ tự hiển thị.",
+            zh: "字段配置无效（" + positions + "）。名称须为1–160字符且同表不重名；字段须属于正确来源，排序中不得重复。" }, 400); return;
+        }
+        const routing = error.issues.filter(i => ["reply_to", "cc", "bcc"].includes(String(i.path[1])));
+        if (routing.length) {
+          const labels = routing.map(i => `${i.path[1] === "reply_to" ? "Reply-To" : String(i.path[1]).toUpperCase()}${typeof i.path[2] === "number" ? " #" + (i.path[2] + 1) : ""}`).join(", ");
+          sendError(res, { vi: "Địa chỉ email không hợp lệ tại " + labels + ". Chỉ nhập địa chỉ email, ngăn cách danh sách bằng dấu phẩy hoặc chấm phẩy.", zh: labels + " 邮箱无效，请仅输入邮箱地址，用逗号或分号分隔。" }, 400); return;
+        }
         const paths = error.issues.map(i => i.path.join(".")).join(", ");
         sendError(res, { vi: "Dữ liệu chưa hợp lệ tại: " + paths + ". Hãy kiểm tra các trường này.",
           zh: "以下字段数据无效：" + paths + "，请检查。" }, 400);
@@ -75,7 +86,7 @@ export const previewPayrollEmailHandler = handle(async (req, res) => {
 export const sendPayrollTestHandler = handle(async (req, res) => {
   const { actor, access } = payrollActor(req);
   const snapshot = await buildPayrollSnapshot(id(req), payrollId.parse(req.body.person_id), actor, access, "notifications.payroll.send");
-  const result = await sendBrevoEmail({ to: [emailSchema.parse(req.body.email)], subject: snapshot.subject,
+  const result = await sendBrevoEmail({ to: [emailSchema.parse(req.body.email)], replyTo: snapshot.reply_to, subject: snapshot.subject,
     htmlContent: snapshot.html, textContent: snapshot.text, signature: false });
   sendSuccess(res, result, { vi: "Đã gửi email mẫu tới địa chỉ đã nhập.", zh: "样例邮件已发送到指定地址。" });
 });

@@ -1,7 +1,7 @@
 import { isPayrollBankAccountValid } from './payrollBankAccount.js';
+import { payrollBlockFields, payrollFieldLabel, payrollOrderedFields } from './payrollCustomFields.js';
 import type { PayrollBlock, PayrollComposer, PayrollDeltaOp, PayrollRecipient } from './payrollEmail.js';
-import { PAYROLL_FIELDS, PAYROLL_BLOCK_LABELS } from './payrollEmailFields.js';
-import type { PayrollField } from './payrollEmailFields.js';
+import { PAYROLL_BLOCK_LABELS } from './payrollEmailFields.js';
 import { payrollInlineHtml, payrollLinesHtml } from './payrollRichText.js';
 
 export const escapePayrollHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g,
@@ -37,9 +37,10 @@ function display(field: string, value: unknown) {
     return formatPayrollNumber(value) + (moneyFields.has(field) ? ' đ' : '');
 }
 function table(block: PayrollBlock, composer: PayrollComposer, person: PayrollRecipient) {
-    const fields = composer.fields[block].filter(f => Object.hasOwn(PAYROLL_FIELDS, f));
+    const allowed = payrollBlockFields(composer, block);
+    const fields = payrollOrderedFields(composer, block).filter(f => composer.fields[block].includes(f) && allowed.includes(f));
     if (!fields.length) return '';
-    const label = (f: string) => PAYROLL_FIELDS[f as PayrollField][0];
+    const label = (f: string) => escapePayrollHtml(payrollFieldLabel(composer, f));
     let rows: string;
     if (block === 'attendance') {
         rows = '<thead><tr>' + fields.map(f => `<th style="${td};background:#eff6ff">${label(f)}</th>`).join('') + '</tr></thead><tbody>' +
@@ -92,5 +93,8 @@ export function renderPayrollEmail(composer: PayrollComposer, person: PayrollRec
     const html = `<!doctype html><html lang="vi"><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><style>@media(max-width:600px){.payroll-content{padding:12px!important}.payroll-table{font-size:12px!important}.payroll-table td,.payroll-table th{padding:6px!important}.payroll-attendance thead{display:none}.payroll-attendance tbody,.payroll-attendance tr,.payroll-attendance td{display:block}.payroll-attendance tr{margin-bottom:12px}.payroll-attendance .payroll-mobile-label{display:inline!important}}</style></head><body style="margin:0;color:#0f172a;font-family:Arial,sans-serif"><main class="payroll-content" style="padding:24px;background:white;font-size:14px;line-height:1.6">${body}<footer style="margin-top:24px">${signatureHtml}</footer></main></body></html>`;
     const text = body.replace(/<a href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, '$2 ($1)').replace(/<[ou]l[^>]*>/gi, '\n').replace(/<br\s*\/?\s*>/gi, '\n').replace(/<\/(td|th|tr|h[1-3]|section|p|li|blockquote)>/gi, '\n')
         .replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'") + '\n' + signatureText;
-    return { subject, html, text };
+    const normalize = (values: string[]) => [...new Set(values.map(address => address.trim().toLowerCase()).filter(Boolean))];
+    const cc = normalize(composer.cc ?? []).filter(address => address !== person.email.trim().toLowerCase());
+    const bcc = normalize(composer.bcc ?? []).filter(address => address !== person.email.trim().toLowerCase() && !cc.includes(address));
+    return { subject, html, text, reply_to: composer.reply_to?.trim().toLowerCase() || '', cc, bcc };
 }

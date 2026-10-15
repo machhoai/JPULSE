@@ -1,7 +1,7 @@
 import {test,expect} from "@playwright/test";
 import {workbookFixture} from "../../../be-wms/test/payroll/fixtures.mjs";
 import {createPayrollComposer} from "@bduck/shared-types";
-async function setup(page,{count=3,missingEmail=-1,mismatchedProfile=false,realApi=false,bankAccount}={}) {
+async function setup(page,{count=3,missingEmail=-1,mismatchedProfile=false,realApi=false,bankAccount,customColumns=false}={}) {
  const requests=[],drafts=new Map(),people=new Map();
  const baseComposer=createPayrollComposer();
  const template={id:"qa-template",name:"Mẫu cửa hàng QA",facility_id:"store-a",revision:1,composer:baseComposer};
@@ -54,7 +54,7 @@ async function setup(page,{count=3,missingEmail=-1,mismatchedProfile=false,realA
  });
  const errors=[];page.on("pageerror",error=>errors.push(error.message));
  await page.goto("/");await page.getByRole("combobox",{name:"Mẫu nội dung",exact:true}).selectOption("qa-template");
- const fixture=await workbookFixture({count,missingEmail,mismatchedProfile,bankAccount});const bytes=Buffer.from(await fixture.file.arrayBuffer());
+ const fixture=await workbookFixture({count,missingEmail,mismatchedProfile,bankAccount,customColumns});const bytes=Buffer.from(await fixture.file.arrayBuffer());
  return{requests,errors,state,drafts,people,bytes};
 }
 async function importData(page,qa){
@@ -77,6 +77,63 @@ test("PAY-18 desktop: source mapping, all employees and responsive personal prev
  await expect(frame.getByText("person-1@example.invalid")).toHaveCount(0);
  expect(qa.errors).toEqual([]);
  await page.locator('iframe[title="Xem trước"]').scrollIntoViewIfNeeded();await page.screenshot({path:"../../.tmp/payroll-desktop.png",fullPage:true});
+});
+
+test("PAY-CUSTOM UI: map new Excel columns, rename, reorder built-in/custom, confirm hiding and reuse template",async({page})=>{
+ const qa=await setup(page,{count:1,customColumns:true});
+ await page.locator('input[type="file"]').first().setInputFiles({name:'custom.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',buffer:qa.bytes});
+ for(const groupName of ['Bảng lương','Bảng công'])await page.getByRole('group',{name:groupName,exact:true}).getByRole('combobox').first().selectOption('0');
+ for(const [source,name,column] of [['Bảng kê lương','Mã nội bộ riêng','CW'],['Bảng lương','Phụ cấp mới','M'],['Bảng công','Ghi chú ca mới','Q']]){
+  const group=page.getByRole('group',{name:source,exact:true});await group.locator('details > summary').click();await expect(group.getByLabel('Tên trường mới',{exact:true})).toHaveCount(0);
+  await group.getByRole('button',{name:'Thêm trường',exact:true}).click();await group.getByLabel('Tên trường mới',{exact:true}).fill(name);
+  await group.locator('details select').last().selectOption(column);await expect(group.getByRole('button',{name:'Thêm trường',exact:true})).toBeVisible();
+ }
+ const roster=page.getByRole('group',{name:'Bảng kê lương',exact:true});await roster.getByLabel('Tên trường mới: Mã nội bộ riêng',{exact:true}).fill('Mã theo cửa hàng');await roster.getByLabel('Tên trường mới: Mã nội bộ riêng',{exact:true}).press('Tab');
+ await expect(roster.getByText('Trường tùy chỉnh',{exact:true})).toHaveCount(0);await roster.getByRole('button',{name:'Thêm trường',exact:true}).click();await roster.getByLabel('Tên trường mới',{exact:true}).fill('Họ tên');await roster.getByLabel('Tên trường mới',{exact:true}).press('Enter');await expect(roster.getByRole('alert')).toContainText('trùng');await roster.getByLabel('Tên trường mới',{exact:true}).press('Escape');
+ await roster.getByRole('button',{name:'Thêm trường',exact:true}).click();await roster.getByLabel('Tên trường mới',{exact:true}).fill('Dữ liệu phụ');await roster.getByLabel('Tên trường mới',{exact:true}).press('Enter');await expect(roster.getByLabel('Tên trường mới: Dữ liệu phụ',{exact:true})).toBeVisible();await expect(roster.getByLabel('Tên trường mới',{exact:true})).toHaveCount(0);
+ await roster.screenshot({path:'../../.tmp/payroll-custom-mapping-compact.png'});
+ await page.getByRole('button',{name:'Đọc và đối chiếu',exact:true}).click();await page.getByRole('button',{name:'Xác nhận',exact:true}).click();
+ const preview=page.frameLocator('iframe[title="Xem trước"]');await expect(preview.getByText('NV-0',{exact:true})).toBeVisible();await expect(preview.getByText('250,57',{exact:true})).toBeVisible();await expect(preview.locator('.payroll-attendance td').filter({hasText:'Theo ngày 0'}).first()).toBeVisible();
+ const settings=page.locator('#payroll-step-2 > details');await settings.locator('summary').click();const info=settings.getByRole('group',{name:'Thông tin nhân viên',exact:true});
+ const drag=info.getByRole('button',{name:'Sắp xếp trường: Mã theo cửa hàng',exact:true});await drag.focus();await drag.press('Space');for(let i=0;i<5;i++)await drag.press('ArrowUp');await drag.press('Space');
+ await expect(preview.locator('.payroll-table').first().locator('tr').first()).toContainText('Mã theo cửa hàng');
+ const email=info.getByRole('button',{name:'Sắp xếp trường: Email',exact:true});await email.focus();await email.press('Space');await email.press('ArrowUp');await email.press('Space');
+ await info.scrollIntoViewIfNeeded();const nameHandle=info.getByRole('button',{name:'Sắp xếp trường: Họ tên',exact:true});const bankHandle=info.getByRole('button',{name:'Sắp xếp trường: Ngân hàng',exact:true});
+ const from=await nameHandle.boundingBox(),to=await bankHandle.boundingBox();await page.mouse.move(from.x+from.width/2,from.y+from.height/2);await page.mouse.down();await page.mouse.move(to.x+to.width/2,to.y+to.height/2,{steps:15});await page.mouse.up();
+ await info.getByRole('checkbox',{name:'Mã theo cửa hàng',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('Mã theo cửa hàng');await expect(info.getByRole('checkbox',{name:'Mã theo cửa hàng',exact:true})).toBeChecked();await page.getByRole('button',{name:'Xác nhận',exact:true}).click();await expect(preview.getByText('NV-0',{exact:true})).toHaveCount(0);
+ await info.getByRole('checkbox',{name:'Mã theo cửa hàng',exact:true}).check();await expect(preview.locator('.payroll-table').first().locator('tr').first()).toContainText('Mã theo cửa hàng');
+ await page.getByRole('button',{name:'Lưu bản nháp',exact:true}).click();await expect.poll(()=>qa.drafts.size).toBe(1);
+ await page.getByRole('button',{name:'Lưu mẫu',exact:true}).click();await expect.poll(()=>qa.state.templates[0].composer.custom_fields?.length).toBe(4);
+ const saved=qa.state.templates[0].composer;expect(saved.mappings.roster.columns[saved.custom_fields[0].id]).toBe('CW');expect(saved.field_order['employee-info'][0]).toBe(saved.custom_fields[0].id);
+ expect(saved.field_order['employee-info'].indexOf('name')).toBeGreaterThan(saved.field_order['employee-info'].indexOf('bank'));
+ await page.getByRole('button',{name:'Tạo mẫu mới',exact:true}).click();await page.getByRole('button',{name:'Xác nhận',exact:true}).click();await page.getByRole('combobox',{name:'Mẫu nội dung',exact:true}).selectOption('qa-template');
+ await page.getByLabel('Mở bản nháp',{exact:true}).selectOption([...qa.drafts.keys()][0]);await expect(preview.getByText('NV-0',{exact:true})).toBeVisible();
+ await page.setViewportSize({width:390,height:844});await page.getByRole('navigation',{name:'Bảng công & lương'}).getByRole('button',{name:'Nội dung',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Sắp xếp trường: Mã theo cửa hàng',exact:true})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:'../../.tmp/payroll-custom-fields-mobile.png',fullPage:true});expect(qa.errors).toEqual([]);expect(qa.requests.some(r=>r.path.endsWith('/test')||r.path==='/jobs')).toBe(false);
+});
+
+test("PAY-ROUTING: compose multiple copy addresses, preview, save/reopen and mobile layout",async({page})=>{
+ const qa=await setup(page);await importData(page,qa);
+ await page.getByLabel("Email nhận phản hồi (Reply-To)",{exact:true}).fill("reply@example.invalid");
+ await page.getByLabel("CC",{exact:true}).pressSequentially("copy@example.invalid; second@example.invalid");
+ await page.getByLabel("BCC",{exact:true}).fill("hidden@example.invalid");
+ await expect(page.getByText(/CC\/BCC nhận bản sao/)).toBeVisible();
+ await page.getByRole("button",{name:"Lưu bản nháp",exact:true}).click();
+ await expect.poll(()=>qa.requests.filter(r=>r.path.startsWith('/drafts/')&&r.method==='PUT').length).toBeGreaterThan(0);
+ const draft=[...qa.drafts.entries()][0];expect(draft[1].content.composer.reply_to).toBe("reply@example.invalid");
+ expect(draft[1].content.composer.cc).toEqual(["copy@example.invalid","second@example.invalid"]);
+ expect(draft[1].content.composer.bcc).toEqual(["hidden@example.invalid"]);
+ await page.getByLabel("Email nhận phản hồi (Reply-To)",{exact:true}).fill("changed@example.invalid");
+ await page.getByLabel("CC",{exact:true}).fill("changed-copy@example.invalid");
+ await page.getByRole("combobox",{name:"Mở bản nháp",exact:true}).selectOption(draft[0]);
+ await expect(page.getByLabel("Email nhận phản hồi (Reply-To)",{exact:true})).toHaveValue("reply@example.invalid");
+ await expect(page.getByLabel("CC",{exact:true})).toHaveValue("copy@example.invalid, second@example.invalid");
+ await page.setViewportSize({width:390,height:844});
+ await page.getByRole('button',{name:'Nội dung',exact:true}).click();
+ await expect(page.getByLabel("BCC",{exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:"../../.tmp/payroll-routing-mobile.png",fullPage:true});expect(qa.errors).toEqual([]);
 });
 
 test("PAY-02 new unsaved template: clicking file input opens chooser and mappings survive save",async({page})=>{
@@ -145,6 +202,14 @@ test("PAY-08 Quill: text entry stable, cut/remove fixed table guarded, reject re
 test("PAY-EDITOR UI: full toolbar, formatted Delta and mailto subject survive save/reopen and preview",async({page})=>{
  const qa=await setup(page);await importData(page,qa);const editor=page.locator('.ql-editor');await expect(editor).toBeVisible();
  for(const control of ['font','size','color','background','align','list','indent','strike','script','blockquote'])await expect(page.locator('.ql-toolbar .ql-'+control).first()).toBeVisible();
+ const toolbar=page.locator('.ql-toolbar');
+ for(const selector of ['button','.ql-picker-label']) {
+   const heights=await toolbar.locator(selector).evaluateAll(elements=>elements.map(e=>e.getBoundingClientRect().height));
+   expect(heights.every(height=>height===32)).toBe(true);
+ }
+ const icons=await toolbar.locator('button > svg,.ql-picker-label > svg').evaluateAll(elements=>elements.map(e=>({width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height})));
+ expect(icons.every(icon=>icon.width===16&&icon.height===16)).toBe(true);
+ await toolbar.locator('.ql-font .ql-picker-label').click();await expect(toolbar.locator('.ql-font .ql-picker-options')).toBeVisible();await toolbar.locator('.ql-font .ql-picker-label').click();
  const link='mailto:qa@example.invalid?subject='+encodeURIComponent('Phản hồi công lương 09/2026')+'&body='+encodeURIComponent('Chào kế toán');
  const ops=[{insert:'Phản hồi',attributes:{link,color:'#ff0000',size:'large',font:'serif'}},{insert:'\n',attributes:{align:'right'}},{insert:'Một'},{insert:'\n',attributes:{list:'ordered'}},{insert:'Hai'},{insert:'\n',attributes:{list:'bullet',indent:1}},...createPayrollComposer().ops.filter(o=>typeof o.insert!=='string')];
  await page.evaluate(ops=>window.__payrollQa.setEditorContent(ops),ops);await expect(editor.locator('a')).toHaveAttribute('href',link);

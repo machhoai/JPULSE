@@ -1,4 +1,4 @@
-import { formatPayrollNumber } from "@bduck/shared-types";
+import { formatPayrollNumber, payrollCustomFieldSource } from "@bduck/shared-types";
 import type { PayrollRecipient } from "@bduck/shared-types";
 export function payrollEligibleIds(people: PayrollRecipient[]) {
   const counts = new Map<string, number>();
@@ -16,8 +16,11 @@ export function resolvePayrollMatch(person: PayrollRecipient, salary: MatchSalar
   const values = { ...person.values };
   for (const field of ["days","shifts7","shifts8","holiday","standard_days","overtime_hours","overtime_pay","insurance","advance"])
     values[field] = salary.values[field] ?? null;
+  for (const field of Object.keys(values)) if (payrollCustomFieldSource(field) === "salary") values[field] = null;
+  for (const [field, value] of Object.entries(salary.values)) if (payrollCustomFieldSource(field) === "salary") values[field] = value;
   values.notes = person.values.notes ?? salary.values.notes ?? null;
-  const issues = [...person.issues.filter(i => i.code !== "MATCH_REQUIRED" && i.code !== "MONEY_MISMATCH"),
+  const issues = [...person.issues.filter(i => i.code !== "MATCH_REQUIRED" && i.code !== "MONEY_MISMATCH" &&
+    !["salary", "attendance"].includes(payrollCustomFieldSource(i.field ?? "") ?? "")),
     ...salary.issues, ...attendance.issues];
   for (const field of ["gross","tax","net"]) if (values[field] != null && salary.values[field] != null && values[field] !== salary.values[field])
     issues.push({ code: "MONEY_MISMATCH", severity: "WARNING", field, source: person.source, messages: {

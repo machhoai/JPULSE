@@ -11,7 +11,10 @@ function run(cwd, args) {
   if (result.status !== 0) process.exit(result.status || 1);
 }
 const mode = process.argv[2];
-if (mode === "unit") run("apps/be-wms", ["--experimental-strip-types", "--test", "test/payroll/unit.test.mjs"]);
+if (mode === "unit") {
+  run("apps/be-wms", ["--experimental-strip-types", "--test", "test/payroll/unit.test.mjs"]);
+  run("apps/be-wms", ["--experimental-test-module-mocks", "--test", "test/payroll/smtp.test.mjs"]);
+}
 else if (mode === "emulator") {
   for (const file of ["integration", "api", "dispatcher"])
     run("apps/be-wms", ["--experimental-test-module-mocks", "--test", "test/payroll/" + file + ".test.mjs"]);
