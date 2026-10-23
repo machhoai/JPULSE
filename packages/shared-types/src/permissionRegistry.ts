@@ -331,6 +331,12 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: { vi: "Gỡ liên kết thẻ thành viên thông thường, không hoàn cọc, trong phạm vi điểm bán được phân quyền.", zh: "在授权门店解除普通会员卡绑定，不退押金。" },
   },
   {
+    key: "pos.members.restore_card",
+    group: "pos",
+    label: { vi: "Khôi phục thẻ đối tác", zh: "恢复合作伙伴会员卡" },
+    description: { vi: "Đối chiếu và khôi phục đúng thẻ trong danh sách đối tác tại quầy; không nạp thêm số dư.", zh: "核验并恢复合作伙伴会员卡，不充值。" },
+  },
+  {
     key: "pos.shift.close",
     group: "pos",
     label: { vi: "Kết ca POS", zh: "POS 交班结算" },
