@@ -1,0 +1,44 @@
+{
+  "unique_active_users_with_valid_roles": 16,
+  "active_users_without_valid_roles": [],
+  "included_assignments": [
+    "1c62f231-f3f3-405c-893a-0534ae95eee4",
+    "4a739514-f3f6-43a1-beea-a39d3c52baad",
+    "4f246185-d483-4c5a-817b-f170f8cc2bb6",
+    "4f976df1-7faf-4a27-a9e4-e3024b72d1c6",
+    "7f23d345-5a34-4c70-bb80-83044ebca4bf",
+    "81c0a773-8dbd-4535-9e02-0e29bbabfd3b",
+    "860c5576-9da6-4302-b3d6-9fb4c4c6ef1b",
+    "87776eab-218f-44bd-a3a8-6868f2581c8f",
+    "919c731d-f1a9-4a7e-a579-f839443eab45",
+    "9635eda6-2ba9-4992-a173-da6c88cd0fad",
+    "969c4cb7-e40a-46a7-8d3f-4a285484df83",
+    "a01ff5d2-a60f-4c84-a045-facd6f5340c6",
+    "aecc6b0a-2052-490e-9ad9-e21fb6c43065",
+    "b895ad70-083f-4c1b-a8bd-a1e5c540518a",
+    "c6a39a05-ec89-4cff-bbfb-d2aa1ae8b583",
+    "cb6ac23c-8c13-4985-b5bc-d740b426bf97",
+    "e5015e96-b2d1-4722-abd6-08442ef2a7be",
+    "edafcd94-8d11-4dc4-bcdb-867cf55664e4",
+    "f01650d9-5c34-4198-9bd9-b788eeb44a8b",
+    "fde63b59-1dd3-423a-8926-c9af699544e9"
+  ],
+  "excluded_assignments": [
+    "4d056154-5bf7-4f38-a82b-9f00b7687e6a",
+    "a1ed1ad2-96d8-4708-b0ac-3a4e13e8c38f",
+    "c353ded2-c3b8-4e35-8301-457e9e31f57e",
+    "fc130c6f-164f-47ef-b8dc-10fbabc0f8ea"
+  ],
+  "counts": {
+    "Quản trị hệ thống": 3,
+    "Đối tác Trung Quốc": 1,
+    "Thu ngân": 4,
+    "Marketing": 0,
+    "Kế toán trưởng": 1,
+    "Kế toán": 2,
+    "Giám đốc": 2,
+    "Quản lý nhân sự": 1,
+    "Quản lý cửa hàng": 3,
+    "Cửa hàng trưởng": 1
+  }
+}

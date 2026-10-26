@@ -1,29 +1,33 @@
-import React, { useState, useEffect } from "react";
+"use client";
+
+import { ProductType, ProductOrigin } from "@bduck/shared-types";
+import type { Product } from "@bduck/shared-types";
+import { gooeyToast } from "goey-toast";
 import {
   X,
   Upload,
   Loader2,
-  Image as ImageIcon,
   Plus,
   Trash2,
 } from "lucide-react";
-import { gooeyToast } from "goey-toast";
-import { ProductType, ProductOrigin } from "@bduck/shared-types";
-import type { Product } from "@bduck/shared-types";
-import { uploadImageAsWebp } from "@/lib/firebaseStorage";
+import React, { useState, useEffect } from "react";
+
 import { useCategories } from "@/hooks/useCategories";
-import { useProducts } from "@/hooks/useProducts";
 import { useProductBOM } from "@/hooks/useProductBOM";
-import { ProductExcelImportTab } from "./ProductExcelImportTab";
-import type { ProductImportPayload } from "@/utils/productExcelImport";
+import { useProducts } from "@/hooks/useProducts";
+import { uploadImageAsWebp } from "@/lib/firebaseStorage";
 import { useTranslation } from "@/lib/i18n";
 import { MISC_COMPONENT_TEXT } from "@/lib/i18n/componentTranslations";
+import type { ProductImportPayload } from "@/utils/productExcelImport";
+
+import { ProductExcelImportTab } from "./ProductExcelImportTab";
+import { ProductImageSorter, type ProductImageItem } from "./ProductImageSorter";
 
 interface ProductFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   product?: Product | null; // Nếu null/undefined => Create mode, else => Edit mode
-  onSave: (payload: any) => Promise<any>; // onSave gốc cho tạo Product chính
+  onSave: (payload: ProductImportPayload) => Promise<{ data?: { id?: string } }>;
 }
 
 // Model tạm thời cho UI list BOM
@@ -72,8 +76,7 @@ export function ProductFormModal({
     description: "",
   });
 
-  const [images, setImages] = useState<File[]>([]);
-  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [images, setImages] = useState<ProductImageItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // State quản lý danh sách BOM trên UI
@@ -103,8 +106,7 @@ export function ProductFormModal({
         is_serialized: product.is_serialized,
         description: product.description || "",
       });
-      setExistingImages(product.product_image_url || []);
-      setImages([]);
+      setImages((product.product_image_url || []).map((url) => ({ id: crypto.randomUUID(), url })));
       setActiveTab("info");
     } else if (isOpen) {
       setFormData({
@@ -128,7 +130,6 @@ export function ProductFormModal({
         description: "",
       });
       setImages([]);
-      setExistingImages([]);
       setBomList([]);
       setActiveTab("info");
     }
@@ -164,15 +165,8 @@ export function ProductFormModal({
         });
       }
 
-      setImages((prev) => [...prev, ...validFiles]);
-    }
-  };
-
-  const removeImage = (index: number, isExisting: boolean) => {
-    if (isExisting) {
-      setExistingImages((prev) => prev.filter((_, i) => i !== index));
-    } else {
-      setImages((prev) => prev.filter((_, i) => i !== index));
+      setImages((prev) => [...prev, ...validFiles.map((file) => ({ id: crypto.randomUUID(), file }))]);
+      e.target.value = "";
     }
   };
 
@@ -200,10 +194,10 @@ export function ProductFormModal({
     setBomList((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const handleBomChange = (
+  const handleBomChange = <K extends keyof BOMItemState,>(
     id: string,
-    field: keyof BOMItemState,
-    value: any,
+    field: K,
+    value: BOMItemState[K],
   ) => {
     setBomList((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
@@ -216,17 +210,12 @@ export function ProductFormModal({
 
     const action = async () => {
       try {
-        let uploadedUrls: string[] = [];
-
-        // Nén và upload các ảnh mới
-        if (images.length > 0) {
-          const uploadPromises = images.map((file) =>
-            uploadImageAsWebp(file, "products"),
-          );
-          uploadedUrls = await Promise.all(uploadPromises);
-        }
-
-        const finalImageUrls = [...existingImages, ...uploadedUrls];
+        // Promise.all giữ nguyên thứ tự ảnh đã kéo thả, kể cả ảnh mới xen giữa ảnh cũ.
+        const finalImageUrls = await Promise.all(
+          images.map((image) => image.file
+            ? uploadImageAsWebp(image.file, "products")
+            : image.url),
+        );
 
         const payload = {
           ...formData,
@@ -705,46 +694,11 @@ export function ProductFormModal({
                     Hình ảnh sản phẩm (Nén tự động WEBP)
                   </label>
 
+                  <p className="mb-3 text-xs text-[var(--color-text-muted)]">
+                    Kéo tay nắm để đổi thứ tự ảnh. Ảnh đầu tiên là ảnh chính. Có thể dùng phím Space và phím mũi tên để di chuyển.
+                  </p>
                   <div className="flex flex-wrap gap-4 mb-4">
-                    {existingImages.map((url, i) => (
-                      <div
-                        key={`existing-${i}`}
-                        className="relative group w-24 h-24 rounded-lg overflow-hidden border border-gray-200"
-                      >
-                        <img
-                          src={url}
-                          alt={`Preview ${i}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(i, true)}
-                          className="absolute top-1 right-1 bg-[var(--color-accent-error)] text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ))}
-
-                    {images.map((file, i) => (
-                      <div
-                        key={`new-${i}`}
-                        className="relative group w-24 h-24 rounded-lg overflow-hidden border border-gray-200"
-                      >
-                        <img
-                          src={URL.createObjectURL(file)}
-                          alt={`New ${i}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(i, false)}
-                          className="absolute top-1 right-1 bg-[var(--color-accent-error)] text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ))}
+                    <ProductImageSorter items={images} onChange={setImages} disabled={isSubmitting} />
 
                     <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-[var(--radius-sm)] border-2 border-dashed border-[var(--color-border-subtle)] transition-colors hover:border-[var(--color-brand-primary)] hover:bg-[var(--color-surface-card)]">
                       <Upload
@@ -758,6 +712,7 @@ export function ProductFormModal({
                         type="file"
                         accept="image/*"
                         multiple
+                        disabled={isSubmitting}
                         className="hidden"
                         onChange={handleImageChange}
                       />
@@ -817,7 +772,7 @@ export function ProductFormModal({
                     <div className="col-span-1 text-right">{misc.delete}</div>
                   </div>
 
-                  {bomList.map((item, index) => (
+                  {bomList.map((item) => (
                     <div
                       key={item.id}
                       className="grid grid-cols-12 gap-3 items-start group"

@@ -3,6 +3,9 @@ import { gooeyToast } from "goey-toast";
 import { LogOut, Globe } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 
+import { createDetailedApiError } from "@/utils/apiError";
+import { authenticatedFetch } from "@/utils/authenticatedFetch";
+
 import { useAuth } from "../../hooks/useAuth";
 import { useMFA } from "../../hooks/useMFA";
 import { useTranslation } from "../../lib/i18n";
@@ -71,18 +74,18 @@ export const MFALockScreen = () => {
         setIsSendingEmail(true);
         try {
             await gooeyToast.promise(
-                fetch(`${API_BASE_URL}/api/auth/mfa/send-email`, {
+                authenticatedFetch(`${API_BASE_URL}/api/auth/mfa/send-email`, {
                     method: "POST",
                     credentials: "include",
                     headers: { "Content-Type": "application/json" }
                 }).then(async res => {
-                    if (!res.ok) throw new Error(copy.sendEmailFailed);
+                    if (!res.ok) throw createDetailedApiError(res, await res.json().catch(() => null), copy.sendEmailFailed);
                     return res.json();
                 }),
                 {
                     loading: copy.sendingEmailOtp,
                     success: copy.emailOtpSent,
-                    error: copy.sendOtpError
+                    error: (error: unknown) => error instanceof Error ? error.message : copy.sendOtpError
                 }
             );
         } catch (e) {
@@ -119,13 +122,13 @@ export const MFALockScreen = () => {
         setIsValidating(true);
         try {
             await gooeyToast.promise(
-                fetch(`${API_BASE_URL}/api/auth/mfa/verify`, {
+                authenticatedFetch(`${API_BASE_URL}/api/auth/mfa/verify`, {
                     method: "POST",
                     credentials: "include",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ token })
                 }).then(async res => {
-                    if (!res.ok) throw new Error(copy.invalidCode);
+                    if (!res.ok) throw createDetailedApiError(res, await res.json().catch(() => null), copy.invalidCode);
                     return res.json();
                 }),
                 {
@@ -135,9 +138,9 @@ export const MFALockScreen = () => {
                         setCode("");
                         return copy.unlockSuccess;
                     },
-                    error: () => {
+                    error: (error: unknown) => {
                         setCode("");
-                        return copy.verifyError;
+                        return error instanceof Error ? error.message : copy.verifyError;
                     }
                 }
             );

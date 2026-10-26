@@ -1,25 +1,28 @@
 "use client";
 
+import type { Product, ProductCategory } from "@bduck/shared-types";
 import { Package, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { Product, ProductCategory } from "@bduck/shared-types";
-import { useTranslation } from "@/lib/i18n";
-import {
-  defaultProductFilters,
-  filterProducts,
-  type ProductFilters,
-} from "@/utils/productFilters";
-import { ProductCard } from "./ProductCard";
-import { ProductFilterBar } from "./ProductFilterBar";
-import { ProductGridSkeleton } from "./ProductCardSkeleton";
-import { ProductDetailModal } from "./ProductDetailModal";
+
+
 import { useExportRegistration } from "@/hooks/useExportRegistration";
 import { useExportVouchers } from "@/hooks/useExportVouchers";
 import { useImportVouchers } from "@/hooks/useImportVouchers";
 import { useInventory } from "@/hooks/useInventory";
 import { useLocationSlots } from "@/hooks/useLocationSlots";
 import { useWarehouseLocations, useWarehouses } from "@/hooks/useWarehouses";
+import { useTranslation } from "@/lib/i18n";
 import { formatExportDate } from "@/utils/exportExcel";
+import {
+  defaultProductFilters,
+  filterProducts,
+  type ProductFilters,
+} from "@/utils/productFilters";
+
+import { ProductCard } from "./ProductCard";
+import { ProductGridSkeleton } from "./ProductCardSkeleton";
+import { ProductDetailModal } from "./ProductDetailModal";
+import { ProductFilterBar } from "./ProductFilterBar";
 
 interface ProductCatalogProps {
   products: Product[];
@@ -248,6 +251,7 @@ export function ProductCatalog({
         importVouchers={importVouchers}
         exportVouchers={exportVouchers}
         onClose={() => setSelectedProduct(null)}
+        onEdit={onEdit}
       />
     </section>
   );

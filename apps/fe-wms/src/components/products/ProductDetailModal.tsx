@@ -1,7 +1,5 @@
 "use client";
 
-import { X } from "lucide-react";
-import { useEffect, useState } from "react";
 import type {
     ExportVoucher,
     ImportVoucher,
@@ -13,15 +11,20 @@ import type {
     WarehouseLocationSlot,
     WarehouseLocationSlotProduct,
 } from "@bduck/shared-types";
-import { useProductPermissions } from "@/hooks/useProductPermissions";
+import { Pencil, X } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useProductMovementHistory } from "@/hooks/useProductMovementHistory";
+import { useProductPermissions } from "@/hooks/useProductPermissions";
 import { useTranslation } from "@/lib/i18n";
 import { buildProductStockSummary } from "@/utils/productStockDetail";
+
 import { ProductDetailInfoSection } from "./ProductDetailInfoSection";
 import { ProductDetailSummaryPanel } from "./ProductDetailSummaryPanel";
 import { ProductMovementHistoryList } from "./ProductMovementHistoryList";
 import { ProductStockPlacementList } from "./ProductStockPlacementList";
-import { BottomSheet } from "@/components/ui/BottomSheet";
+
 
 interface ProductDetailModalProps {
     isOpen: boolean;
@@ -36,6 +39,7 @@ interface ProductDetailModalProps {
     exportVouchers: ExportVoucher[];
     warehouseId?: string;
     onClose: () => void;
+    onEdit?: (product: Product) => void;
 }
 
 export function ProductDetailModal({
@@ -51,10 +55,24 @@ export function ProductDetailModal({
     exportVouchers,
     warehouseId,
     onClose,
+    onEdit,
 }: ProductDetailModalProps) {
     const { t } = useTranslation();
     const labels = t.productDetail;
-    const { canViewPrice } = useProductPermissions();
+    const { canViewPrice, canWrite } = useProductPermissions();
+    const editButton = canWrite && onEdit && product ? (
+        <button
+            type="button"
+            onClick={() => {
+                onClose();
+                onEdit(product);
+            }}
+            className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] px-4 text-sm text-white hover:bg-[var(--color-brand-primary-hover)]"
+        >
+            <Pencil size={16} />
+            {t.common.edit}
+        </button>
+    ) : null;
     const { records, loading } = useProductMovementHistory({
         productId: product?.id,
         warehouseId,
@@ -120,6 +138,8 @@ export function ProductDetailModal({
                                 {product.name}
                             </h2>
                         </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                        {editButton}
                         <button
                             type="button"
                             onClick={onClose}
@@ -128,13 +148,14 @@ export function ProductDetailModal({
                         >
                             <X size={20} />
                         </button>
+                        </div>
                     </div>
 
                     <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 pt-2">
                         <div className="flex h-full w-full flex-col gap-6 overflow-y-auto lg:flex-row lg:overflow-hidden">
 
                             {/* Cột trái: Ảnh & Thông tin */}
-                            <div className="flex shrink-0 flex-col gap-6 lg:w-[42%] lg:min-h-0 lg:overflow-y-auto lg:pr-2 lg:custom-scrollbar">
+                            <div className="flex min-w-0 shrink-0 flex-col gap-6 lg:w-[42%] lg:min-h-0 lg:overflow-y-auto lg:pr-2 lg:custom-scrollbar">
                                 <ProductDetailSummaryPanel
                                     product={product}
                                     stockSummary={stockSummary}
@@ -150,7 +171,7 @@ export function ProductDetailModal({
                             </div>
 
                             {/* Cột phải: Tồn kho & Lịch sử */}
-                            <div className="flex flex-1 flex-col gap-6 lg:min-h-0 lg:overflow-y-auto lg:border-l lg:border-[var(--color-border-soft)] lg:pl-6 lg:pr-2 lg:custom-scrollbar">
+                            <div className="flex min-w-0 flex-1 flex-col gap-6 lg:min-h-0 lg:overflow-y-auto lg:border-l lg:border-[var(--color-border-soft)] lg:pl-6 lg:pr-2 lg:custom-scrollbar">
                                 <div className="shrink-0">
                                     <ProductStockPlacementList
                                         stockSummary={stockSummary}
@@ -198,8 +219,10 @@ export function ProductDetailModal({
             isOpen={isOpen && product !== null}
             onClose={onClose}
             defaultSnap="full"
+            mobileBreakpoint="lg"
         >
             <div className="flex flex-col gap-6 py-2 px-1 pb-16">
+                {editButton && <div className="flex justify-end">{editButton}</div>}
                 <ProductDetailSummaryPanel
                     product={renderProduct}
                     stockSummary={stockSummary}

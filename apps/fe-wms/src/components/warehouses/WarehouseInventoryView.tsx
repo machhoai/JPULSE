@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import type {
   ExportVoucher,
   ImportVoucher,
@@ -13,13 +12,18 @@ import type {
   WarehouseLocationSlotProduct,
 } from "@bduck/shared-types";
 import { StockPolicyScope } from "@bduck/shared-types";
-import { useInventoryFilter } from "@/hooks/useInventoryFilter";
-import { useStockPolicies } from "@/hooks/useStockPolicies";
-import { InventoryToolbar } from "./inventory/InventoryToolbar";
-import { InventoryTableView } from "./inventory/InventoryTableView";
-import { InventoryListView } from "./inventory/InventoryListView";
-import { InventoryCardGrid } from "./inventory/InventoryCardGrid";
+import { useMemo, useState } from "react";
+
 import { ProductDetailModal } from "@/components/products/ProductDetailModal";
+import { ProductFormModal } from "@/components/products/ProductFormModal";
+import { useInventoryFilter } from "@/hooks/useInventoryFilter";
+import { useProducts } from "@/hooks/useProducts";
+import { useStockPolicies } from "@/hooks/useStockPolicies";
+
+import { InventoryCardGrid } from "./inventory/InventoryCardGrid";
+import { InventoryListView } from "./inventory/InventoryListView";
+import { InventoryTableView } from "./inventory/InventoryTableView";
+import { InventoryToolbar } from "./inventory/InventoryToolbar";
 
 interface WarehouseInventoryViewProps {
   inventory: Inventory[];
@@ -86,6 +90,8 @@ export function WarehouseInventoryView({
   loading = false,
 }: WarehouseInventoryViewProps) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const { updateProduct } = useProducts();
   const {
     filters,
     filteredRows,
@@ -148,7 +154,16 @@ export function WarehouseInventoryView({
         exportVouchers={exportVouchers}
         warehouseId={warehouseId}
         onClose={() => setSelectedProduct(null)}
+        onEdit={setEditingProduct}
       />
+      {editingProduct && (
+        <ProductFormModal
+          isOpen
+          product={editingProduct}
+          onClose={() => setEditingProduct(null)}
+          onSave={(payload) => updateProduct(editingProduct.id, payload)}
+        />
+      )}
     </div>
   );
 }

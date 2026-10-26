@@ -1,0 +1,49 @@
+# Manual frontend build only. Does not deploy or modify the backend/Vercel.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --tag
+      - ${_IMAGE}
+      - --file
+      - apps/fe-wms/Dockerfile
+      - --build-arg
+      - NEXT_PUBLIC_FIREBASE_API_KEY=${_FIREBASE_API_KEY}
+      - --build-arg
+      - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${_FIREBASE_AUTH_DOMAIN}
+      - --build-arg
+      - NEXT_PUBLIC_FIREBASE_PROJECT_ID=${PROJECT_ID}
+      - --build-arg
+      - NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${_FIREBASE_STORAGE_BUCKET}
+      - --build-arg
+      - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${_FIREBASE_MESSAGING_SENDER_ID}
+      - --build-arg
+      - NEXT_PUBLIC_FIREBASE_APP_ID=${_FIREBASE_APP_ID}
+      - --build-arg
+      - NEXT_PUBLIC_API_URL=${_FRONTEND_ORIGIN}
+      - --build-arg
+      - NEXT_PUBLIC_MAPBOX_TOKEN=${_MAPBOX_TOKEN}
+      - --build-arg
+      - NEXT_PUBLIC_FIREBASE_VAPID_KEY=${_FIREBASE_VAPID_KEY}
+      - --build-arg
+      - NEXT_PUBLIC_APP_ENV=production
+      - --build-arg
+      - NEXT_PUBLIC_LEAVE_FEATURE_ENABLED=${_LEAVE_ENABLED}
+      - --build-arg
+      - NEXT_PUBLIC_EMPLOYEE_CONTRACTS_FEATURE_ENABLED=${_CONTRACTS_ENABLED}
+      - --build-arg
+      - NEXT_PUBLIC_MARKETING_VOUCHERS_FEATURE_ENABLED=${_VOUCHERS_ENABLED}
+      - --build-arg
+      - BUILD_NUMBER=${_BUILD_NUMBER}
+      - .
+images:
+  - ${_IMAGE}
+timeout: 1800s
+options:
+  logging: CLOUD_LOGGING_ONLY
+substitutions:
+  _MAPBOX_TOKEN: ''
+  _FIREBASE_VAPID_KEY: ''
+  _LEAVE_ENABLED: 'false'
+  _CONTRACTS_ENABLED: 'false'
+  _VOUCHERS_ENABLED: 'false'

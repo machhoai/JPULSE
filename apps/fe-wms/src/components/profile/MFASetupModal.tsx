@@ -1,9 +1,13 @@
-import { useState } from "react";
-import { useUserStore } from "../../stores/useUserStore";
-import { gooeyToast } from "goey-toast";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { gooeyToast } from "goey-toast";
+import { useState } from "react";
+
 import { useTranslation } from "@/lib/i18n";
 import { MFA_SETUP_TEXT } from "@/lib/i18n/componentTranslations";
+import { createDetailedApiError } from "@/utils/apiError";
+import { authenticatedFetch } from "@/utils/authenticatedFetch";
+
+import { useUserStore } from "../../stores/useUserStore";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 
@@ -20,17 +24,18 @@ export const MFASetupModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
     const handleStartSetup = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/api/auth/mfa/setup`, {
+            const response = await authenticatedFetch(`${API_BASE_URL}/api/auth/mfa/setup`, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" }
             });
+            if (!response.ok) throw createDetailedApiError(response, await response.json().catch(() => null), copy.setupLoadError);
             const { data } = await response.json();
             setQrCodeUrl(data.qrCodeUrl);
             setSecret(data.secret);
             setStep("scan");
         } catch (e) {
-            gooeyToast.error(copy.setupLoadError);
+            gooeyToast.error(e instanceof Error ? e.message : copy.setupLoadError);
         } finally {
             setIsLoading(false);
         }
@@ -42,13 +47,13 @@ export const MFASetupModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
         try {
             await gooeyToast.promise(
-                fetch(`${API_BASE_URL}/api/auth/mfa/verify-setup`, {
+                authenticatedFetch(`${API_BASE_URL}/api/auth/mfa/verify-setup`, {
                     method: "POST",
                     credentials: "include",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ token: code, secret })
                 }).then(async res => {
-                    if (!res.ok) throw new Error(copy.invalidCode);
+                    if (!res.ok) throw createDetailedApiError(res, await res.json().catch(() => null), copy.invalidCode);
                     return res.json();
                 }),
                 {
@@ -61,7 +66,7 @@ export const MFASetupModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                         setTimeout(onClose, 500);
                         return copy.linked;
                     },
-                    error: copy.invalidConfirmCode
+                    error: (error: unknown) => error instanceof Error ? error.message : copy.invalidConfirmCode
                 }
             );
         } catch (error) {

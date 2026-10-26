@@ -1,0 +1,53 @@
+{
+  "hosting": {
+    "site": "jpulse-cloud-preview",
+    "public": "infra/gcp/frontend-hosting",
+    "ignore": ["**/.*"],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+        ]
+      },
+      {
+        "source": "/api/**",
+        "headers": [
+          { "key": "Cache-Control", "value": "private, no-store" }
+        ]
+      },
+      {
+        "source": "/firebase-messaging-sw.js",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-store" },
+          { "key": "Service-Worker-Allowed", "value": "/" }
+        ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/api/openapi-tester",
+        "run": {
+          "serviceId": "fe-wms-preview",
+          "region": "asia-southeast1",
+          "pinTag": true
+        }
+      },
+      {
+        "source": "/api/**",
+        "run": {
+          "serviceId": "be-wms",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "fe-wms-preview",
+          "region": "asia-southeast1",
+          "pinTag": true
+        }
+      }
+    ]
+  }
+}

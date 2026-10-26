@@ -1,0 +1,502 @@
+{
+  "project": "jw-system-f2104",
+  "read_time": "2026-10-26T02:43:43.443Z",
+  "users": [
+    {
+      "id": "CoyIRlNy9LWZVuxnQR2N05mLXEu1",
+      "full_name": "Nguyễn Huỳnh Dao",
+      "is_deleted": false,
+      "email": "helendaonguyen2262001@gmail.com",
+      "username": "HuynhDao",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "D08dEnNuLqN85ueiTLeWI5whzkg2",
+      "full_name": "Nguyễn Thị Kim Anh",
+      "is_deleted": false,
+      "email": "nkim61098@gmail.com",
+      "username": "Nguyễn Thị Kim Anh",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "DdO55LtNcOSmBY4OlCVHlCcN3Df2",
+      "full_name": "Jedi Nguyễn",
+      "is_deleted": false,
+      "email": "jedi@joyworldcityfuns.vn",
+      "username": "jedinguyen",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "EUS6fWDULWSSUVFZ0kx4TiMikYt1",
+      "full_name": "Mrs. Alisa",
+      "is_deleted": false,
+      "email": "alisa@joyworldcityfuns.vn",
+      "username": "",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "I3CvLkxQCUdYZUD4HtEp6iTyJj92",
+      "full_name": "Trần Cường",
+      "is_deleted": false,
+      "email": "cuongthanh1995@gmail.com",
+      "username": "cuongtran2026",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "KD2rWlm8nLhTDkpln58jn83qKAy2",
+      "full_name": "Quốc Hoài (tester)",
+      "is_deleted": false,
+      "email": "machhoai1234@gmail.com",
+      "username": "machhoaitest",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "L41gGq1PwDSHbVq1Bywj7Td5pp63",
+      "full_name": "Phan Minh Hiền",
+      "is_deleted": false,
+      "email": "phanminhhien2004@gmail.com",
+      "username": "minhhien0510",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "X2fwwwBb2pbMatzolRNqcHpEwNZ2",
+      "full_name": "Nguyễn Thị Thùy Ngân",
+      "is_deleted": false,
+      "email": "thuyngan2120033@gmail.com",
+      "username": "thuyngan",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "b62VRS2oqRXne3RjPsSFfnu3Zon1",
+      "full_name": "Mạch Hoài",
+      "is_deleted": false,
+      "email": "hoai.mach@joyworldcityfuns.vn",
+      "username": "machhoai",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "bVxMhLo7kkcNRAA3PHZoKM0EVzP2",
+      "full_name": "Trần Thị Thu Thảo",
+      "is_deleted": false,
+      "email": "thao.tran@joyworldcityfuns.vn",
+      "username": "thaotran",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "hqawb0sF6Fg9Wsx9nOWtH8Fg2sy1",
+      "full_name": "Võ Minh Trí",
+      "is_deleted": false,
+      "email": "vominhtri102@gmail.com",
+      "username": "trivo",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "khLuAdblU7cOM8PwxtE2N8nVq3p1",
+      "full_name": "Vũ Thị Thu Trang",
+      "is_deleted": false,
+      "email": "vttrang24@gmail.com",
+      "username": "trangnguyen",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "mMfTNxwDTlXslbOej8vF8iWj1p62",
+      "full_name": "Nguyễn Hữu Trung Tín",
+      "is_deleted": false,
+      "email": "nguyenhuutrungtin06032004@gmail.com",
+      "username": "NguyenTin",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "mN9IRbStFva1JEUvDyB9laEPPnn1",
+      "full_name": "Nguyễn Thị Ngoãn",
+      "is_deleted": false,
+      "email": "ngoan.nguyen@joyworldcityfuns.vn",
+      "username": "ngoannguyen",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "s638K89aNZSqmt3R2shFsz0M4d03",
+      "full_name": "ZERO",
+      "is_deleted": false,
+      "email": "840455315@qq.com",
+      "username": "zero",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "wVgsThfQKHWYYDgduNOFIzoP2TA3",
+      "full_name": "Bùi Ngọc Linh",
+      "is_deleted": false,
+      "email": "nocclinh1003@gmail.com",
+      "username": "ngoclinh",
+      "status": "ACTIVE"
+    }
+  ],
+  "assignments": [
+    {
+      "id": "1c62f231-f3f3-405c-893a-0534ae95eee4",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "DdO55LtNcOSmBY4OlCVHlCcN3Df2",
+      "role_id": "a9a2c3a0-c79d-4e3a-9af7-990bf10d4fd9",
+      "valid_from": "2026-06-15",
+      "scope_origin": "DIRECT",
+      "warehouse_id": null
+    },
+    {
+      "id": "4a739514-f3f6-43a1-beea-a39d3c52baad",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "I3CvLkxQCUdYZUD4HtEp6iTyJj92",
+      "role_id": "e16de8ad-8494-4601-8800-a93445ed6a98",
+      "valid_from": "2026-10-20",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "2fa83576-277f-483e-8c52-2ec85b9a8cff"
+    },
+    {
+      "id": "4d056154-5bf7-4f38-a82b-9f00b7687e6a",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "duGDqwfxdfM7u3uMhlVw1j4g5EY2",
+      "role_id": "e16de8ad-8494-4601-8800-a93445ed6a98",
+      "valid_from": "2026-09-10",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "2fa83576-277f-483e-8c52-2ec85b9a8cff"
+    },
+    {
+      "id": "4f246185-d483-4c5a-817b-f170f8cc2bb6",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "D08dEnNuLqN85ueiTLeWI5whzkg2",
+      "role_id": "12025b61-21c6-4a8a-816a-50c5bcb4284f",
+      "valid_from": "2026-09-08",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "4ea64164-d889-43ee-82be-105eb88a3112"
+    },
+    {
+      "id": "4f976df1-7faf-4a27-a9e4-e3024b72d1c6",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "CoyIRlNy9LWZVuxnQR2N05mLXEu1",
+      "role_id": "12025b61-21c6-4a8a-816a-50c5bcb4284f",
+      "valid_from": "2026-10-03",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "2fa83576-277f-483e-8c52-2ec85b9a8cff"
+    },
+    {
+      "id": "7f23d345-5a34-4c70-bb80-83044ebca4bf",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "KD2rWlm8nLhTDkpln58jn83qKAy2",
+      "role_id": "e16de8ad-8494-4601-8800-a93445ed6a98",
+      "valid_from": "2026-07-06",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "2fa83576-277f-483e-8c52-2ec85b9a8cff"
+    },
+    {
+      "id": "81c0a773-8dbd-4535-9e02-0e29bbabfd3b",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "wVgsThfQKHWYYDgduNOFIzoP2TA3",
+      "role_id": "12025b61-21c6-4a8a-816a-50c5bcb4284f",
+      "valid_from": "2026-09-08",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "2fa83576-277f-483e-8c52-2ec85b9a8cff"
+    },
+    {
+      "id": "860c5576-9da6-4302-b3d6-9fb4c4c6ef1b",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "X2fwwwBb2pbMatzolRNqcHpEwNZ2",
+      "role_id": "9cc10af4-37aa-4c0a-bbf3-7e421631fac3",
+      "valid_from": "2026-06-02",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "b22f76d5-01e7-4663-998a-ffe87f7331c3"
+    },
+    {
+      "id": "87776eab-218f-44bd-a3a8-6868f2581c8f",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "khLuAdblU7cOM8PwxtE2N8nVq3p1",
+      "role_id": "e2d206af-4945-4cad-a12f-89ade92222d1",
+      "valid_from": "2026-06-15",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "b22f76d5-01e7-4663-998a-ffe87f7331c3"
+    },
+    {
+      "id": "919c731d-f1a9-4a7e-a579-f839443eab45",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "I3CvLkxQCUdYZUD4HtEp6iTyJj92",
+      "role_id": "e16de8ad-8494-4601-8800-a93445ed6a98",
+      "valid_from": "2026-10-20",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "4ea64164-d889-43ee-82be-105eb88a3112"
+    },
+    {
+      "id": "9635eda6-2ba9-4992-a173-da6c88cd0fad",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "D08dEnNuLqN85ueiTLeWI5whzkg2",
+      "role_id": "12025b61-21c6-4a8a-816a-50c5bcb4284f",
+      "valid_from": "2026-09-08",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "2fa83576-277f-483e-8c52-2ec85b9a8cff"
+    },
+    {
+      "id": "969c4cb7-e40a-46a7-8d3f-4a285484df83",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "b62VRS2oqRXne3RjPsSFfnu3Zon1",
+      "role_id": "0683bdd8-922e-490b-b564-ae8ff6d03ffe",
+      "valid_from": "2026-06-02",
+      "scope_origin": "DIRECT",
+      "warehouse_id": null
+    },
+    {
+      "id": "a01ff5d2-a60f-4c84-a045-facd6f5340c6",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "s638K89aNZSqmt3R2shFsz0M4d03",
+      "role_id": "0c81e2a5-ae6c-405d-a787-1e890d429cf6",
+      "valid_from": "2026-08-23",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "b22f76d5-01e7-4663-998a-ffe87f7331c3"
+    },
+    {
+      "id": "a1ed1ad2-96d8-4708-b0ac-3a4e13e8c38f",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "9p4TYe4H9Xe9SnbGU9ffeAv6cxt1",
+      "role_id": "6e621722-c83b-4412-9656-838aa48ffd32",
+      "valid_from": "2026-09-14",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "b22f76d5-01e7-4663-998a-ffe87f7331c3"
+    },
+    {
+      "id": "aecc6b0a-2052-490e-9ad9-e21fb6c43065",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "mN9IRbStFva1JEUvDyB9laEPPnn1",
+      "role_id": "9cc10af4-37aa-4c0a-bbf3-7e421631fac3",
+      "valid_from": "2026-06-11",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "b22f76d5-01e7-4663-998a-ffe87f7331c3"
+    },
+    {
+      "id": "b895ad70-083f-4c1b-a8bd-a1e5c540518a",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "mN9IRbStFva1JEUvDyB9laEPPnn1",
+      "role_id": "dd6b9478-b24a-4b59-bd52-35c3d293928a",
+      "valid_from": "2026-07-24",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "b22f76d5-01e7-4663-998a-ffe87f7331c3"
+    },
+    {
+      "id": "c353ded2-c3b8-4e35-8301-457e9e31f57e",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "8cYJ2UPBh7hmfefOjV2ggWwkDtQ2",
+      "role_id": "12025b61-21c6-4a8a-816a-50c5bcb4284f",
+      "valid_from": "2026-08-21",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "4ea64164-d889-43ee-82be-105eb88a3112"
+    },
+    {
+      "id": "c6a39a05-ec89-4cff-bbfb-d2aa1ae8b583",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "EUS6fWDULWSSUVFZ0kx4TiMikYt1",
+      "role_id": "a9a2c3a0-c79d-4e3a-9af7-990bf10d4fd9",
+      "valid_from": "2026-10-15",
+      "scope_origin": "DIRECT",
+      "warehouse_id": null
+    },
+    {
+      "id": "cb6ac23c-8c13-4985-b5bc-d740b426bf97",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "hqawb0sF6Fg9Wsx9nOWtH8Fg2sy1",
+      "role_id": "0683bdd8-922e-490b-b564-ae8ff6d03ffe",
+      "valid_from": "2026-09-29",
+      "scope_origin": "DIRECT",
+      "warehouse_id": null
+    },
+    {
+      "id": "e5015e96-b2d1-4722-abd6-08442ef2a7be",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "L41gGq1PwDSHbVq1Bywj7Td5pp63",
+      "role_id": "12025b61-21c6-4a8a-816a-50c5bcb4284f",
+      "valid_from": "2026-10-10",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "2fa83576-277f-483e-8c52-2ec85b9a8cff"
+    },
+    {
+      "id": "edafcd94-8d11-4dc4-bcdb-867cf55664e4",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "wVgsThfQKHWYYDgduNOFIzoP2TA3",
+      "role_id": "e16de8ad-8494-4601-8800-a93445ed6a98",
+      "valid_from": "2026-09-08",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "4ea64164-d889-43ee-82be-105eb88a3112"
+    },
+    {
+      "id": "f01650d9-5c34-4198-9bd9-b788eeb44a8b",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "mMfTNxwDTlXslbOej8vF8iWj1p62",
+      "role_id": "0683bdd8-922e-490b-b564-ae8ff6d03ffe",
+      "valid_from": "2026-09-29",
+      "scope_origin": "DIRECT",
+      "warehouse_id": null
+    },
+    {
+      "id": "fc130c6f-164f-47ef-b8dc-10fbabc0f8ea",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "8cYJ2UPBh7hmfefOjV2ggWwkDtQ2",
+      "role_id": "12025b61-21c6-4a8a-816a-50c5bcb4284f",
+      "valid_from": "2026-08-22",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "2fa83576-277f-483e-8c52-2ec85b9a8cff"
+    },
+    {
+      "id": "fde63b59-1dd3-423a-8926-c9af699544e9",
+      "is_active": true,
+      "is_deleted": false,
+      "valid_until": null,
+      "user_id": "bVxMhLo7kkcNRAA3PHZoKM0EVzP2",
+      "role_id": "6e621722-c83b-4412-9656-838aa48ffd32",
+      "valid_from": "2026-07-23",
+      "scope_origin": "DIRECT",
+      "warehouse_id": "b22f76d5-01e7-4663-998a-ffe87f7331c3"
+    }
+  ],
+  "roles": [
+    {
+      "id": "0683bdd8-922e-490b-b564-ae8ff6d03ffe",
+      "is_deleted": false,
+      "parent_id": null,
+      "name": "SUPER_ADMIN"
+    },
+    {
+      "id": "0c81e2a5-ae6c-405d-a787-1e890d429cf6",
+      "is_deleted": false,
+      "parent_id": null,
+      "name": "Đối tác Trung Quốc"
+    },
+    {
+      "id": "12025b61-21c6-4a8a-816a-50c5bcb4284f",
+      "is_deleted": false,
+      "parent_id": "e2d206af-4945-4cad-a12f-89ade92222d1",
+      "name": "Thu ngân"
+    },
+    {
+      "id": "696621a4-9d1f-4a75-adbd-f5928395aa7f",
+      "is_deleted": false,
+      "parent_id": "a9a2c3a0-c79d-4e3a-9af7-990bf10d4fd9",
+      "name": "Marketing"
+    },
+    {
+      "id": "6e621722-c83b-4412-9656-838aa48ffd32",
+      "is_deleted": false,
+      "parent_id": "a9a2c3a0-c79d-4e3a-9af7-990bf10d4fd9",
+      "name": "Kế toán trưởng"
+    },
+    {
+      "id": "971c4020-8a54-4180-8dc5-557bf59c3666",
+      "is_deleted": true,
+      "parent_id": null,
+      "name": "Giám đốc"
+    },
+    {
+      "id": "9cc10af4-37aa-4c0a-bbf3-7e421631fac3",
+      "is_deleted": false,
+      "parent_id": "6e621722-c83b-4412-9656-838aa48ffd32",
+      "name": "Kế toán"
+    },
+    {
+      "id": "a9a2c3a0-c79d-4e3a-9af7-990bf10d4fd9",
+      "is_deleted": false,
+      "parent_id": null,
+      "name": "Giám đốc"
+    },
+    {
+      "id": "dd6b9478-b24a-4b59-bd52-35c3d293928a",
+      "is_deleted": false,
+      "parent_id": "a9a2c3a0-c79d-4e3a-9af7-990bf10d4fd9",
+      "name": "Quản lý nhân sự"
+    },
+    {
+      "id": "e16de8ad-8494-4601-8800-a93445ed6a98",
+      "is_deleted": false,
+      "parent_id": "e2d206af-4945-4cad-a12f-89ade92222d1",
+      "name": "Quản lý cửa hàng"
+    },
+    {
+      "id": "e2d206af-4945-4cad-a12f-89ade92222d1",
+      "is_deleted": false,
+      "parent_id": "a9a2c3a0-c79d-4e3a-9af7-990bf10d4fd9",
+      "name": "Cửa hàng trưởng"
+    }
+  ],
+  "facilities": [
+    {
+      "id": "2fa83576-277f-483e-8c52-2ec85b9a8cff",
+      "code": "LM81",
+      "is_deleted": false,
+      "name": "B.Duck Cityfuns Landmark 81",
+      "type": "STORE",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "4ea64164-d889-43ee-82be-105eb88a3112",
+      "code": "AMTP",
+      "is_deleted": false,
+      "name": "B.Duck Cityfuns AEON Mall Tân Phú",
+      "type": "STORE",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "7ea89eea-994e-4031-b6a6-d1d00f2dac3b",
+      "code": "KQ7",
+      "is_deleted": false,
+      "name": "Kho Quận 7",
+      "type": "MAIN",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "b22f76d5-01e7-4663-998a-ffe87f7331c3",
+      "code": "JJLAND",
+      "is_deleted": false,
+      "name": "Văn phòng JOY WORLD",
+      "type": "OFFICE",
+      "status": "ACTIVE"
+    }
+  ]
+}

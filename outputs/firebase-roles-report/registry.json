@@ -1,0 +1,1992 @@
+{
+  "groups": [
+    {
+      "id": "system",
+      "label": {
+        "vi": "Hệ thống",
+        "zh": "系统"
+      },
+      "icon": "Shield",
+      "order": 0
+    },
+    {
+      "id": "products",
+      "label": {
+        "vi": "Sản phẩm",
+        "zh": "产品"
+      },
+      "icon": "Package",
+      "order": 1
+    },
+    {
+      "id": "categories",
+      "label": {
+        "vi": "Danh mục",
+        "zh": "分类"
+      },
+      "icon": "FolderTree",
+      "order": 2
+    },
+    {
+      "id": "warehouses",
+      "label": {
+        "vi": "Kho hàng",
+        "zh": "仓库"
+      },
+      "icon": "Warehouse",
+      "order": 3
+    },
+    {
+      "id": "locations",
+      "label": {
+        "vi": "Vị trí kho",
+        "zh": "库位"
+      },
+      "icon": "MapPin",
+      "order": 4
+    },
+    {
+      "id": "organizations",
+      "label": {
+        "vi": "Tổ chức",
+        "zh": "组织"
+      },
+      "icon": "Building2",
+      "order": 5
+    },
+    {
+      "id": "inventory",
+      "label": {
+        "vi": "Tồn kho",
+        "zh": "库存"
+      },
+      "icon": "BarChart3",
+      "order": 6
+    },
+    {
+      "id": "stock_counts",
+      "label": {
+        "vi": "Kiểm đếm kho",
+        "zh": "库存盘点"
+      },
+      "icon": "ClipboardList",
+      "order": 7
+    },
+    {
+      "id": "reports",
+      "label": {
+        "vi": "Báo cáo",
+        "zh": "报表"
+      },
+      "icon": "FileSpreadsheet",
+      "order": 7
+    },
+    {
+      "id": "file_library",
+      "label": {
+        "vi": "Thư viện tệp",
+        "zh": "文件库"
+      },
+      "icon": "Files",
+      "order": 7
+    },
+    {
+      "id": "vouchers",
+      "label": {
+        "vi": "Phiếu nhập / xuất",
+        "zh": "入库/出库单"
+      },
+      "icon": "FileText",
+      "order": 8
+    },
+    {
+      "id": "marketing_vouchers",
+      "label": {
+        "vi": "Voucher marketing",
+        "zh": "营销优惠券"
+      },
+      "icon": "TicketPercent",
+      "order": 8
+    },
+    {
+      "id": "transfers",
+      "label": {
+        "vi": "Điều chuyển",
+        "zh": "调拨"
+      },
+      "icon": "ArrowLeftRight",
+      "order": 9
+    },
+    {
+      "id": "workflows",
+      "label": {
+        "vi": "Quy trình",
+        "zh": "工作流"
+      },
+      "icon": "GitBranch",
+      "order": 9
+    },
+    {
+      "id": "notifications",
+      "label": {
+        "vi": "Thông báo",
+        "zh": "通知"
+      },
+      "icon": "Bell",
+      "order": 10
+    },
+    {
+      "id": "users",
+      "label": {
+        "vi": "Người dùng",
+        "zh": "用户"
+      },
+      "icon": "Users",
+      "order": 11
+    },
+    {
+      "id": "roles",
+      "label": {
+        "vi": "Phân quyền",
+        "zh": "角色权限"
+      },
+      "icon": "ShieldCheck",
+      "order": 12
+    },
+    {
+      "id": "employees",
+      "label": {
+        "vi": "Nhân viên",
+        "zh": "员工"
+      },
+      "icon": "IdCard",
+      "order": 13
+    },
+    {
+      "id": "leave",
+      "label": {
+        "vi": "Nghỉ phép",
+        "zh": "休假管理"
+      },
+      "icon": "CalendarDays",
+      "order": 14
+    },
+    {
+      "id": "expenses",
+      "label": {
+        "vi": "Quản lý chi phí",
+        "zh": "费用管理"
+      },
+      "icon": "Receipt",
+      "order": 15
+    },
+    {
+      "id": "revenue",
+      "label": {
+        "vi": "Quản lý doanh thu",
+        "zh": "营收管理"
+      },
+      "icon": "ChartNoAxesCombined",
+      "order": 16
+    },
+    {
+      "id": "invoices",
+      "label": {
+        "vi": "Quản lý hóa đơn",
+        "zh": "发票管理"
+      },
+      "icon": "ReceiptText",
+      "order": 17
+    },
+    {
+      "id": "audit",
+      "label": {
+        "vi": "Nhật ký hệ thống",
+        "zh": "审计日志"
+      },
+      "icon": "FileClock",
+      "order": 18
+    },
+    {
+      "id": "pos",
+      "label": {
+        "vi": "Quản lý POS",
+        "zh": "POS 管理"
+      },
+      "icon": "MonitorSmartphone",
+      "order": 19
+    },
+    {
+      "id": "attendance",
+      "label": {
+        "vi": "Chấm công",
+        "zh": "考勤"
+      },
+      "icon": "CalendarCheck",
+      "order": 19
+    },
+    {
+      "id": "external",
+      "label": {
+        "vi": "Tích hợp ngoài",
+        "zh": "外部集成"
+      },
+      "icon": "ScanBarcode",
+      "order": 20
+    }
+  ],
+  "permissions": [
+    {
+      "key": "*",
+      "group": "system",
+      "label": {
+        "vi": "Toàn quyền hệ thống",
+        "zh": "系统完全权限"
+      },
+      "description": {
+        "vi": "Cấp tất cả quyền trên toàn bộ hệ thống. Chỉ nên gán cho Admin.",
+        "zh": "授予系统所有权限。仅应分配给管理员。"
+      }
+    },
+    {
+      "key": "system.config",
+      "group": "system",
+      "label": {
+        "vi": "Cau hinh he thong",
+        "zh": "系统配置"
+      },
+      "description": {
+        "vi": "Cho phep xem va cap nhat cau hinh tich hop he thong theo cua hang.",
+        "zh": "允许查看并更新按门店划分的系统集成配置。"
+      }
+    },
+    {
+      "key": "pos.cash_drawer.open",
+      "group": "pos",
+      "label": {
+        "vi": "Mở két tiền JPOS",
+        "zh": "打开 JPOS 钱箱"
+      },
+      "description": {
+        "vi": "Cho phép nhân viên thử và mở két tiền thủ công tại cửa hàng được cấp quyền. Cấu hình tập trung dùng quyền quản lý cấu hình POS.",
+        "zh": "允许员工在获授权门店测试和手动打开钱箱；集中配置需要 POS 配置管理权限。"
+      }
+    },
+    {
+      "key": "pos.login",
+      "group": "pos",
+      "label": {
+        "vi": "Đăng nhập JPOS",
+        "zh": "登录 JPOS"
+      },
+      "description": {
+        "vi": "Cho phép tài khoản đăng nhập JPOS tại cửa hàng được phân quyền.",
+        "zh": "允许账户登录获授权门店的 JPOS。"
+      }
+    },
+    {
+      "key": "pos.sales.create",
+      "group": "pos",
+      "label": {
+        "vi": "Tạo giao dịch bán hàng",
+        "zh": "创建 POS 销售"
+      },
+      "description": {
+        "vi": "Tạo đơn và hoàn tất thanh toán cơ bản trên JPOS.",
+        "zh": "在 JPOS 创建订单并完成基础付款。"
+      }
+    },
+    {
+      "key": "pos.orders.read",
+      "group": "pos",
+      "label": {
+        "vi": "Xem đơn hàng POS",
+        "zh": "查看 POS 订单"
+      },
+      "description": {
+        "vi": "Xem lịch sử và chi tiết đơn hàng POS trong phạm vi cửa hàng.",
+        "zh": "查看授权门店范围内的 POS 订单历史和详情。"
+      }
+    },
+    {
+      "key": "pos.orders.retry_sync",
+      "group": "pos",
+      "label": {
+        "vi": "Thử lại đồng bộ đơn POS",
+        "zh": "重试 POS 订单同步"
+      },
+      "description": {
+        "vi": "Đưa đơn POS lỗi trở lại hàng đợi đồng bộ.",
+        "zh": "将失败的 POS 订单重新加入同步队列。"
+      }
+    },
+    {
+      "key": "pos.orders.cancel_local",
+      "group": "pos",
+      "label": {
+        "vi": "Hủy đơn POS tại local",
+        "zh": "本地取消 POS 订单"
+      },
+      "description": {
+        "vi": "Hủy đơn chưa đồng bộ lên JoyWorld trong phạm vi cửa hàng.",
+        "zh": "取消授权门店中尚未同步到 JoyWorld 的 POS 订单。"
+      }
+    },
+    {
+      "key": "pos.orders.refund_remote",
+      "group": "pos",
+      "label": {
+        "vi": "Hoàn tiền đơn POS trên JoyWorld",
+        "zh": "JoyWorld POS 订单退款"
+      },
+      "description": {
+        "vi": "Hoàn tiền đơn POS đã đồng bộ và ghi nhận kết quả tại JoyWorld.",
+        "zh": "为已同步的 POS 订单退款并在 JoyWorld 记录结果。"
+      }
+    },
+    {
+      "key": "pos.payments.manual_confirm",
+      "group": "pos",
+      "label": {
+        "vi": "Xác nhận chuyển khoản thủ công",
+        "zh": "手动确认转账"
+      },
+      "description": {
+        "vi": "Xác nhận giao dịch chuyển khoản sau khi đã đối chiếu thực tế.",
+        "zh": "实际核对后手动确认转账交易。"
+      }
+    },
+    {
+      "key": "pos.members.edit",
+      "group": "pos",
+      "label": {
+        "vi": "Chỉnh sửa hồ sơ thành viên",
+        "zh": "会员资料管理"
+      },
+      "description": {
+        "vi": "Chỉnh sửa hồ sơ thành viên trong phạm vi cửa hàng được phân quyền.",
+        "zh": "在授权门店范围内管理会员资料。"
+      }
+    },
+    {
+      "key": "pos.members.history",
+      "group": "pos",
+      "label": {
+        "vi": "Xem lịch sử chỉnh sửa thành viên",
+        "zh": "会员资料管理"
+      },
+      "description": {
+        "vi": "Xem lịch sử chỉnh sửa thành viên trong phạm vi cửa hàng được phân quyền.",
+        "zh": "在授权门店范围内管理会员资料。"
+      }
+    },
+    {
+      "key": "pos.members.retry_sync",
+      "group": "pos",
+      "label": {
+        "vi": "Thử lại đồng bộ hồ sơ thành viên",
+        "zh": "会员资料管理"
+      },
+      "description": {
+        "vi": "Thử lại đồng bộ hồ sơ thành viên trong phạm vi cửa hàng được phân quyền.",
+        "zh": "在授权门店范围内管理会员资料。"
+      }
+    },
+    {
+      "key": "pos.members.compensate",
+      "group": "pos",
+      "label": {
+        "vi": "Nạp bù tài khoản thành viên",
+        "zh": "会员账户补偿充值"
+      },
+      "description": {
+        "vi": "Nạp bù điểm chơi cho thành viên tại cửa hàng và ghi nhật ký kiểm toán.",
+        "zh": "在门店为会员补充游戏点数并记录审计日志。"
+      }
+    },
+    {
+      "key": "pos.members.return_card",
+      "group": "pos",
+      "label": {
+        "vi": "Gỡ liên kết thẻ thành viên",
+        "zh": "会员退卡"
+      },
+      "description": {
+        "vi": "Gỡ liên kết thẻ thành viên thông thường, không hoàn cọc, trong phạm vi điểm bán được phân quyền.",
+        "zh": "在授权门店解除普通会员卡绑定，不退押金。"
+      }
+    },
+    {
+      "key": "pos.members.restore_card",
+      "group": "pos",
+      "label": {
+        "vi": "Khôi phục thẻ đối tác",
+        "zh": "恢复合作伙伴会员卡"
+      },
+      "description": {
+        "vi": "Đối chiếu và khôi phục đúng thẻ trong danh sách đối tác tại quầy; không nạp thêm số dư.",
+        "zh": "核验并恢复合作伙伴会员卡，不充值。"
+      }
+    },
+    {
+      "key": "pos.shift.close",
+      "group": "pos",
+      "label": {
+        "vi": "Kết ca POS",
+        "zh": "POS 交班结算"
+      },
+      "description": {
+        "vi": "Xem và in báo cáo kết ca tại cửa hàng.",
+        "zh": "查看并打印门店 POS 交班报告。"
+      }
+    },
+    {
+      "key": "pos.settings.read",
+      "group": "pos",
+      "label": {
+        "vi": "Xem cấu hình POS",
+        "zh": "查看 POS 配置"
+      },
+      "description": {
+        "vi": "Xem cấu hình thanh toán và in bill của cửa hàng.",
+        "zh": "查看门店付款和小票配置。"
+      }
+    },
+    {
+      "key": "pos.settings.manage",
+      "group": "pos",
+      "label": {
+        "vi": "Quản lý cấu hình POS",
+        "zh": "管理 POS 配置"
+      },
+      "description": {
+        "vi": "Cập nhật cấu hình thanh toán và in bill theo cửa hàng.",
+        "zh": "按门店更新付款和小票配置。"
+      }
+    },
+    {
+      "key": "pos.advertising.read",
+      "group": "pos",
+      "label": {
+        "vi": "Xem quảng cáo màn hình khách",
+        "zh": "查看顾客屏广告"
+      },
+      "description": {
+        "vi": "Xem playlist quảng cáo màn hình khách theo cửa hàng.",
+        "zh": "查看各门店顾客屏的广告播放列表。"
+      }
+    },
+    {
+      "key": "pos.advertising.manage",
+      "group": "pos",
+      "label": {
+        "vi": "Quản lý quảng cáo màn hình khách",
+        "zh": "管理顾客屏广告"
+      },
+      "description": {
+        "vi": "Tải lên, sắp xếp và phát hành quảng cáo màn hình khách theo cửa hàng.",
+        "zh": "按门店上传、排序并发布顾客屏广告。"
+      }
+    },
+    {
+      "key": "pos.devices.read",
+      "group": "pos",
+      "label": {
+        "vi": "Xem thiết bị POS",
+        "zh": "查看 POS 设备"
+      },
+      "description": {
+        "vi": "Xem danh sách và trạng thái máy POS theo cửa hàng.",
+        "zh": "查看按门店划分的 POS 设备及状态。"
+      }
+    },
+    {
+      "key": "pos.devices.manage",
+      "group": "pos",
+      "label": {
+        "vi": "Quản lý thiết bị POS",
+        "zh": "管理 POS 设备"
+      },
+      "description": {
+        "vi": "Tạo mã kích hoạt, đổi tên, khóa hoặc mở khóa máy POS.",
+        "zh": "创建激活码、重命名、锁定或解锁 POS 设备。"
+      }
+    },
+    {
+      "key": "pos.access.manage",
+      "group": "pos",
+      "label": {
+        "vi": "Quản lý quyền truy cập POS",
+        "zh": "管理 POS 访问权限"
+      },
+      "description": {
+        "vi": "Quản lý tài khoản và quyền chức năng JPOS theo cửa hàng.",
+        "zh": "按门店管理 JPOS 账户和功能权限。"
+      }
+    },
+    {
+      "key": "pos.audit.read",
+      "group": "pos",
+      "label": {
+        "vi": "Xem nhật ký POS",
+        "zh": "查看 POS 日志"
+      },
+      "description": {
+        "vi": "Xem thao tác, lỗi và lịch sử phục hồi của máy POS.",
+        "zh": "查看 POS 操作、错误及恢复历史。"
+      }
+    },
+    {
+      "key": "products.read",
+      "group": "products",
+      "label": {
+        "vi": "Xem sản phẩm",
+        "zh": "查看产品"
+      },
+      "description": {
+        "vi": "Xem danh sách và chi tiết sản phẩm, BOM định mức.",
+        "zh": "查看产品列表、详情及BOM定额。"
+      }
+    },
+    {
+      "key": "products.write",
+      "group": "products",
+      "label": {
+        "vi": "Quản lý sản phẩm",
+        "zh": "管理产品"
+      },
+      "description": {
+        "vi": "Tạo mới, chỉnh sửa và xóa mềm sản phẩm, cập nhật BOM.",
+        "zh": "创建、编辑、软删除产品，更新BOM。"
+      }
+    },
+    {
+      "key": "products.price.view",
+      "group": "products",
+      "label": {
+        "vi": "Xem đơn giá sản phẩm",
+        "zh": "查看产品单价"
+      },
+      "description": {
+        "vi": "Xem đơn giá sản phẩm trong mọi màn hình: danh mục, tồn kho, phiếu nhập/xuất. Chỉ nên cấp cho quản lý và kế toán.",
+        "zh": "在所有界面（目录、库存、入/出库单）查看产品单价。仅应授予管理者和财务人员。"
+      }
+    },
+    {
+      "key": "category.read",
+      "group": "categories",
+      "label": {
+        "vi": "Xem danh mục",
+        "zh": "查看分类"
+      },
+      "description": {
+        "vi": "Xem cây danh mục sản phẩm.",
+        "zh": "查看产品分类树。"
+      }
+    },
+    {
+      "key": "category.create",
+      "group": "categories",
+      "label": {
+        "vi": "Tạo danh mục",
+        "zh": "创建分类"
+      },
+      "description": {
+        "vi": "Tạo danh mục sản phẩm mới.",
+        "zh": "创建新产品分类。"
+      }
+    },
+    {
+      "key": "category.update",
+      "group": "categories",
+      "label": {
+        "vi": "Sửa danh mục",
+        "zh": "编辑分类"
+      },
+      "description": {
+        "vi": "Chỉnh sửa tên, mã, mô tả danh mục.",
+        "zh": "编辑分类名称、代码、描述。"
+      }
+    },
+    {
+      "key": "category.delete",
+      "group": "categories",
+      "label": {
+        "vi": "Xóa danh mục",
+        "zh": "删除分类"
+      },
+      "description": {
+        "vi": "Xóa mềm danh mục sản phẩm.",
+        "zh": "软删除产品分类。"
+      }
+    },
+    {
+      "key": "warehouses.read",
+      "group": "warehouses",
+      "label": {
+        "vi": "Xem kho hàng",
+        "zh": "查看仓库"
+      },
+      "description": {
+        "vi": "Xem danh sách kho, thông tin chi tiết và bản đồ.",
+        "zh": "查看仓库列表、详情和地图。"
+      }
+    },
+    {
+      "key": "warehouses.write",
+      "group": "warehouses",
+      "label": {
+        "vi": "Quản lý kho hàng",
+        "zh": "管理仓库"
+      },
+      "description": {
+        "vi": "Tạo, sửa và xóa mềm kho hàng.",
+        "zh": "创建、编辑、软删除仓库。"
+      }
+    },
+    {
+      "key": "office_scopes.read",
+      "group": "warehouses",
+      "label": {
+        "vi": "Xem phạm vi văn phòng",
+        "zh": "查看办公室管理范围"
+      },
+      "description": {
+        "vi": "Xem các kho và cửa hàng thuộc phạm vi quản lý của văn phòng.",
+        "zh": "查看办公室管理范围内的仓库和门店。"
+      }
+    },
+    {
+      "key": "office_scopes.write",
+      "group": "warehouses",
+      "label": {
+        "vi": "Cấu hình phạm vi văn phòng",
+        "zh": "配置办公室管理范围"
+      },
+      "description": {
+        "vi": "Cấu hình toàn bộ hoặc danh sách kho và cửa hàng được chọn.",
+        "zh": "配置全部模式或指定仓库和门店列表。"
+      }
+    },
+    {
+      "key": "locations.read",
+      "group": "locations",
+      "label": {
+        "vi": "Xem vị trí kho",
+        "zh": "查看库位"
+      },
+      "description": {
+        "vi": "Xem danh sách vị trí lưu trữ trong kho.",
+        "zh": "查看仓库中的存储位置列表。"
+      }
+    },
+    {
+      "key": "locations.write",
+      "group": "locations",
+      "label": {
+        "vi": "Quản lý vị trí kho",
+        "zh": "管理库位"
+      },
+      "description": {
+        "vi": "Tạo, sửa và xóa mềm vị trí kho.",
+        "zh": "创建、编辑、软删除库位。"
+      }
+    },
+    {
+      "key": "locations.quarantine",
+      "group": "locations",
+      "label": {
+        "vi": "Cách ly vị trí",
+        "zh": "隔离库位"
+      },
+      "description": {
+        "vi": "Đánh dấu cách ly hoặc gỡ cách ly vị trí kho.",
+        "zh": "标记或解除库位隔离。"
+      }
+    },
+    {
+      "key": "organizations.read",
+      "group": "organizations",
+      "label": {
+        "vi": "Xem tổ chức",
+        "zh": "查看组织"
+      },
+      "description": {
+        "vi": "Xem danh sách và chi tiết tổ chức.",
+        "zh": "查看组织列表和详情。"
+      }
+    },
+    {
+      "key": "organizations.write",
+      "group": "organizations",
+      "label": {
+        "vi": "Quản lý tổ chức",
+        "zh": "管理组织"
+      },
+      "description": {
+        "vi": "Tạo, sửa và xóa mềm tổ chức.",
+        "zh": "创建、编辑、软删除组织。"
+      }
+    },
+    {
+      "key": "inventory.read",
+      "group": "inventory",
+      "label": {
+        "vi": "Xem tồn kho",
+        "zh": "查看库存"
+      },
+      "description": {
+        "vi": "Xem số liệu tồn kho, ATP, cách ly và đang chuyển.",
+        "zh": "查看库存数量、ATP、隔离及在途。"
+      }
+    },
+    {
+      "key": "inventory.write",
+      "group": "inventory",
+      "label": {
+        "vi": "Quản lý tồn kho",
+        "zh": "管理库存"
+      },
+      "description": {
+        "vi": "Cập nhật và xóa bản ghi tồn kho.",
+        "zh": "更新和删除库存记录。"
+      }
+    },
+    {
+      "key": "partner_inventory.read",
+      "group": "inventory",
+      "label": {
+        "vi": "Xem đối chiếu kho JoyWorld",
+        "zh": "查看 JoyWorld 库存核对"
+      },
+      "description": {
+        "vi": "Xem mapping và đối chiếu ATP JPULSE với tồn kho JoyWorld trong phạm vi kho được cấp quyền.",
+        "zh": "在授权仓库范围内查看 JPULSE ATP 与 JoyWorld 库存映射及核对结果。"
+      }
+    },
+    {
+      "key": "partner_inventory.mapping.write",
+      "group": "inventory",
+      "label": {
+        "vi": "Cấu hình mapping kho JoyWorld",
+        "zh": "配置 JoyWorld 库存映射"
+      },
+      "description": {
+        "vi": "Mapping kho và danh mục JPULSE với danh mục tương ứng của kết nối JoyWorld.",
+        "zh": "将 JPULSE 仓库和分类映射到 JoyWorld 连接中的对应目录。"
+      }
+    },
+    {
+      "key": "partner_inventory.sync",
+      "group": "inventory",
+      "label": {
+        "vi": "Đồng bộ tồn sang JoyWorld",
+        "zh": "同步库存到 JoyWorld"
+      },
+      "description": {
+        "vi": "Gửi tồn khả dụng ATP đã chọn từ JPULSE sang JoyWorld bằng thao tác thủ công.",
+        "zh": "通过手动操作将选定的 JPULSE 可用库存 ATP 发送到 JoyWorld。"
+      }
+    },
+    {
+      "key": "stock_counts.view",
+      "group": "stock_counts",
+      "label": {
+        "vi": "Xem phiên kiểm đếm kho",
+        "zh": "查看库存盘点会话"
+      },
+      "description": {
+        "vi": "Xem danh sách và chi tiết phiên kiểm đếm nội bộ trong phạm vi kho được phân quyền.",
+        "zh": "查看授权仓库范围内的内部库存盘点会话列表和详情。"
+      }
+    },
+    {
+      "key": "stock_counts.create",
+      "group": "stock_counts",
+      "label": {
+        "vi": "Tạo phiên kiểm đếm kho",
+        "zh": "创建库存盘点会话"
+      },
+      "description": {
+        "vi": "Tạo phiên kiểm đếm nội bộ cho các kho nằm trong phạm vi được phân quyền.",
+        "zh": "在已授权的仓库范围内创建内部库存盘点会话。"
+      }
+    },
+    {
+      "key": "stock_counts.count",
+      "group": "stock_counts",
+      "label": {
+        "vi": "Nhập kết quả kiểm đếm kho",
+        "zh": "录入库存盘点结果"
+      },
+      "description": {
+        "vi": "Cập nhật số lượng, ghi nhận chênh lệch và nộp phiên kiểm đếm nội bộ.",
+        "zh": "更新数量、记录差异并提交内部库存盘点会话。"
+      }
+    },
+    {
+      "key": "stock_counts.cancel",
+      "group": "stock_counts",
+      "label": {
+        "vi": "Hủy phiên kiểm đếm kho",
+        "zh": "取消库存盘点会话"
+      },
+      "description": {
+        "vi": "Hủy phiên kiểm đếm nội bộ trong phạm vi kho được phân quyền và ghi audit log.",
+        "zh": "在授权仓库范围内取消内部库存盘点会话并记录审计日志。"
+      }
+    },
+    {
+      "key": "reports.templates.read",
+      "group": "reports",
+      "label": {
+        "vi": "Xem mẫu báo cáo",
+        "zh": "查看报表模板"
+      },
+      "description": {
+        "vi": "Xem các mẫu báo cáo cá nhân và mẫu được chia sẻ.",
+        "zh": "查看个人和共享报表模板。"
+      }
+    },
+    {
+      "key": "reports.templates.write",
+      "group": "reports",
+      "label": {
+        "vi": "Quản lý mẫu báo cáo",
+        "zh": "管理报表模板"
+      },
+      "description": {
+        "vi": "Tạo, sửa và lưu mapping cho mẫu báo cáo.",
+        "zh": "创建、编辑并保存报表模板映射。"
+      }
+    },
+    {
+      "key": "reports.templates.share",
+      "group": "reports",
+      "label": {
+        "vi": "Chia sẻ mẫu báo cáo",
+        "zh": "共享报表模板"
+      },
+      "description": {
+        "vi": "Bật chế độ dùng chung mẫu báo cáo trên toàn hệ thống.",
+        "zh": "将报表模板共享给全系统使用。"
+      }
+    },
+    {
+      "key": "reports.export",
+      "group": "reports",
+      "label": {
+        "vi": "Xuất báo cáo",
+        "zh": "导出报表"
+      },
+      "description": {
+        "vi": "Preview và xuất file báo cáo từ template đã lưu.",
+        "zh": "预览并从已保存模板导出报表文件。"
+      }
+    },
+    {
+      "key": "file_templates.upload",
+      "group": "file_library",
+      "label": {
+        "vi": "Upload biểu mẫu",
+        "zh": "上传表单模板"
+      },
+      "description": {
+        "vi": "Cho phép tải lên biểu mẫu PDF, DOCX, XLSX hoặc CSV để người khác tải xuống.",
+        "zh": "允许上传 PDF、DOCX、XLSX 或 CSV 表单模板供他人下载。"
+      }
+    },
+    {
+      "key": "file_templates.view",
+      "group": "file_library",
+      "label": {
+        "vi": "Xem biểu mẫu",
+        "zh": "查看表单模板"
+      },
+      "description": {
+        "vi": "Xem và tải xuống các biểu mẫu đã được upload.",
+        "zh": "查看并下载已上传的表单模板。"
+      }
+    },
+    {
+      "key": "file_templates.edit",
+      "group": "file_library",
+      "label": {
+        "vi": "Chỉnh sửa biểu mẫu",
+        "zh": "编辑表单模板"
+      },
+      "description": {
+        "vi": "Chỉnh sửa tên, mô tả, phân loại và cập nhật phiên bản mới cho biểu mẫu.",
+        "zh": "编辑表单模板的名称、说明、分类并上传新版本。"
+      }
+    },
+    {
+      "key": "file_templates.delete",
+      "group": "file_library",
+      "label": {
+        "vi": "Xóa biểu mẫu",
+        "zh": "删除表单模板"
+      },
+      "description": {
+        "vi": "Xóa mềm biểu mẫu khỏi thư viện biểu mẫu.",
+        "zh": "从表单模板库中软删除表单模板。"
+      }
+    },
+    {
+      "key": "file_library.uploaded_files.view_all",
+      "group": "file_library",
+      "label": {
+        "vi": "Xem tất cả tệp đã tải lên",
+        "zh": "查看所有已上传文件"
+      },
+      "description": {
+        "vi": "Xem tất cả tệp đính kèm từ phiếu. Nếu không có quyền này, user chỉ thấy tệp do chính mình upload.",
+        "zh": "查看所有单据附件。没有此权限时，用户只能看到自己上传的文件。"
+      }
+    },
+    {
+      "key": "file_template_bundles.manage",
+      "group": "file_library",
+      "label": {
+        "vi": "Quản lý bộ biểu mẫu",
+        "zh": "管理表单模板包"
+      },
+      "description": {
+        "vi": "Tạo, chỉnh sửa và xóa các bộ biểu mẫu từ những biểu mẫu đã tải lên.",
+        "zh": "使用已上传的表单模板创建、编辑和删除模板包。"
+      }
+    },
+    {
+      "key": "process_documents.view",
+      "group": "file_library",
+      "label": {
+        "vi": "Xem quy trình",
+        "zh": "查看流程文档"
+      },
+      "description": {
+        "vi": "Xem trực tiếp và tải xuống tài liệu quy trình PDF.",
+        "zh": "在线查看并下载 PDF 流程文档。"
+      }
+    },
+    {
+      "key": "process_documents.upload",
+      "group": "file_library",
+      "label": {
+        "vi": "Tải lên quy trình",
+        "zh": "上传流程文档"
+      },
+      "description": {
+        "vi": "Tải tài liệu quy trình dạng PDF lên thư viện.",
+        "zh": "将 PDF 流程文档上传到文件库。"
+      }
+    },
+    {
+      "key": "process_documents.delete",
+      "group": "file_library",
+      "label": {
+        "vi": "Xóa quy trình",
+        "zh": "删除流程文档"
+      },
+      "description": {
+        "vi": "Xóa mềm tài liệu quy trình khỏi thư viện.",
+        "zh": "从文件库中软删除流程文档。"
+      }
+    },
+    {
+      "key": "vouchers.read",
+      "group": "vouchers",
+      "label": {
+        "vi": "Xem phiếu nhập / xuất",
+        "zh": "查看入库/出库单"
+      },
+      "description": {
+        "vi": "Xem phiếu nhập kho, xuất kho và timeline phê duyệt.",
+        "zh": "查看入库单、出库单及审批时间线。"
+      }
+    },
+    {
+      "key": "vouchers.write",
+      "group": "vouchers",
+      "label": {
+        "vi": "Tạo & sửa phiếu",
+        "zh": "创建和编辑单据"
+      },
+      "description": {
+        "vi": "Tạo phiếu nhập/xuất mới, cập nhật phiên kiểm đếm.",
+        "zh": "创建新入库/出库单，更新盘点会话。"
+      }
+    },
+    {
+      "key": "vouchers.force_cancel",
+      "group": "vouchers",
+      "label": {
+        "vi": "Hủy lệnh bất kỳ lúc nào",
+        "zh": "随时撤销单据"
+      },
+      "description": {
+        "vi": "Hủy lệnh/phiếu ở bất kỳ trạng thái nào, kể cả đã được phê duyệt. Chỉ nên cấp cho quản lý cấp cao.",
+        "zh": "在任何状态下撤销单据，包括已审批的。仅应授予高级管理人员。"
+      }
+    },
+    {
+      "key": "marketing_vouchers.read",
+      "group": "marketing_vouchers",
+      "label": {
+        "vi": "Xem voucher marketing",
+        "zh": "查看营销优惠券"
+      },
+      "description": {
+        "vi": "Xem chiến dịch, kho mã, thống kê và tiến độ công việc voucher marketing.",
+        "zh": "查看营销优惠券活动、券码库、统计数据和任务进度。"
+      }
+    },
+    {
+      "key": "marketing_vouchers.campaigns.write",
+      "group": "marketing_vouchers",
+      "label": {
+        "vi": "Quản lý chiến dịch",
+        "zh": "管理优惠券活动"
+      },
+      "description": {
+        "vi": "Tạo, chỉnh sửa, tạm dừng và kích hoạt lại chiến dịch voucher.",
+        "zh": "创建、编辑、暂停和重新启用优惠券活动。"
+      }
+    },
+    {
+      "key": "marketing_vouchers.codes.generate",
+      "group": "marketing_vouchers",
+      "label": {
+        "vi": "Sinh mã voucher",
+        "zh": "生成优惠券码"
+      },
+      "description": {
+        "vi": "Khởi tạo công việc sinh mã mới hoặc bổ sung mã cho chiến dịch.",
+        "zh": "启动新券码生成任务或为活动补充券码。"
+      }
+    },
+    {
+      "key": "marketing_vouchers.codes.revoke",
+      "group": "marketing_vouchers",
+      "label": {
+        "vi": "Vô hiệu mã voucher",
+        "zh": "作废优惠券码"
+      },
+      "description": {
+        "vi": "Vô hiệu từng mã hoặc nhiều mã voucher mà không xóa dữ liệu.",
+        "zh": "作废单个或批量优惠券码，且不删除数据。"
+      }
+    },
+    {
+      "key": "marketing_vouchers.campaigns.extend",
+      "group": "marketing_vouchers",
+      "label": {
+        "vi": "Gia hạn chiến dịch",
+        "zh": "延长优惠券活动"
+      },
+      "description": {
+        "vi": "Gia hạn chiến dịch và các mã chưa dùng, chưa bị vô hiệu.",
+        "zh": "延长活动及尚未使用、尚未作废券码的有效期。"
+      }
+    },
+    {
+      "key": "marketing_vouchers.export",
+      "group": "marketing_vouchers",
+      "label": {
+        "vi": "Xuất voucher Excel",
+        "zh": "导出优惠券 Excel"
+      },
+      "description": {
+        "vi": "Tạo file Excel hoặc ZIP chứa voucher và mã QR để in.",
+        "zh": "生成包含优惠券和二维码的 Excel 或 ZIP 文件用于印刷。"
+      }
+    },
+    {
+      "key": "marketing_vouchers.appearance.write",
+      "group": "marketing_vouchers",
+      "label": {
+        "vi": "Thiết kế màu voucher",
+        "zh": "设置优惠券颜色"
+      },
+      "description": {
+        "vi": "Chọn màu nhấn cho mẫu voucher cố định của chiến dịch.",
+        "zh": "为活动的固定优惠券模板选择强调色。"
+      }
+    },
+    {
+      "key": "marketing_vouchers.email.send",
+      "group": "marketing_vouchers",
+      "label": {
+        "vi": "Gửi voucher qua email",
+        "zh": "通过邮件发送优惠券"
+      },
+      "description": {
+        "vi": "Tạo công việc gửi voucher qua Brevo và gửi lại các mục thất bại.",
+        "zh": "通过 Brevo 创建优惠券邮件任务并重试失败项目。"
+      }
+    },
+    {
+      "key": "transfers.read",
+      "group": "transfers",
+      "label": {
+        "vi": "Xem điều chuyển",
+        "zh": "查看调拨"
+      },
+      "description": {
+        "vi": "Xem danh sách và chi tiết phiếu điều chuyển.",
+        "zh": "查看调拨单列表和详情。"
+      }
+    },
+    {
+      "key": "transfers.write",
+      "group": "transfers",
+      "label": {
+        "vi": "Tạo & sửa điều chuyển",
+        "zh": "创建和编辑调拨"
+      },
+      "description": {
+        "vi": "Tạo phiếu điều chuyển trong kho hoặc liên kho, cập nhật thông tin.",
+        "zh": "创建库内或跨库调拨单，更新信息。"
+      }
+    },
+    {
+      "key": "transfers.receive",
+      "group": "transfers",
+      "label": {
+        "vi": "Nhận hàng điều chuyển",
+        "zh": "接收调拨货物"
+      },
+      "description": {
+        "vi": "Nhận hàng và kiểm đếm phiếu điều chuyển liên kho tại kho đích.",
+        "zh": "在目标仓库接收并盘点跨库调拨货物。"
+      }
+    },
+    {
+      "key": "workflows.manage",
+      "group": "workflows",
+      "label": {
+        "vi": "Quản lý quy trình",
+        "zh": "管理工作流"
+      },
+      "description": {
+        "vi": "Tạo, sửa, lưu trữ quy trình phê duyệt và xuất bản phiên bản.",
+        "zh": "创建、编辑、归档审批流程并发布版本。"
+      }
+    },
+    {
+      "key": "workflows.execute",
+      "group": "workflows",
+      "label": {
+        "vi": "Thực thi quy trình",
+        "zh": "执行工作流"
+      },
+      "description": {
+        "vi": "Khởi chạy quy trình và hoàn thành các task phê duyệt.",
+        "zh": "启动流程并完成审批任务。"
+      }
+    },
+    {
+      "key": "notifications.payroll.compose",
+      "group": "notifications",
+      "label": {
+        "vi": "Soạn email bảng công & lương",
+        "zh": "编写考勤工资邮件"
+      },
+      "description": {
+        "vi": "Soạn email bảng công & lương. Kiểm quyền riêng với dữ liệu lương.",
+        "zh": "编写考勤工资邮件；工资数据采用独立权限。"
+      }
+    },
+    {
+      "key": "notifications.payroll.download",
+      "group": "notifications",
+      "label": {
+        "vi": "Tải email bảng công & lương",
+        "zh": "下载考勤工资邮件"
+      },
+      "description": {
+        "vi": "Tải email bảng công & lương. Kiểm quyền riêng với dữ liệu lương.",
+        "zh": "下载考勤工资邮件；工资数据采用独立权限。"
+      }
+    },
+    {
+      "key": "notifications.payroll.send",
+      "group": "notifications",
+      "label": {
+        "vi": "Gửi email bảng công & lương",
+        "zh": "发送考勤工资邮件"
+      },
+      "description": {
+        "vi": "Gửi email bảng công & lương. Kiểm quyền riêng với dữ liệu lương.",
+        "zh": "发送考勤工资邮件；工资数据采用独立权限。"
+      }
+    },
+    {
+      "key": "notifications.payroll.history.read",
+      "group": "notifications",
+      "label": {
+        "vi": "Xem lịch sử email lương theo cửa hàng",
+        "zh": "查看门店工资邮件历史"
+      },
+      "description": {
+        "vi": "Xem lịch sử email lương theo cửa hàng. Kiểm quyền riêng với dữ liệu lương.",
+        "zh": "查看门店工资邮件历史；工资数据采用独立权限。"
+      }
+    },
+    {
+      "key": "notifications.payroll.templates.manage",
+      "group": "notifications",
+      "label": {
+        "vi": "Quản lý mẫu email bảng công & lương",
+        "zh": "管理考勤工资邮件模板"
+      },
+      "description": {
+        "vi": "Quản lý mẫu email bảng công & lương. Kiểm quyền riêng với dữ liệu lương.",
+        "zh": "管理考勤工资邮件模板；工资数据采用独立权限。"
+      }
+    },
+    {
+      "key": "notifications.email_signatures.manage",
+      "group": "notifications",
+      "label": {
+        "vi": "Quản lý chữ ký email dùng chung",
+        "zh": "管理共享邮件签名"
+      },
+      "description": {
+        "vi": "Quản lý chữ ký email dùng chung. Kiểm quyền riêng với dữ liệu lương.",
+        "zh": "管理共享邮件签名；工资数据采用独立权限。"
+      }
+    },
+    {
+      "key": "notifications.read",
+      "group": "notifications",
+      "label": {
+        "vi": "Xem lịch sử thông báo",
+        "zh": "查看通知历史"
+      },
+      "description": {
+        "vi": "Xem lịch sử các lượt gửi thông báo in-app và email.",
+        "zh": "查看应用内通知和邮件发送历史。"
+      }
+    },
+    {
+      "key": "notifications.send_in_app",
+      "group": "notifications",
+      "label": {
+        "vi": "Gửi thông báo in-app",
+        "zh": "发送应用内通知"
+      },
+      "description": {
+        "vi": "Gửi thông báo realtime trong hệ thống cho người dùng hoặc vai trò.",
+        "zh": "向用户或角色发送系统内实时通知。"
+      }
+    },
+    {
+      "key": "notifications.send_email",
+      "group": "notifications",
+      "label": {
+        "vi": "Gửi email",
+        "zh": "发送邮件"
+      },
+      "description": {
+        "vi": "Soạn và gửi email qua dịch vụ Brevo.",
+        "zh": "通过 Brevo 服务编写并发送电子邮件。"
+      }
+    },
+    {
+      "key": "users.read",
+      "group": "users",
+      "label": {
+        "vi": "Xem người dùng",
+        "zh": "查看用户"
+      },
+      "description": {
+        "vi": "Xem danh sách người dùng và thông tin tài khoản.",
+        "zh": "查看用户列表和账户信息。"
+      }
+    },
+    {
+      "key": "users.write",
+      "group": "users",
+      "label": {
+        "vi": "Quản lý người dùng",
+        "zh": "管理用户"
+      },
+      "description": {
+        "vi": "Tạo, sửa, xóa mềm tài khoản và gán role.",
+        "zh": "创建、编辑、软删除账户并分配角色。"
+      }
+    },
+    {
+      "key": "users.assign_role",
+      "group": "users",
+      "label": {
+        "vi": "Gán vai trò theo cơ sở",
+        "zh": "按场所分配角色"
+      },
+      "description": {
+        "vi": "Gán vai trò trong phạm vi cơ sở và quyền mà người thao tác đang sở hữu.",
+        "zh": "仅在操作者拥有的场所和权限范围内分配角色。"
+      }
+    },
+    {
+      "key": "users.assign_global_role",
+      "group": "users",
+      "label": {
+        "vi": "Gán vai trò toàn hệ thống",
+        "zh": "分配全局角色"
+      },
+      "description": {
+        "vi": "Gán vai trò toàn hệ thống; chỉ dành cho quản trị viên hệ thống.",
+        "zh": "分配全局角色；仅限系统管理员。"
+      }
+    },
+    {
+      "key": "employees.read",
+      "group": "employees",
+      "label": {
+        "vi": "Xem hồ sơ nhân viên",
+        "zh": "查看员工档案"
+      },
+      "description": {
+        "vi": "Xem danh sách hồ sơ nhân viên, thông tin liên kết tài khoản và nơi làm việc.",
+        "zh": "查看员工档案、账户关联和工作地点。"
+      }
+    },
+    {
+      "key": "employees.write",
+      "group": "employees",
+      "label": {
+        "vi": "Quản lý hồ sơ nhân viên",
+        "zh": "管理员工档案"
+      },
+      "description": {
+        "vi": "Tạo, cập nhật, xóa mềm hồ sơ nhân viên và liên kết tài khoản người dùng.",
+        "zh": "创建、更新、软删除员工档案并关联用户账户。"
+      }
+    },
+    {
+      "key": "employees.employment.manage",
+      "group": "employees",
+      "label": {
+        "vi": "Quản lý trạng thái lao động",
+        "zh": "管理员工雇佣状态"
+      },
+      "description": {
+        "vi": "Chuyển trạng thái thử việc, chính thức hoặc nghỉ việc theo ngày hiệu lực và lưu đầy đủ lịch sử.",
+        "zh": "按生效日期变更试用、正式或离职状态，并保留完整历史记录。"
+      }
+    },
+    {
+      "key": "employees.contracts.self.read",
+      "group": "employees",
+      "label": {
+        "vi": "Xem hợp đồng của tôi",
+        "zh": "查看我的劳动合同"
+      },
+      "description": {
+        "vi": "Xem thông tin và lịch sử hợp đồng lao động của chính mình.",
+        "zh": "查看本人的劳动合同信息和历史记录。"
+      }
+    },
+    {
+      "key": "employees.contracts.read",
+      "group": "employees",
+      "label": {
+        "vi": "Xem hợp đồng lao động",
+        "zh": "查看劳动合同"
+      },
+      "description": {
+        "vi": "Xem hợp đồng lao động của nhân viên trong phạm vi cơ sở được cấp quyền.",
+        "zh": "查看授权场所范围内员工的劳动合同。"
+      }
+    },
+    {
+      "key": "employees.contracts.manage",
+      "group": "employees",
+      "label": {
+        "vi": "Quản lý hợp đồng lao động",
+        "zh": "管理劳动合同"
+      },
+      "description": {
+        "vi": "Tạo, sửa và gia hạn hợp đồng lao động trong phạm vi được cấp quyền.",
+        "zh": "在授权范围内创建、修改和续签劳动合同。"
+      }
+    },
+    {
+      "key": "employees.contracts.terminate",
+      "group": "employees",
+      "label": {
+        "vi": "Hủy và chấm dứt hợp đồng",
+        "zh": "取消和终止劳动合同"
+      },
+      "description": {
+        "vi": "Hủy hợp đồng chưa hiệu lực hoặc chấm dứt hợp đồng đang hiệu lực.",
+        "zh": "取消尚未生效的合同或终止当前生效的合同。"
+      }
+    },
+    {
+      "key": "employees.contracts.documents.read",
+      "group": "employees",
+      "label": {
+        "vi": "Xem tệp hợp đồng",
+        "zh": "查看合同文件"
+      },
+      "description": {
+        "vi": "Xem tệp PDF hợp đồng trong phạm vi được cấp quyền.",
+        "zh": "查看授权范围内的合同 PDF 文件。"
+      }
+    },
+    {
+      "key": "employees.contracts.documents.manage",
+      "group": "employees",
+      "label": {
+        "vi": "Quản lý tệp hợp đồng",
+        "zh": "管理合同文件"
+      },
+      "description": {
+        "vi": "Tải lên và quản lý các phiên bản tệp PDF hợp đồng.",
+        "zh": "上传和管理合同 PDF 文件版本。"
+      }
+    },
+    {
+      "key": "employees.contracts.history.import",
+      "group": "employees",
+      "label": {
+        "vi": "Nhập lịch sử hợp đồng",
+        "zh": "导入合同历史"
+      },
+      "description": {
+        "vi": "Xem trước và nhập dữ liệu hợp đồng lao động cũ.",
+        "zh": "预览并导入历史劳动合同数据。"
+      }
+    },
+    {
+      "key": "leave.self.read",
+      "group": "leave",
+      "label": {
+        "vi": "Xem ngày phép cá nhân",
+        "zh": "查看个人假期"
+      },
+      "description": {
+        "vi": "Xem số dư, sổ cái và lịch sử yêu cầu nghỉ phép của chính mình.",
+        "zh": "查看本人的假期余额、台账和休假申请历史。"
+      }
+    },
+    {
+      "key": "leave.request.create",
+      "group": "leave",
+      "label": {
+        "vi": "Tạo yêu cầu nghỉ phép",
+        "zh": "创建休假申请"
+      },
+      "description": {
+        "vi": "Tạo và hủy yêu cầu nghỉ phép của chính mình theo chính sách công ty.",
+        "zh": "根据公司政策创建和取消本人的休假申请。"
+      }
+    },
+    {
+      "key": "leave.requests.read_all",
+      "group": "leave",
+      "label": {
+        "vi": "Xem yêu cầu nghỉ phép toàn công ty",
+        "zh": "查看全公司休假申请"
+      },
+      "description": {
+        "vi": "Xem lịch sử và trạng thái yêu cầu nghỉ phép của toàn bộ nhân viên.",
+        "zh": "查看全体员工休假申请的历史和状态。"
+      }
+    },
+    {
+      "key": "leave.approve",
+      "group": "leave",
+      "label": {
+        "vi": "Duyệt yêu cầu nghỉ phép",
+        "zh": "审批休假申请"
+      },
+      "description": {
+        "vi": "Phê duyệt hoặc từ chối yêu cầu được giao, đồng thời tuân thủ quy tắc không tự duyệt.",
+        "zh": "审批或拒绝分配的休假申请，并遵守禁止自我审批规则。"
+      }
+    },
+    {
+      "key": "leave.config.manage",
+      "group": "leave",
+      "label": {
+        "vi": "Cấu hình chính sách nghỉ phép",
+        "zh": "配置休假政策"
+      },
+      "description": {
+        "vi": "Quản lý chính sách tích lũy, hết hạn và tối đa ba cấp duyệt áp dụng toàn công ty.",
+        "zh": "管理适用于全公司的假期累积、过期及最多三级审批政策。"
+      }
+    },
+    {
+      "key": "leave.holidays.manage",
+      "group": "leave",
+      "label": {
+        "vi": "Quản lý ngày lễ",
+        "zh": "管理节假日"
+      },
+      "description": {
+        "vi": "Tạo, cập nhật và xóa mềm lịch ngày lễ dùng để kiểm tra ngày nghỉ hợp lệ.",
+        "zh": "创建、更新和软删除用于校验休假日期的节假日日历。"
+      }
+    },
+    {
+      "key": "leave.approver.reassign",
+      "group": "leave",
+      "label": {
+        "vi": "Phân công lại người duyệt",
+        "zh": "重新分配审批人"
+      },
+      "description": {
+        "vi": "Phân công lại cấp duyệt không còn khả dụng với lý do và nhật ký kiểm toán bắt buộc.",
+        "zh": "在必须填写原因并记录审计日志的情况下重新分配不可用的审批步骤。"
+      }
+    },
+    {
+      "key": "leave.history.import",
+      "group": "leave",
+      "label": {
+        "vi": "Nhập lịch sử nghỉ phép",
+        "zh": "导入历史休假数据"
+      },
+      "description": {
+        "vi": "Xem trước và nhập dữ liệu nghỉ phép lịch sử bằng tệp Excel mẫu có phiên bản.",
+        "zh": "使用带版本的 Excel 模板预览并导入历史休假数据。"
+      }
+    },
+    {
+      "key": "leave.balance.adjust",
+      "group": "leave",
+      "label": {
+        "vi": "Điều chỉnh số dư ngày phép",
+        "zh": "调整假期余额"
+      },
+      "description": {
+        "vi": "Tạo bút toán điều chỉnh số dư có lý do, không sửa hoặc xóa giao dịch lịch sử.",
+        "zh": "创建带原因的余额调整分录，不修改或删除历史交易。"
+      }
+    },
+    {
+      "key": "roles.read",
+      "group": "roles",
+      "label": {
+        "vi": "Xem vai trò",
+        "zh": "查看角色"
+      },
+      "description": {
+        "vi": "Xem danh sách vai trò và quyền hạn.",
+        "zh": "查看角色列表和权限。"
+      }
+    },
+    {
+      "key": "roles.write",
+      "group": "roles",
+      "label": {
+        "vi": "Quản lý vai trò",
+        "zh": "管理角色"
+      },
+      "description": {
+        "vi": "Tạo, sửa, xóa mềm vai trò và cấu hình phân quyền.",
+        "zh": "创建、编辑、软删除角色并配置权限。"
+      }
+    },
+    {
+      "key": "audit.read",
+      "group": "audit",
+      "label": {
+        "vi": "Xem nhật ký",
+        "zh": "查看日志"
+      },
+      "description": {
+        "vi": "Xem lịch sử thao tác, dữ liệu cũ/mới và truy vết người dùng.",
+        "zh": "查看操作历史、新旧数据及用户追踪。"
+      }
+    },
+    {
+      "key": "attendance.check_in",
+      "group": "attendance",
+      "label": {
+        "vi": "Check-in chấm công",
+        "zh": "考勤打卡"
+      },
+      "description": {
+        "vi": "Cho phép mở trang chấm công cá nhân và thực hiện check-in nếu kho đang bật chấm công.",
+        "zh": "允许打开个人考勤页面，并在仓库启用考勤时打卡。"
+      }
+    },
+    {
+      "key": "attendance.view",
+      "group": "attendance",
+      "label": {
+        "vi": "Xem chấm công",
+        "zh": "查看考勤"
+      },
+      "description": {
+        "vi": "Xem lịch chấm công và log check-in lỗi trong phạm vi kho được phân quyền.",
+        "zh": "查看授权仓库范围内的考勤日历和失败打卡日志。"
+      }
+    },
+    {
+      "key": "attendance.export",
+      "group": "attendance",
+      "label": {
+        "vi": "Xuất Excel chấm công",
+        "zh": "导出考勤"
+      },
+      "description": {
+        "vi": "Xuất Excel dữ liệu chấm công theo bộ lọc hiện tại.",
+        "zh": "根据当前筛选条件导出考勤数据。"
+      }
+    },
+    {
+      "key": "attendance.config",
+      "group": "attendance",
+      "label": {
+        "vi": "Cấu hình chấm công",
+        "zh": "配置考勤"
+      },
+      "description": {
+        "vi": "Bật/tắt chấm công theo kho, cấu hình IP hợp lệ và danh sách nhân viên miễn chấm công.",
+        "zh": "按仓库启用/停用考勤，配置允许 IP 和免考勤人员。"
+      }
+    },
+    {
+      "key": "expenses.read",
+      "group": "expenses",
+      "label": {
+        "vi": "Xem chi phí",
+        "zh": "查看费用"
+      },
+      "description": {
+        "vi": "Xem chi phí kho hiện tại",
+        "zh": "查看当前仓库费用"
+      }
+    },
+    {
+      "key": "expenses.consolidated.view",
+      "group": "expenses",
+      "label": {
+        "vi": "Xem tổng hợp chi phí",
+        "zh": "查看综合费用"
+      },
+      "description": {
+        "vi": "Xem tổng hợp TẤT CẢ các kho - Dành cho BOD",
+        "zh": "查看所有仓库的综合费用 - 供BOD使用"
+      }
+    },
+    {
+      "key": "expenses.operations.write",
+      "group": "expenses",
+      "label": {
+        "vi": "Nhập liệu vận hành",
+        "zh": "录入运营费用"
+      },
+      "description": {
+        "vi": "Nhập liệu nhóm Vận hành",
+        "zh": "运营团队的数据录入"
+      }
+    },
+    {
+      "key": "expenses.hr.write",
+      "group": "expenses",
+      "label": {
+        "vi": "Nhập liệu nhân sự",
+        "zh": "录入人事费用"
+      },
+      "description": {
+        "vi": "Nhập liệu nhóm Nhân sự",
+        "zh": "人事团队的数据录入"
+      }
+    },
+    {
+      "key": "expenses.marketing.write",
+      "group": "expenses",
+      "label": {
+        "vi": "Nhập liệu Marketing",
+        "zh": "录入营销费用"
+      },
+      "description": {
+        "vi": "Nhập liệu nhóm Marketing (quảng cáo, chiến dịch)",
+        "zh": "营销团队数据录入（广告、活动）"
+      }
+    },
+    {
+      "key": "expenses.merchandise.write",
+      "group": "expenses",
+      "label": {
+        "vi": "Nhập liệu hàng hóa",
+        "zh": "录入商品费用"
+      },
+      "description": {
+        "vi": "Nhập liệu nhóm Hàng hóa (COGS, quà tặng)",
+        "zh": "商品团队数据录入（销售成本、礼品）"
+      }
+    },
+    {
+      "key": "expenses.others.write",
+      "group": "expenses",
+      "label": {
+        "vi": "Nhập liệu khác",
+        "zh": "录入其他费用"
+      },
+      "description": {
+        "vi": "Nhập liệu nhóm Khác",
+        "zh": "其他团队的数据录入"
+      }
+    },
+    {
+      "key": "expenses.close_period",
+      "group": "expenses",
+      "label": {
+        "vi": "Chốt kỳ kế toán",
+        "zh": "结账"
+      },
+      "description": {
+        "vi": "Quyền chốt kỳ kế toán",
+        "zh": "结账权限"
+      }
+    },
+    {
+      "key": "expenses.reopen_period",
+      "group": "expenses",
+      "label": {
+        "vi": "Mở lại kỳ kế toán",
+        "zh": "重新开放会计期间"
+      },
+      "description": {
+        "vi": "Quyền mở lại kỳ kế toán đã chốt",
+        "zh": "重新开放已结账的会计期间"
+      }
+    },
+    {
+      "key": "revenue.read",
+      "group": "revenue",
+      "label": {
+        "vi": "Xem doanh thu",
+        "zh": "查看营收"
+      },
+      "description": {
+        "vi": "Xem dashboard doanh thu JoyWorld cho cửa hàng B.Duck Cityfuns Landmark 81.",
+        "zh": "查看 B.Duck Cityfuns Landmark 81 门店的 JoyWorld 营收仪表板。"
+      }
+    },
+    {
+      "key": "revenue.sync",
+      "group": "revenue",
+      "label": {
+        "vi": "Đồng bộ doanh thu",
+        "zh": "同步营收"
+      },
+      "description": {
+        "vi": "Đồng bộ dữ liệu doanh thu cho cửa hàng trong phạm vi được phép.",
+        "zh": "为授权范围内的门店同步营收数据。"
+      }
+    },
+    {
+      "key": "revenue.export",
+      "group": "revenue",
+      "label": {
+        "vi": "Xuất báo cáo doanh thu",
+        "zh": "导出营收报表"
+      },
+      "description": {
+        "vi": "Xuất Excel doanh thu và cơ cấu bán hàng trong phạm vi cửa hàng được phép.",
+        "zh": "导出授权门店范围内的营收与销售结构 Excel 报表。"
+      }
+    },
+    {
+      "key": "invoices.access",
+      "group": "invoices",
+      "label": {
+        "vi": "Truy cập quản lý hóa đơn",
+        "zh": "访问发票管理"
+      },
+      "description": {
+        "vi": "Truy cập trang quản lý hóa đơn trong phạm vi cửa hàng được cấp quyền.",
+        "zh": "访问授权门店范围内的发票管理页面。"
+      }
+    },
+    {
+      "key": "invoices.read",
+      "group": "invoices",
+      "label": {
+        "vi": "Xem hóa đơn",
+        "zh": "查看发票"
+      },
+      "description": {
+        "vi": "Xem bản nháp, hóa đơn đã phát hành và tiến độ xử lý trong phạm vi cửa hàng được cấp quyền.",
+        "zh": "查看授权门店范围内的发票草稿、已开具发票和处理进度。"
+      }
+    },
+    {
+      "key": "invoices.prepare",
+      "group": "invoices",
+      "label": {
+        "vi": "Chuẩn bị hóa đơn",
+        "zh": "准备发票"
+      },
+      "description": {
+        "vi": "Chuẩn bị và cập nhật dữ liệu đầu vào của bản nháp hóa đơn.",
+        "zh": "准备并更新发票草稿的输入数据。"
+      }
+    },
+    {
+      "key": "invoices.issue",
+      "group": "invoices",
+      "label": {
+        "vi": "Phát hành hóa đơn",
+        "zh": "开具发票"
+      },
+      "description": {
+        "vi": "Tạo yêu cầu phát hành hóa đơn điện tử qua MISA meInvoice.",
+        "zh": "通过 MISA meInvoice 创建电子发票开具请求。"
+      }
+    },
+    {
+      "key": "invoices.bulk_issue",
+      "group": "invoices",
+      "label": {
+        "vi": "Xuất hóa đơn hàng loạt",
+        "zh": "批量开具发票"
+      },
+      "description": {
+        "vi": "Xuất nhiều hoặc toàn bộ hóa đơn trong ngày bằng OTP và bỏ qua bước duyệt thủ công.",
+        "zh": "通过 OTP 批量开具当日多张或全部发票，并跳过人工审核。"
+      }
+    },
+    {
+      "key": "invoices.retry",
+      "group": "invoices",
+      "label": {
+        "vi": "Thử lại hóa đơn",
+        "zh": "重试发票"
+      },
+      "description": {
+        "vi": "Thử lại hóa đơn lỗi đủ điều kiện sau khi tra cứu trạng thái MISA.",
+        "zh": "查询 MISA 状态后重试符合条件的失败发票。"
+      }
+    },
+    {
+      "key": "invoices.download",
+      "group": "invoices",
+      "label": {
+        "vi": "Tải hóa đơn",
+        "zh": "下载发票"
+      },
+      "description": {
+        "vi": "Xem và tải tệp PDF/XML của hóa đơn trong phạm vi được cấp quyền.",
+        "zh": "查看并下载授权范围内发票的 PDF/XML 文件。"
+      }
+    },
+    {
+      "key": "invoices.reconcile",
+      "group": "invoices",
+      "label": {
+        "vi": "Đối soát hóa đơn",
+        "zh": "核对发票"
+      },
+      "description": {
+        "vi": "Xử lý các trường hợp trạng thái nội bộ và MISA chưa khớp.",
+        "zh": "处理内部状态与 MISA 状态不一致的情况。"
+      }
+    },
+    {
+      "key": "invoices.config",
+      "group": "invoices",
+      "label": {
+        "vi": "Cấu hình hóa đơn",
+        "zh": "配置发票"
+      },
+      "description": {
+        "vi": "Cấu hình tài khoản, ký hiệu và quy tắc hóa đơn theo cửa hàng.",
+        "zh": "按门店配置发票账户、发票系列和业务规则。"
+      }
+    },
+    {
+      "key": "external_scan.approve",
+      "group": "external",
+      "label": {
+        "vi": "Duyệt hàng chờ từ hệ thống ngoài",
+        "zh": "审批外部扫描队列"
+      },
+      "description": {
+        "vi": "Duyệt hoặc từ chối các phiên quét mã từ hệ thống POS/Scanner.",
+        "zh": "审批或拒绝来自POS/扫描仪系统的扫描会话。"
+      }
+    },
+    {
+      "key": "external_scan.edit_quantity",
+      "group": "external",
+      "label": {
+        "vi": "Chỉnh số lượng hàng chờ quét",
+        "zh": "编辑外部扫描队列数量"
+      },
+      "description": {
+        "vi": "Chỉnh sửa số lượng hàng hóa trong hàng chờ quét từ hệ thống ngoài trước khi duyệt.",
+        "zh": "在审批前编辑来自外部系统的扫描队列商品数量。"
+      }
+    },
+    {
+      "key": "external_scan.manage_queue",
+      "group": "external",
+      "label": {
+        "vi": "Quan ly hang cho quet",
+        "zh": "管理外部扫描队列"
+      },
+      "description": {
+        "vi": "Huy muc trong hang cho va chay co che tu dong submit theo quay.",
+        "zh": "取消队列项并执行按柜台自动提交。"
+      }
+    },
+    {
+      "key": "external_scan.view",
+      "group": "external",
+      "label": {
+        "vi": "Xem hàng chờ từ hệ thống ngoài",
+        "zh": "查看外部扫描队列"
+      },
+      "description": {
+        "vi": "Xem danh sách và lịch sử hàng chờ xuất kho từ hệ thống ngoài.",
+        "zh": "查看来自外部系统的出库待处理列表和历史记录。"
+      }
+    },
+    {
+      "key": "external_count.view",
+      "group": "external",
+      "label": {
+        "vi": "Xem kiểm đếm ngoài",
+        "zh": "查看外部盘点"
+      },
+      "description": {
+        "vi": "Xem phiên kiểm đếm ATP theo quầy từ hệ thống ngoài.",
+        "zh": "查看来自外部系统的柜台ATP盘点会话。"
+      }
+    },
+    {
+      "key": "external_count.count",
+      "group": "external",
+      "label": {
+        "vi": "Nhập kiểm đếm ngoài",
+        "zh": "录入外部盘点"
+      },
+      "description": {
+        "vi": "Tạo, lưu tạm và nộp kết quả kiểm đếm ATP theo quầy.",
+        "zh": "创建、暂存并提交柜台ATP盘点结果。"
+      }
+    },
+    {
+      "key": "external_count.cancel",
+      "group": "external",
+      "label": {
+        "vi": "Hủy phiên kiểm đếm ngoài",
+        "zh": "取消外部盘点"
+      },
+      "description": {
+        "vi": "Hủy phiên kiểm đếm ngoài với lý do bắt buộc và audit log.",
+        "zh": "带必填原因和审计日志取消外部盘点。"
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+const fs=require('fs');const {createRequire}=require('module');const req=createRequire(process.cwd()+'/apps/be-wms/package.json');const {initializeApp,cert}=req('firebase-admin/app');const {getFirestore}=req('firebase-admin/firestore');
+const vars={};for(const l of fs.readFileSync('.env.local','utf8').split(/\r?\n/)){const m=l.match(/^([A-Z_0-9]+)=(.*)$/);if(m)vars[m[1]]=m[2].trim().replace(/^(['"])(.*)\1$/,'$2');}
+(async()=>{let sa;for(const k of ['PROD_FIREBASE_SERVICE_ACCOUNT_BASE64','FIREBASE_SERVICE_ACCOUNT_BASE64']){try{const candidate=JSON.parse(Buffer.from(vars[k]||'','base64').toString());if(candidate.project_id==='jw-system-f2104'){sa=candidate;break;}}catch{}}if(!sa)throw Error('Production credential unavailable');
+const db=getFirestore(initializeApp({credential:cert(sa)},'active-role-members'));const [u,a,r,w]=await Promise.all([
+ db.collection('users').where('status','==','ACTIVE').select('full_name','username','email','status','is_deleted').get(),
+ db.collection('user_warehouse_roles').where('is_active','==',true).select('user_id','role_id','warehouse_id','is_active','is_deleted','scope_origin','valid_from','valid_until').get(),
+ db.collection('roles').select('name','is_deleted','is_active','status','parent_id','valid_from','valid_until').get(),
+ db.collection('warehouses').select('name','code','type','status','is_deleted','is_active').get()]);
+const data={project:sa.project_id,read_time:new Date().toISOString(),users:u.docs.map(d=>({id:d.id,...d.data()})),assignments:a.docs.map(d=>({id:d.id,...d.data()})),roles:r.docs.map(d=>({id:d.id,...d.data()})),facilities:w.docs.map(d=>({id:d.id,...d.data()}))};fs.writeFileSync('outputs/firebase-roles-report/active-role-members-snapshot.json',JSON.stringify(data,null,2));console.log(JSON.stringify({project:data.project,read_time:data.read_time,users:data.users.length,activeAssignments:data.assignments.length,roles:data.roles.length,facilities:data.facilities.length}));
+})().catch(e=>{console.error(e.message);process.exit(1)});

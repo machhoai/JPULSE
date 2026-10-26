@@ -1,29 +1,31 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
-import {
-  onIdTokenChanged,
-  signOut,
-  type User as FirebaseUser,
-} from "firebase/auth";
 import type {
   UserAccessMetadata,
   UserFacilityAccessGrant,
   UserWarehouseRole,
 } from "@bduck/shared-types";
-import { auth } from "@/lib/firebase";
+import {
+  onIdTokenChanged,
+  signOut,
+  type User as FirebaseUser,
+} from "firebase/auth";
+import { useCallback, useEffect } from "react";
+
+import { buildMaterializedPermissions } from "@/lib/accessSnapshotPolicy";
+import { shouldBootstrapSessionWithFirebase } from "@/lib/apiRolloutCompatibility";
 import { isolateClientDataForAccount } from "@/lib/clientDataIsolation";
 import {
   clearClientSnapshots,
   isolateClientSnapshotsForAccount,
 } from "@/lib/clientSnapshotCache";
-import { buildMaterializedPermissions } from "@/lib/accessSnapshotPolicy";
-import { shouldBootstrapSessionWithFirebase } from "@/lib/apiRolloutCompatibility";
+import { auth } from "@/lib/firebase";
 import {
   readSessionBootstrap,
   writeSessionBootstrap,
 } from "@/lib/sessionBootstrapCache";
 import { useUserStore } from "@/stores/useUserStore";
+import { authenticatedFetch } from "@/utils/authenticatedFetch";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -43,7 +45,7 @@ function logSessionSyncError(error: unknown) {
 }
 
 async function fetchAuth(path: string, init: RequestInit, timeoutMs: number) {
-  return fetch(`${API_BASE_URL}${path}`, {
+  return authenticatedFetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: "include",
     signal: AbortSignal.timeout(timeoutMs),

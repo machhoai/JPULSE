@@ -1,18 +1,19 @@
 "use client";
 
-import { Image as ImageIcon } from "lucide-react";
 import type { Product } from "@bduck/shared-types";
+import { Image as ImageIcon } from "lucide-react";
+
 import type { Dictionary } from "@/lib/i18n";
-import type { ProductStockSummary } from "@/utils/productStockDetail";
 import { formatProductDetailNumber } from "@/utils/productDetailFormat";
+import type { ProductStockSummary } from "@/utils/productStockDetail";
 
 function MetricCard({ label, value }: { label: string; value: number }) {
     return (
-        <div className="flex flex-col items-center justify-center rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-pearl)]">
-            <p className="text-xs font-medium mr-2 text-[var(--color-text-muted)]">
+        <div className="flex min-w-0 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-pearl)] p-2 text-center">
+            <p className="text-xs font-medium text-[var(--color-text-muted)]">
                 {label}
             </p>
-            <p className="mt-1 text-xl font-bold mr-2 text-[var(--color-text-primary)]">
+            <p className="mt-1 max-w-full break-all text-lg font-bold text-[var(--color-text-primary)]">
                 {formatProductDetailNumber(value)}
             </p>
         </div>
@@ -21,11 +22,11 @@ function MetricCard({ label, value }: { label: string; value: number }) {
 
 function MetricCardHighlight({ label, value }: { label: string; value: number }) {
     return (
-        <div className="flex flex-col items-center justify-center rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-brand-primary)]">
-            <p className="text-xs font-medium mr-1 text-white">
+        <div className="flex min-w-0 flex-col items-center justify-center rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-brand-primary)] p-2 text-center">
+            <p className="text-xs font-medium text-white">
                 {label}
             </p>
-            <p className="mt-1 text-xl font-bold mr-1 text-white">
+            <p className="mt-1 max-w-full break-all text-lg font-bold text-white">
                 {formatProductDetailNumber(value)}
             </p>
         </div>
@@ -45,8 +46,8 @@ export function ProductDetailSummaryPanel({
     const images = product.product_image_url ?? [];
 
     return (
-        <div className="flex w-full gap-2">
-            <div className="overflow-hidden flex-1 w-full rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-card)]">
+        <div className="grid w-full min-w-0 shrink-0 grid-cols-2 gap-2">
+            <div className="min-w-0 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-soft)] bg-[var(--color-surface-card)]">
                 <div className="aspect-square">
                     {primaryImage ? (
                         <img
@@ -66,19 +67,19 @@ export function ProductDetailSummaryPanel({
             </div>
 
             {images.length > 1 && (
-                <div className="grid grid-cols-4 gap-2">
+                <div className="col-span-2 row-start-2 grid min-w-0 grid-cols-4 gap-2">
                     {images.slice(0, 8).map((url, index) => (
                         <img
                             key={`${url}-${index}`}
                             src={url}
                             alt={`${product.name} ${index + 1}`}
-                            className="aspect-square rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] object-cover"
+                            className="aspect-square w-full min-w-0 rounded-[var(--radius-sm)] border border-[var(--color-border-soft)] object-cover"
                         />
                     ))}
                 </div>
             )}
 
-            <div className="grid shrink-0 flex-1 grid-cols-2 gap-2">
+            <div className="col-start-2 row-start-1 grid min-w-0 grid-cols-2 gap-2">
                 <MetricCardHighlight label={labels.totalStock} value={stockSummary.total} />
                 <MetricCard label={labels.atp} value={stockSummary.atp} />
                 <MetricCard label={labels.onHold} value={stockSummary.onHold} />
