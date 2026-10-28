@@ -1,6 +1,7 @@
+import { UserStatus } from "@bduck/shared-types";
 import type { NextFunction, Request, Response } from "express";
 import type { DecodedIdToken } from "firebase-admin/auth";
-import { UserStatus } from "@bduck/shared-types";
+
 import { auth } from "../../config/firebase.js";
 import { loadAuthorizationRequestSource } from "../../repositories/authorizationSourceRepository.js";
 import { getUserById } from "../../repositories/userRepository.js";
@@ -12,11 +13,12 @@ import {
   getAuthorizationRolloutMode,
   resolveAuthorizationContext,
 } from "../../services/authorizationRolloutService.js";
+
+import { createRequireIdentityAuth } from "./identityAuthMiddleware.js";
 import {
   attachRequestAccess,
   createAuthenticatedRequestUser,
 } from "./requestAccessContext.js";
-import { createRequireIdentityAuth } from "./identityAuthMiddleware.js";
 
 const verifyRequestClaims = async (
   req: Request,
@@ -67,6 +69,32 @@ export const requireIdentityAuth = createRequireIdentityAuth({
   loadUser: getUserById,
 });
 
+// Also used by narrowly scoped integrations after validating their own credential.
+// This does not teach requireAuth to accept integration tokens on other routes.
+export const attachAuthorizationForUser = async (
+  req: Request,
+  userId: string,
+) => {
+  const { snapshot, requestUser } =
+    await loadAuthorizationRequestSource(userId);
+  if (!requestUser || requestUser.status !== UserStatus.ACTIVE) {
+    throw new AuthorizationError("AUTHORIZATION_ACTOR_INACTIVE");
+  }
+  const rolloutMode = getAuthorizationRolloutMode();
+  const liveContext =
+    rolloutMode === "SHADOW" ? buildAccessContext(snapshot) : null;
+  const accessContext = await resolveAuthorizationContext(
+    userId,
+    liveContext,
+    rolloutMode,
+  );
+  attachRequestAccess(
+    req,
+    accessContext,
+    createAuthenticatedRequestUser(snapshot, accessContext, requestUser),
+  );
+};
+
 export const requireAuth = async (
   req: Request,
   res: Response,
@@ -76,27 +104,7 @@ export const requireAuth = async (
   if (!decodedClaims) return sendUnauthenticated(res);
 
   try {
-    const { snapshot, requestUser } = await loadAuthorizationRequestSource(
-      decodedClaims.uid,
-    );
-    const user = requestUser;
-    if (!user || user.status !== UserStatus.ACTIVE) {
-      throw new AuthorizationError("AUTHORIZATION_ACTOR_INACTIVE");
-    }
-    const rolloutMode = getAuthorizationRolloutMode();
-    const liveContext =
-      rolloutMode === "SHADOW" ? buildAccessContext(snapshot) : null;
-    const accessContext = await resolveAuthorizationContext(
-      decodedClaims.uid,
-      liveContext,
-      rolloutMode,
-    );
-    const authenticatedUser = createAuthenticatedRequestUser(
-      snapshot,
-      accessContext,
-      user,
-    );
-    attachRequestAccess(req, accessContext, authenticatedUser);
+    await attachAuthorizationForUser(req, decodedClaims.uid);
     return next();
   } catch (error) {
     if (error instanceof AuthorizationError) {

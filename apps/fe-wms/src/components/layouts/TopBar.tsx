@@ -16,6 +16,7 @@ import ClockWeatherWidget from "../ui/ClockWeatherWidget";
 import DeviceStatusIndicator from "../ui/DeviceStatusIndicator";
 import NotificationBell from "../ui/NotificationBell";
 
+import { AttendanceShortcutControl } from "./AttendanceShortcutControl";
 import { TopBarExportControl } from "./TopBarExportControl";
 
 const TOPBAR_PWA_TEXT = {
@@ -177,6 +178,7 @@ export default function TopBar() {
                 </div>
             </div>
             <div className="flex h-full gap-2">
+                {pathname === "/attendance" && <AttendanceShortcutControl />}
                 <TopBarExportControl />
                 <button
                     id="wms-help-button"

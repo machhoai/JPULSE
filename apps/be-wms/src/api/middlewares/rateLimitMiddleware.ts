@@ -1,6 +1,8 @@
 import type { Request } from "express";
 import { ipKeyGenerator, rateLimit } from "express-rate-limit";
 
+import { renderShortcutResult } from "../../services/attendanceShortcutPolicy.js";
+
 const parsePositiveInteger = (
   value: string | undefined,
   fallback: number,
@@ -45,8 +47,24 @@ const createRateLimiter = (
     skip,
     standardHeaders: "draft-8",
     legacyHeaders: false,
-    handler: (_request, response) =>
-      response.status(429).json(localizedRateLimitResponse),
+    handler: (request, response) => {
+      if (
+        request.originalUrl.split("?", 1)[0] ===
+        "/api/attendance/shortcut/check-in"
+      ) {
+        return response
+          .status(429)
+          .set("Cache-Control", "no-store")
+          .type("html")
+          .send(
+            renderShortcutResult({
+              success: false,
+              message: localizedRateLimitResponse.messages.vi,
+            }),
+          );
+      }
+      return response.status(429).json(localizedRateLimitResponse);
+    },
   });
 
 const POS_DEVICE_ID_PATTERN =
@@ -188,9 +206,10 @@ export const resolvePosSettingsMutationRateLimitKey = (
       : "";
   const actorId = request.user?.id?.trim().toLowerCase() || "anonymous";
   const warehouseParam = request.params?.warehouseId;
-  const warehouseId = typeof warehouseParam === "string"
-    ? warehouseParam.trim().toLowerCase()
-    : "device";
+  const warehouseId =
+    typeof warehouseParam === "string"
+      ? warehouseParam.trim().toLowerCase()
+      : "device";
   const principal = POS_DEVICE_ID_PATTERN.test(deviceId) ? deviceId : actorId;
   return `pos-settings-mutation:${principal}:${warehouseId}:${ipKeyGenerator(request.ip ?? "unknown")}`;
 };

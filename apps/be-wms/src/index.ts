@@ -1,6 +1,7 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
+import type { ErrorRequestHandler } from "express";
 import helmet from "helmet";
 
 import { selectLocalFirebaseTarget } from "./api/middlewares/localFirebaseTargetMiddleware.js";
@@ -10,6 +11,7 @@ import {
 } from "./api/middlewares/rateLimitMiddleware.js";
 import approvalRoutes from "./api/routes/approvalRoutes.js";
 import attendanceRoutes from "./api/routes/attendanceRoutes.js";
+import { attendanceShortcutRoutes } from "./api/routes/attendanceShortcutRoutes.js";
 import auditLogRoutes from "./api/routes/auditLogRoutes.js";
 import authRoutes from "./api/routes/authRoutes.js";
 import categoryRoutes from "./api/routes/categoryRoutes.js";
@@ -35,11 +37,10 @@ import marketingVoucherRoutes from "./api/routes/marketingVoucherRoutes.js";
 import meInvoiceConfigRoutes from "./api/routes/meInvoiceConfigRoutes.js";
 import nonconformityRoutes from "./api/routes/nonconformityRoutes.js";
 import notificationRoutes from "./api/routes/notificationRoutes.js";
-import payrollEmailRoutes from "./api/routes/payrollEmailRoutes.js";
-import { startPayrollRecovery } from "./services/payroll/payrollTaskDispatcher.js";
 import officeScopeRoutes from "./api/routes/officeScopeRoutes.js";
 import organizationRoutes from "./api/routes/organizationRoutes.js";
 import partnerInventoryRoutes from "./api/routes/partnerInventoryRoutes.js";
+import payrollEmailRoutes from "./api/routes/payrollEmailRoutes.js";
 import posDeviceRoutes from "./api/routes/posDeviceRoutes.js";
 import processConfigRoutes from "./api/routes/processConfigRoutes.js";
 import processDocumentRoutes from "./api/routes/processDocumentRoutes.js";
@@ -53,8 +54,10 @@ import systemConfigRoutes from "./api/routes/systemConfigRoutes.js";
 import transferOrderRoutes from "./api/routes/transferOrderRoutes.js";
 import userRoutes from "./api/routes/userRoutes.js";
 import warehouseRoutes from "./api/routes/warehouseRoutes.js";
+import { renderShortcutResult } from "./services/attendanceShortcutPolicy.js";
 import { startExternalQueueAutoSubmitWorker } from "./services/externalQueueAutoSubmitWorker.js";
 import { startLocalMarketingVoucherWorkerRecovery } from "./services/marketingVoucherTaskDispatcher.js";
+import { startPayrollRecovery } from "./services/payroll/payrollTaskDispatcher.js";
 const app = express();
 const PORT = process.env.PORT || process.env.BE_WMS_PORT || 4000;
 
@@ -77,6 +80,32 @@ app.use(
   }),
 );
 app.use(express.json({ limit: "15mb" }));
+// Keep parser failures readable in the Shortcut's HTML preview as well.
+const shortcutBodyErrorHandler: ErrorRequestHandler = (
+  error,
+  _req,
+  res,
+  next,
+) => {
+  if (
+    error?.type !== "entity.parse.failed" &&
+    error?.type !== "entity.too.large"
+  ) {
+    return next(error);
+  }
+  res
+    .status(error.type === "entity.too.large" ? 413 : 400)
+    .set("Cache-Control", "no-store")
+    .type("html")
+    .send(
+      renderShortcutResult({
+        success: false,
+        message:
+          "Dữ liệu chấm công không hợp lệ. Vui lòng kiểm tra cấu hình Shortcut.",
+      }),
+    );
+};
+app.use("/api/attendance/shortcut/check-in", shortcutBodyErrorHandler);
 app.use(cookieParser());
 app.use(selectLocalFirebaseTarget);
 app.use("/api", apiRateLimiter);
@@ -113,6 +142,7 @@ app.use("/api/system-configs", systemConfigRoutes);
 app.use("/api/external/count", stockCountRoutes);
 app.use("/api/external/v1", externalRoutes);
 app.use("/api/external-queue", externalQueueRoutes);
+app.use("/api/attendance/shortcut", attendanceShortcutRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/employee-profiles", employeeProfileRoutes);
 app.use("/api/employee-contract-imports", employeeContractImportRoutes);
