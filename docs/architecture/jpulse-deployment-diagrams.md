@@ -1,5 +1,10 @@
 # JPULSE — C4 Deployment Diagram
 
+> Production verified 2026-10-28: frontend uses Google Cloud Run `fe-wms-preview`
+> and API uses `be-wms`, in `jw-system-f2104` / `asia-southeast1`. Vercel is no
+> longer the production target. The diagrams and uncertainty notes below are
+> historical analysis. Use [the current CI/CD guide](../deployment-cicd.md).
+
 ## Ranh giới và mức độ xác nhận
 
 Hình mô tả **nơi chạy các container của JPULSE** và các dịch vụ dữ liệu/xác thực mà chúng dùng. [Container Diagram](./jpulse-container-diagram.md) xác định Web JPULSE, JPULSE API, Firestore JPULSE và Storage JPULSE là các container logic; Firebase Authentication là dịch vụ ngoài. Ở mức triển khai, Firestore và Storage vẫn là tài nguyên logic của JPULSE nhưng **Google vận hành**; chúng không chạy trong máy Docker hay trong image API. Firebase Authentication cũng do Google vận hành. Mã nguồn hiện không chứng minh một topology production đang hoạt động, nên hai hình dưới đây diễn tả **hai cấu hình có trong repository**, không gộp chúng thành một môi trường.

@@ -1,7 +1,8 @@
 param(
     [string]$ProjectId = "jw-system-f2104",
     [string]$SiteId = "jpulse-cloud-preview",
-    [string]$EnvironmentFile = ".env.local"
+    [string]$EnvironmentFile = ".env.local",
+    [string]$ApiOrigin = ""
 )
 
 Set-StrictMode -Version Latest
@@ -9,6 +10,8 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "../..")).Path
 Push-Location $repoRoot
 try {
+    if ([string]::IsNullOrWhiteSpace($ApiOrigin)) { $ApiOrigin = "https://$SiteId.web.app" }
+    if ($ApiOrigin -notmatch '^https://[a-z0-9.-]+$') { throw "Expected an HTTPS API origin without a path." }
     # Only explicit public browser configuration is read from this local file.
     # Private values and the file itself never enter the build context.
     $localValues = @{}
@@ -68,7 +71,7 @@ try {
     $substitutions = @{
         _IMAGE = $image
         _BUILD_NUMBER = $buildNumber
-        _FRONTEND_ORIGIN = "https://$SiteId.web.app"
+        _FRONTEND_ORIGIN = $ApiOrigin
         _FIREBASE_API_KEY = $firebase.apiKey
         _FIREBASE_AUTH_DOMAIN = $firebase.authDomain
         _FIREBASE_STORAGE_BUCKET = $firebase.storageBucket
@@ -90,6 +93,6 @@ try {
     & gcloud builds submit $source --project=$ProjectId --config=cloudbuild.frontend.yaml --substitutions=$substitutionArg --async --format=json | Set-Content -LiteralPath $resultPath -Encoding utf8
     if ($LASTEXITCODE -ne 0) { throw "Cloud Build submission failed." }
     $build = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
-    [pscustomobject]@{ buildId = $build.id; image = $image; sourceCommit = $commit; buildNumber = $buildNumber; frontendOrigin = "https://$SiteId.web.app"; statusFile = $resultPath } | ConvertTo-Json
+    [pscustomobject]@{ buildId = $build.id; image = $image; sourceCommit = $commit; buildNumber = $buildNumber; apiOrigin = $ApiOrigin; statusFile = $resultPath } | ConvertTo-Json
 }
 finally { Pop-Location }

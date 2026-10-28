@@ -1,4 +1,5 @@
-# Manual frontend build only. Does not deploy or modify the backend/Vercel.
+# Build only; release with infra/gcp/deploy-frontend-production.ps1.
+# _FRONTEND_ORIGIN is the browser API origin (legacy substitution name).
 steps:
   - name: gcr.io/cloud-builders/docker
     args:
@@ -42,8 +43,8 @@ timeout: 1800s
 options:
   logging: CLOUD_LOGGING_ONLY
 substitutions:
-  _MAPBOX_TOKEN: ''
-  _FIREBASE_VAPID_KEY: ''
-  _LEAVE_ENABLED: 'false'
-  _CONTRACTS_ENABLED: 'false'
-  _VOUCHERS_ENABLED: 'false'
+  _MAPBOX_TOKEN: ""
+  _FIREBASE_VAPID_KEY: ""
+  _LEAVE_ENABLED: "false"
+  _CONTRACTS_ENABLED: "false"
+  _VOUCHERS_ENABLED: "false"
