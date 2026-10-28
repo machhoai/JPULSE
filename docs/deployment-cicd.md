@@ -97,3 +97,15 @@ reminder and revocation have been verified without recording attendance. See
 Generated reports remain under ignored `outputs/`; private release state and
 source archives remain under ignored `.codex-tmp/`. Neither belongs in Git or
 deployment source archives.
+
+## Latest verified frontend release — 2026-10-28
+
+- Source commit: `805dcc705beb330771713ea6a1e5f36cded3d90c`.
+- Cloud Build: `2dbdda26-2c82-45a3-ae2d-f2c5dc1b2217` (`SUCCESS`).
+- Image: `fe-wms-preview:805dcc705beb-20261028130145` in the repository above.
+- Revision: `fe-wms-preview-00008-tew`, serving 100% of frontend traffic.
+- Prior revision for rollback: `fe-wms-preview-00006-yon`.
+- Candidate and custom-domain page checks passed. Authenticated browser checks
+  confirmed the mobile Shortcut button is visible, hidden at desktop width, and
+  its configuration endpoint returns the correct name/link without browser errors.
+- GitHub Production CI passed. No attendance was recorded during verification.

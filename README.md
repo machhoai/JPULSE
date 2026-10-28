@@ -57,11 +57,13 @@ pnpm lint:employee-contracts
 pnpm build
 ```
 
-Các bộ kiểm thử theo phân hệ được khai báo trong `package.json`, ví dụ `pnpm test:authorization`, `pnpm test:access-matrix` và `pnpm test:identity-security`. Một số bài kiểm thử yêu cầu Firebase Emulator hoặc quyền truy cập dịch vụ thử nghiệm; xem lệnh tương ứng trước khi chạy. Workflow [Production CI and Images](.github/workflows/deploy-prod.yml) chạy trên `main`, kiểm tra lint/typecheck rồi tạo image frontend và backend; việc chạy workflow **không đồng nghĩa đã triển khai ứng dụng tới production**.
+Các bộ kiểm thử theo phân hệ được khai báo trong `package.json`, ví dụ `pnpm test:authorization`, `pnpm test:access-matrix` và `pnpm test:identity-security`. Một số bài kiểm thử yêu cầu Firebase Emulator hoặc quyền truy cập dịch vụ thử nghiệm; xem lệnh tương ứng trước khi chạy. Workflow [Production CI (GCloud)](.github/workflows/deploy-prod.yml) chạy lint, typecheck và kiểm tra API Shortcut trên `main`; không còn đẩy image lên GHCR. Cloud Build/Artifact Registry/Cloud Run đảm nhiệm phát hành theo [hướng dẫn CI/CD production](docs/deployment-cicd.md).
 
 Build frontend có `output: "standalone"`. Trên Windows, bước sao chép dependency của Next.js có thể cần quyền tạo symlink; môi trường build chính thức của workflow chạy trên Linux.
 
 ## Cấu hình và triển khai
+
+Production chạy trên **Google Cloud**, không dùng Vercel: domain `jpulse.joyworldcityfuns.vn` trỏ đến Cloud Run `fe-wms-preview` (tên lịch sử), API `api-erp.joyworldcityfuns.vn` trỏ đến `be-wms`. Frontend được build bằng `infra/gcp/build-frontend-production.ps1`, sau đó phát hành bằng `infra/gcp/deploy-frontend-production.ps1`. Xem [cấu hình, kiểm tra và rollback](docs/deployment-cicd.md).
 
 - [`.env.example`](.env.example) là danh mục biến tham khảo, không phải bộ thông tin xác thực hoạt động. Các biến `NEXT_PUBLIC_*` được đưa vào frontend; không đặt bí mật máy chủ vào nhóm biến này.
 - [Docker Compose](docker-compose.yml) dùng `.env.local` ở gốc khi chạy backend và frontend. Cấu hình Nginx nằm tại [`nginx/nginx.conf`](nginx/nginx.conf).
