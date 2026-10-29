@@ -78,12 +78,32 @@ async function assertCheckInPermission(req: Request) {
 }
 
 function errorDetails(error: unknown) {
-  if (error instanceof z.ZodError)
+  if (error instanceof z.ZodError) {
+    // Fixed descriptions only: never echo submitted values, credentials or arbitrary keys.
+    const fields: Record<string, string> = {
+      location: "location phải là một đối tượng JSON chứa tọa độ và thời gian",
+      "location.latitude": "location.latitude phải là số từ -90 đến 90",
+      "location.longitude": "location.longitude phải là số từ -180 đến 180",
+      "location.accuracy_m":
+        "location.accuracy_m phải là số lớn hơn 0 và không quá 10000, hoặc bỏ hẳn trường này",
+      "location.captured_at":
+        "location.captured_at phải là văn bản ngày giờ UTC dạng 2026-10-29T03:30:00Z",
+      code: "Mã kết nối không đúng định dạng; hãy tạo kết nối mới trên trang chấm công",
+    };
+    const details = [
+      ...new Set(
+        error.issues.map(
+          (issue) =>
+            fields[issue.path.join(".")] ??
+            "Nội dung JSON chứa trường không được hỗ trợ hoặc không đúng cấu trúc",
+        ),
+      ),
+    ].join("; ");
     return {
       status: 400,
-      message:
-        "Dữ liệu chấm công không hợp lệ. Vui lòng kiểm tra cấu hình Shortcut.",
+      message: `Dữ liệu chấm công không hợp lệ. Chi tiết: ${details}. Vui lòng kiểm tra cấu hình Shortcut.`,
     };
+  }
   const known = error as {
     statusCode?: number;
     messages?: { vi?: string };

@@ -210,6 +210,24 @@ test("native GPS without measured accuracy reaches the service as explicit unkno
   assert.deepEqual(receivedLocation, { ...location, accuracy_m: null });
 });
 
+test("invalid GPS identifies fields without echoing submitted values or writing attendance", async () => {
+  const before = writes;
+  const response = await request("/check-in", "valid-shortcut-token", {
+    location: {
+      latitude: "PRIVATE_INVALID_COORDINATE",
+      longitude: 106,
+      captured_at: "PRIVATE_INVALID_DATE",
+    },
+  });
+  assert.equal(response.status, 400);
+  const body = await response.text();
+  assert.match(body, /location.latitude/);
+  assert.match(body, /location.captured_at/);
+  assert.doesNotMatch(body, /PRIVATE_INVALID/);
+  assert.doesNotMatch(body, /location.longitude/);
+  assert.equal(writes, before);
+});
+
 test("burst limit also returns failure HTML", async () => {
   let response;
   for (let count = 0; count < 21; count++)

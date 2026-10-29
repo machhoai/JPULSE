@@ -200,6 +200,20 @@ separate **BDuck Chấm công** template implementing the contract above.
 
 ## Supplied attendance template review — 2026-10-28
 
+Review on 2026-10-29 of candidate
+[0fe4b690fe954bc1a66b1b41b0d4314e](https://www.icloud.com/shortcuts/0fe4b690fe954bc1a66b1b41b0d4314e):
+native Best GPS capture and both coordinate references are present; nested
+`location` has Number latitude/longitude and Text captured_at, with no accuracy.
+The date subtracts seven hours and formats a literal UTC Z; this assumes the
+device uses UTC+7. The custom header is misspelled `Content-Typr`; correct it to
+`Content-Type`. The exchange success condition also contains an unrelated
+`api_base == "1"` comparison and a presence test for `success`; replace the
+condition with boolean `success == true`. Do not promote this candidate as the
+installation template until corrected and verified on an iPhone. Production
+HTTP logs confirm 400 responses but contain no submitted GPS values. Schema
+failures now identify invalid fields in the HTML result without echoing input
+values, so runtime conversion errors can be diagnosed without disclosing tokens.
+
 Latest template: [Chấm công JPULSE](https://www.icloud.com/shortcuts/edf2d5fda37e40ad8e817c69f2731237).
 Static inspection confirms the requested corrections: exact version, mode and API
 origin comparisons; nonempty code and token checks; both requests use POST JSON;
