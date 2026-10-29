@@ -22,7 +22,7 @@ and pairing is disabled.
 Set the **backend** environment variable (restart the backend after changing it):
 
 ```dotenv
-ATTENDANCE_SHORTCUT_ICLOUD_URL=https://www.icloud.com/shortcuts/edf2d5fda37e40ad8e817c69f2731237
+ATTENDANCE_SHORTCUT_ICLOUD_URL=https://www.icloud.com/shortcuts/357a4891100e4199b808baf9f52b5478
 ATTENDANCE_SHORTCUT_NAME=Chấm công JPULSE
 ```
 
@@ -203,6 +203,25 @@ Quick Look**. It does not implement attendance, token exchange, or configuration
 storage. Do not configure that URL as `ATTENDANCE_SHORTCUT_ICLOUD_URL`; publish a
 separate **BDuck Chấm công** template implementing the contract above.
 
+## Production installation template — 2026-10-29
+
+The production installation URL now points to
+[Chấm công JPULSE](https://www.icloud.com/shortcuts/357a4891100e4199b808baf9f52b5478),
+as requested after successful iPhone check-in. Native GPS coordinates are sent
+as decimal text; the HTML response is converted to text for a system notification,
+and the original HTML is still shown through Quick Look. The shortcut name and
+existing token storage path remain unchanged. Changing the installation URL
+does not replace already installed shortcuts or rotate employee credentials.
+
+Known follow-ups from static review: the exchange-success condition still has
+an unrelated `api_base == "1"` comparison and a presence test for `success`;
+replace it with boolean success validation and a nonempty token check before
+saving. The empty-response check follows HTML conversion/notification and should
+precede them. The date conversion assumes UTC+7. For unattended arrival
+automation, call with no input and finish after notification instead of opening
+Quick Look; verify operation on a locked iPhone and align the arrival trigger
+with the server attendance geofence.
+
 ## Supplied attendance template review — 2026-10-28
 
 Review on 2026-10-29 of candidate
@@ -219,7 +238,7 @@ HTTP logs confirm 400 responses but contain no submitted GPS values. Schema
 failures now identify invalid fields in the HTML result without echoing input
 values, so runtime conversion errors can be diagnosed without disclosing tokens.
 
-Latest template: [Chấm công JPULSE](https://www.icloud.com/shortcuts/edf2d5fda37e40ad8e817c69f2731237).
+Previously deployed template: [Chấm công JPULSE](https://www.icloud.com/shortcuts/edf2d5fda37e40ad8e817c69f2731237).
 Static inspection confirms the requested corrections: exact version, mode and API
 origin comparisons; nonempty code and token checks; both requests use POST JSON;
 check-in sends `Authorization: Bearer <token>` using the token extracted from the

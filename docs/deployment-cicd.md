@@ -85,7 +85,7 @@ permissions and Quick Look rendering require a real iPhone.
 Set these on backend `be-wms`, not frontend/Vercel:
 
 ```dotenv
-ATTENDANCE_SHORTCUT_ICLOUD_URL=https://www.icloud.com/shortcuts/edf2d5fda37e40ad8e817c69f2731237
+ATTENDANCE_SHORTCUT_ICLOUD_URL=https://www.icloud.com/shortcuts/357a4891100e4199b808baf9f52b5478
 ATTENDANCE_SHORTCUT_NAME=Chấm công JPULSE
 ```
 
