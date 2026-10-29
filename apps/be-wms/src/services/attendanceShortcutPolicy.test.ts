@@ -111,3 +111,47 @@ test("native Shortcut GPS may omit accuracy but must supply valid coordinates an
     false,
   );
 });
+
+test("Shortcut decimal coordinate text is normalized without accepting unsafe coercions", () => {
+  const captured_at = "2026-10-29T03:30:00Z";
+  for (const [latitude, longitude] of [
+    ["10.7769", "106.7009"],
+    [" 10,7769 ", "106,7009"],
+  ]) {
+    assert.deepEqual(
+      shortcutCheckInSchema.parse({
+        location: { latitude, longitude, captured_at },
+      }).location,
+      { latitude: 10.7769, longitude: 106.7009, captured_at },
+    );
+  }
+  for (const latitude of [
+    "",
+    " ",
+    null,
+    true,
+    [],
+    [10],
+    "10,7769,106,7009",
+    "10.776.900",
+    "0x10",
+    "NaN",
+    "Infinity",
+    "91",
+    "-91",
+    "10 degrees",
+  ]) {
+    assert.equal(
+      shortcutCheckInSchema.safeParse({
+        location: { latitude, longitude: 106, captured_at },
+      }).success,
+      false,
+    );
+  }
+  assert.equal(
+    shortcutCheckInSchema.safeParse({
+      location: { latitude: "10,7", longitude: "181,1", captured_at },
+    }).success,
+    false,
+  );
+});

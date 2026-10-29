@@ -87,7 +87,12 @@ indefinitely. The prior token is revoked at successful exchange on the server.
    **Get Details of Locations**. Immediately format **Current Date** as ISO 8601
    with a UTC timezone for `captured_at` (the time the Shortcut obtained the
    location, not a verified sensor-fix timestamp). Send the nested `location`
-   object below; coordinates must be JSON numbers. Native Shortcuts can omit
+   object below; prefer JSON numbers for coordinates. The Shortcut endpoint
+   also normalizes decimal text with a single dot or comma separator, because
+   native location details can be serialized as localized numeric text.
+   Empty values, booleans, arrays, descriptive text, multiple separators and
+   out-of-range coordinates remain invalid. The web schema is unchanged.
+   Native Shortcuts can omit
    `accuracy_m`: requested accuracy such as Best/10 m is not measured error.
    Only include `accuracy_m` when a capture client reports actual measured
    horizontal accuracy. Do not substitute altitude or a fixed value.

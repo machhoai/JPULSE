@@ -9,12 +9,22 @@ export const newShortcutSecret = () => randomBytes(32).toString("base64url");
 export const hashShortcutSecret = (secret: string) =>
   createHash("sha256").update(secret).digest("hex");
 export const shortcutSecretSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+// Shortcuts can serialize a numeric Location detail as localized decimal text.
+// Accept only a single decimal coordinate, never empty/null/boolean or a list.
+const shortcutCoordinate = (min: number, max: number) =>
+  z.preprocess((value) => {
+    if (typeof value !== "string") return value;
+    const decimal = value.trim();
+    return /^[+-]?(?:\d+(?:[.,]\d+)?|[.,]\d+)$/.test(decimal)
+      ? Number(decimal.replace(",", "."))
+      : value;
+  }, z.number().min(min).max(max));
 export const shortcutCheckInSchema = z
   .object({
     location: z
       .object({
-        latitude: z.number().min(-90).max(90),
-        longitude: z.number().min(-180).max(180),
+        latitude: shortcutCoordinate(-90, 90),
+        longitude: shortcutCoordinate(-180, 180),
         accuracy_m: z.number().positive().max(10_000).optional(),
         captured_at: z.string().datetime(),
       })

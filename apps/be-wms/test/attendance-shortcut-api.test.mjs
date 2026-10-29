@@ -228,6 +228,20 @@ test("invalid GPS identifies fields without echoing submitted values or writing 
   assert.equal(writes, before);
 });
 
+test("native localized coordinate text is passed to the attendance service as numbers", async () => {
+  const captured_at = new Date().toISOString();
+  const response = await request("/check-in", "valid-shortcut-token", {
+    location: { latitude: "10,7769", longitude: "106,7009", captured_at },
+  });
+  assert.equal(response.status, 201);
+  assert.deepEqual(receivedLocation, {
+    latitude: 10.7769,
+    longitude: 106.7009,
+    captured_at,
+    accuracy_m: null,
+  });
+});
+
 test("burst limit also returns failure HTML", async () => {
   let response;
   for (let count = 0; count < 21; count++)
