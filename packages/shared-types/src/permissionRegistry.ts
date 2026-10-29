@@ -252,10 +252,19 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
   {
     key: "pos.orders.read",
     group: "pos",
-    label: { vi: "Xem đơn hàng POS", zh: "查看 POS 订单" },
+    label: { vi: "Xem tất cả đơn hàng POS", zh: "查看全部 POS 订单" },
     description: {
-      vi: "Xem lịch sử và chi tiết đơn hàng POS trong phạm vi cửa hàng.",
-      zh: "查看授权门店范围内的 POS 订单历史和详情。",
+      vi: "Xem đơn của mọi tài khoản và các ngày khác tại cửa hàng được cấp quyền. Bao gồm phạm vi của mình hôm nay. Không cấp nếu chỉ muốn thu ngân xem đơn của mình trong ngày.",
+      zh: "查看获授权门店所有账户及其他日期的订单，包含本人当日订单。收银员仅查看本人当日订单时请勿授予此权限。",
+    },
+  },
+  {
+    key: "pos.orders.read_own_today",
+    group: "pos",
+    label: { vi: "Xem đơn hàng của mình hôm nay", zh: "查看本人今日订单" },
+    description: {
+      vi: "Chỉ xem đơn do tài khoản đang đăng nhập tạo trong ngày hiện tại, theo giờ Việt Nam, tại cửa hàng được cấp quyền. Không xem ngày cũ hoặc đơn của người khác.",
+      zh: "仅查看获授权门店中当前账户按越南时间今日创建的订单，不能查看历史日期或其他账户订单。",
     },
   },
   {
@@ -339,10 +348,37 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
   {
     key: "pos.shift.close",
     group: "pos",
-    label: { vi: "Kết ca POS", zh: "POS 交班结算" },
+    label: { vi: "Xem tất cả báo cáo kết ca", zh: "查看全部交班报告" },
     description: {
-      vi: "Xem và in báo cáo kết ca tại cửa hàng.",
-      zh: "查看并打印门店 POS 交班报告。",
+      vi: "Xem báo cáo của mình hoặc tất cả tài khoản, theo ngày hoặc ca, tại cửa hàng được cấp quyền. Được xem ngày cũ. Quyền này không cấp quyền in.",
+      zh: "查看获授权门店本人或全部账户按日或班次的报告，可查看历史日期。此权限不包含打印。",
+    },
+  },
+  {
+    key: "pos.shift.read_own_today",
+    group: "pos",
+    label: { vi: "Xem kết ca của mình hôm nay", zh: "查看本人今日交班报告" },
+    description: {
+      vi: "Chỉ xem báo cáo các đơn của tài khoản đang đăng nhập được thanh toán trong ngày hiện tại theo giờ Việt Nam, tại cửa hàng được cấp quyền. Không bao gồm quyền in.",
+      zh: "仅查看获授权门店当前账户按越南时间今日收款的订单报告，不包含打印。",
+    },
+  },
+  {
+    key: "pos.shift.print",
+    group: "pos",
+    label: { vi: "In tất cả báo cáo kết ca", zh: "打印全部交班报告" },
+    description: {
+      vi: "In báo cáo mọi tài khoản và ngày khác tại cửa hàng được cấp quyền. Chỉ in được phạm vi đã có quyền xem; để in đầy đủ cần cấp thêm Xem tất cả báo cáo kết ca.",
+      zh: "打印获授权门店所有账户及其他日期的交班报告。仅可打印已获查看权限的范围；完整打印需同时授予查看全部交班报告。",
+    },
+  },
+  {
+    key: "pos.shift.print_own_today",
+    group: "pos",
+    label: { vi: "In kết ca của mình hôm nay", zh: "打印本人今日交班报告" },
+    description: {
+      vi: "Chỉ in báo cáo của tài khoản đang đăng nhập trong ngày hiện tại theo giờ Việt Nam tại cửa hàng được cấp quyền. Cần cấp thêm quyền xem kết ca phù hợp. Không in ngày cũ hoặc báo cáo Tất cả.",
+      zh: "仅打印获授权门店当前账户按越南时间今日的报告，须同时授予相应查看权限。不能打印历史日期或全部账户报告。",
     },
   },
   {

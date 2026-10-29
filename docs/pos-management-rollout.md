@@ -53,10 +53,12 @@ thanh toán cơ bản tiếp tục hoạt động khi UI gặp lỗi hoặc ứn
 
 | Vai trò          | Quyền                                                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------- |
-| Thu ngân         | `pos.login`, `pos.sales.create`, `pos.orders.read`                                          |
-| Ca trưởng        | Quyền thu ngân + `pos.payments.manual_confirm`, `pos.shift.close`, `pos.orders.retry_sync`  |
-| Quản lý cửa hàng | Quyền ca trưởng + `pos.settings.read`, `pos.devices.read`, `pos.audit.read`                 |
+| Thu ngân         | `pos.login`, `pos.sales.create`, `pos.orders.read_own_today`, `pos.shift.read_own_today`, `pos.shift.print_own_today`                                          |
+| Ca trưởng        | Quyền thu ngân + `pos.payments.manual_confirm`, `pos.orders.retry_sync`; chỉ thêm quyền tất cả nếu thực sự cần  |
+| Quản lý cửa hàng | Quyền ca trưởng + `pos.orders.read`, `pos.shift.close`, `pos.shift.print`, `pos.settings.read`, `pos.devices.read`, `pos.audit.read`                 |
 | Quản trị POS     | `pos.devices.manage`, `pos.settings.manage`, `pos.access.manage` và các quyền đọc tương ứng |
+
+Chi tiết 6 quyền, cách chuyển vai trò cũ và tổ hợp xem/in: [Phạm vi quyền đơn hàng và kết ca](./pos-permission-scopes.md).
 
 ## Smoke test bắt buộc cho mỗi cửa hàng
 

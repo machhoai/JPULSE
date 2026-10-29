@@ -49,6 +49,41 @@ interface PermissionPageView {
 
 const PERMISSION_PAGE_DEFINITIONS: PermissionPageDefinition[] = [
   {
+    id: "jpos",
+    label: { vi: "JPOS — Đơn hàng và kết ca", zh: "JPOS — 订单与交班" },
+    description: {
+      vi: "Phạm vi áp dụng tại cửa hàng được phân quyền. Quyền tất cả bao gồm ngày cũ và tài khoản khác; quyền hôm nay theo giờ Việt Nam. Quyền xem không tự cấp quyền in.",
+      zh: "权限适用于获授权门店。全部权限包含历史日期及其他账户；今日按越南时间计算。查看权限不自动授予打印。",
+    },
+    sections: [
+      {
+        id: "pos-orders",
+        label: { vi: "Xem đơn hàng", zh: "查看订单" },
+        description: { vi: "Thu ngân: chỉ cấp của mình hôm nay. Quản lý: cấp tất cả nếu cần xem lịch sử và nhân viên khác.", zh: "收银员仅授予本人今日；管理人员需要历史及其他员工订单时授予全部。" },
+        keys: ["pos.orders.read_own_today", "pos.orders.read"],
+      },
+      {
+        id: "pos-shift-view",
+        label: { vi: "Xem kết ca", zh: "查看交班报告" },
+        description: { vi: "Chọn phạm vi được xem. Đơn hàng tính theo ngày tạo; báo cáo kết ca tính theo thời gian thanh toán.", zh: "选择可查看范围。订单按创建日期，交班报告按收款时间统计。" },
+        keys: ["pos.shift.read_own_today", "pos.shift.close"],
+      },
+      {
+        id: "pos-shift-print",
+        label: { vi: "In kết ca", zh: "打印交班报告" },
+        description: { vi: "Cấp độc lập với quyền xem. Chỉ in được phạm vi đồng thời có quyền xem và quyền in; cấp riêng quyền in sẽ không mở được báo cáo.", zh: "与查看权限独立授予。仅可打印同时拥有查看及打印权限的范围；单独打印权限无法打开报告。" },
+        keys: ["pos.shift.print_own_today", "pos.shift.print"],
+      },
+      {
+        id: "pos-other",
+        label: { vi: "Các chức năng JPOS khác", zh: "其他 JPOS 功能" },
+        description: { vi: "Đăng nhập, bán hàng, thanh toán và quản lý POS.", zh: "登录、销售、付款与 POS 管理。" },
+        keys: PERMISSION_REGISTRY.filter((permission) => permission.group === "pos" &&
+          !["pos.orders.read_own_today", "pos.orders.read", "pos.shift.read_own_today", "pos.shift.close", "pos.shift.print_own_today", "pos.shift.print"].includes(permission.key)).map((permission) => permission.key),
+      },
+    ],
+  },
+  {
     id: "system",
     label: { vi: "Hệ thống", zh: "系统" },
     description: {
