@@ -16,6 +16,7 @@ let expiry = Date.now() + 90 * 86400000;
 let writes = 0;
 let authorizationLoads = 0;
 let issued = 0;
+let receivedLocation;
 const code = "c".repeat(43);
 stub("repositories/attendanceShortcutRepository", {
   createShortcutPairing: async () => {
@@ -67,11 +68,20 @@ stub("api/middlewares/authMiddleware", {
   },
 });
 stub("services/scopedAttendanceService", {
-  checkInAttendance: async (user, input, ips, audit) => {
+  checkInAttendance: async (
+    user,
+    input,
+    ips,
+    audit,
+    _authorization,
+    options,
+  ) => {
     assert.equal(user.id, "employee-a");
     assert.equal(input.action_time, undefined);
     assert.deepEqual(ips, ["127.0.0.1"]);
     assert.equal(audit.session_token, null);
+    assert.equal(options.allowUnknownGpsAccuracy, true);
+    receivedLocation = input.location;
     if (failure) throw failure;
     writes++;
     return { check_in_at: new Date("2026-10-28T01:30:00Z") };
@@ -185,6 +195,19 @@ test("pairing requires a browser session, permission and a configured template",
   assert.equal((await response.json()).data.code, code);
   assert.equal(issued, 1);
   delete process.env.ATTENDANCE_SHORTCUT_ICLOUD_URL;
+});
+
+test("native GPS without measured accuracy reaches the service as explicit unknown", async () => {
+  const location = {
+    latitude: 10.7769,
+    longitude: 106.7009,
+    captured_at: new Date().toISOString(),
+  };
+  const response = await request("/check-in", "valid-shortcut-token", {
+    location,
+  });
+  assert.equal(response.status, 201);
+  assert.deepEqual(receivedLocation, { ...location, accuracy_m: null });
 });
 
 test("burst limit also returns failure HTML", async () => {

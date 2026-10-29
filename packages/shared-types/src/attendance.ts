@@ -63,9 +63,14 @@ export interface AttendanceCoordinate {
   longitude: number;
 }
 
-export interface AttendanceLocationInput extends AttendanceCoordinate {
-  accuracy_m: number;
+export interface AttendanceLocationSnapshot extends AttendanceCoordinate {
+  /** Null when the capture client cannot report measured horizontal accuracy. */
+  accuracy_m: number | null;
   captured_at: string;
+}
+
+export interface AttendanceLocationInput extends AttendanceLocationSnapshot {
+  accuracy_m: number;
 }
 
 export enum AttendanceLateReportStatus {
@@ -145,7 +150,7 @@ export interface AttendanceLog {
   ip_address: string | null;
   check_in_method: AttendanceCheckInMethod | null;
   work_mode: AttendanceWorkMode | null;
-  location: AttendanceLocationInput | null;
+  location: AttendanceLocationSnapshot | null;
   distance_from_target_m: number | null;
   work_arrangement_id: string | null;
   status: AttendanceLogStatus;

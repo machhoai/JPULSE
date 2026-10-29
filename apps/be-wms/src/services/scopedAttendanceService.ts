@@ -1,4 +1,8 @@
-import type { AttendanceLeaveDay, CompanyHoliday, LeaveRequest } from "@bduck/shared-types";
+import type {
+  AttendanceLeaveDay,
+  CompanyHoliday,
+  LeaveRequest,
+} from "@bduck/shared-types";
 
 import type { AuthenticatedRequestUser } from "../api/middlewares/requestAccessContext.js";
 import { listActiveAttendancePolicies } from "../repositories/attendanceRepository.js";
@@ -42,6 +46,7 @@ export const checkInAttendance = async (
   requestIps: string | Array<string | null | undefined> | null | undefined,
   auditMetadata: AuditMetadata | undefined,
   authorization: AuthorizationService,
+  locationOptions?: Parameters<typeof attendanceService.checkInAttendance>[5],
 ) => {
   const profile = await getEmployeeProfileByUserId(user.id);
   assertPersonalAttendanceAction(
@@ -55,6 +60,7 @@ export const checkInAttendance = async (
     requestIps,
     auditMetadata,
     profile,
+    locationOptions,
   );
 };
 

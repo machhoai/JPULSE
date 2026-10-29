@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import {
   AttendanceLocationRule,
   AttendanceRejectedReason,
@@ -10,6 +11,7 @@ import {
   type AttendanceWorkArrangement,
   type WarehouseAttendancePolicy,
 } from "@bduck/shared-types";
+
 import { evaluateAttendanceLocation } from "./attendanceLocationPolicy.js";
 
 const now = new Date("2026-07-28T01:00:00.000Z");
@@ -145,12 +147,90 @@ test("rejects GPS snapshots with low accuracy", () => {
     policy,
     matchedIp: false,
     location: { ...location, accuracy_m: 250 },
-    workplaceCoordinate: { latitude: location.latitude, longitude: location.longitude },
+    workplaceCoordinate: {
+      latitude: location.latitude,
+      longitude: location.longitude,
+    },
     arrangement: null,
     now,
   });
   assert.equal(
     result.rejectedReason,
+    AttendanceRejectedReason.GPS_ACCURACY_LOW,
+  );
+});
+
+test("unknown accuracy is allowed only with the trusted Shortcut option", () => {
+  const input = {
+    policy,
+    matchedIp: false,
+    location: { ...location, accuracy_m: null },
+    workplaceCoordinate: location,
+    arrangement: null,
+    now,
+  };
+  assert.equal(
+    evaluateAttendanceLocation(input).rejectedReason,
+    AttendanceRejectedReason.GPS_ACCURACY_LOW,
+  );
+  assert.equal(
+    evaluateAttendanceLocation({
+      ...input,
+      options: { allowUnknownGpsAccuracy: true },
+    }).accepted,
+    true,
+  );
+});
+
+test("Shortcut allowance preserves freshness, geofences, strategy and measured accuracy", () => {
+  const input = {
+    policy,
+    matchedIp: false,
+    location: { ...location, accuracy_m: null },
+    workplaceCoordinate: location,
+    arrangement: null,
+    now,
+    options: { allowUnknownGpsAccuracy: true },
+  };
+  assert.equal(
+    evaluateAttendanceLocation({
+      ...input,
+      location: { ...input.location, captured_at: "2026-07-27T00:00:00Z" },
+    }).rejectedReason,
+    AttendanceRejectedReason.GPS_STALE,
+  );
+  assert.equal(
+    evaluateAttendanceLocation({
+      ...input,
+      workplaceCoordinate: { latitude: 21.0285, longitude: 105.8542 },
+    }).accepted,
+    false,
+  );
+  assert.equal(
+    evaluateAttendanceLocation({
+      ...input,
+      policy: {
+        ...policy,
+        verification_strategy: AttendanceVerificationStrategy.IP_ONLY,
+      },
+    }).rejectedReason,
+    AttendanceRejectedReason.INVALID_IP,
+  );
+  assert.equal(
+    evaluateAttendanceLocation({
+      ...input,
+      policy: {
+        ...policy,
+        verification_strategy: AttendanceVerificationStrategy.IP_AND_GPS,
+      },
+    }).rejectedReason,
+    AttendanceRejectedReason.INVALID_IP,
+  );
+  assert.equal(
+    evaluateAttendanceLocation({
+      ...input,
+      location: { ...location, accuracy_m: 250 },
+    }).rejectedReason,
     AttendanceRejectedReason.GPS_ACCURACY_LOW,
   );
 });

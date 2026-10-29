@@ -82,12 +82,15 @@ indefinitely. The prior token is revoked at successful exchange on the server.
 2. Use **Get Contents of URL**, POST to the saved trusted API origin plus
    `/api/attendance/shortcut/check-in`, headers:
    `Authorization: Bearer <token>`, `Content-Type: application/json`.
-3. Send `{}` for IP-based verification. For policies that require GPS, send the
-   existing location contract below only when the device can provide the actual
-   accuracy and capture timestamp. Do not invent accuracy or relax the policy.
-   Native Shortcuts support for those location fields must be verified on the
-   target iOS version; if unavailable, use web attendance for GPS policies until
-   a suitable location capture integration is provided.
+3. Send `{}` for IP-based verification. For GPS, use **Get Current Location**
+   with **Best** accuracy, then extract its latitude and longitude using
+   **Get Details of Locations**. Immediately format **Current Date** as ISO 8601
+   with a UTC timezone for `captured_at` (the time the Shortcut obtained the
+   location, not a verified sensor-fix timestamp). Send the nested `location`
+   object below; coordinates must be JSON numbers. Native Shortcuts can omit
+   `accuracy_m`: requested accuracy such as Best/10 m is not measured error.
+   Only include `accuracy_m` when a capture client reports actual measured
+   horizontal accuracy. Do not substitute altitude or a fixed value.
 4. The response is a complete HTML document, including on 4xx/5xx check-in errors.
    Display it as HTML, not as plain text. A template can convert the response to
    a file named `attendance-result.html` and display that file with **Quick Look**;
@@ -105,8 +108,7 @@ indefinitely. The prior token is revoked at successful exchange on the server.
   "location": {
     "latitude": 10.0,
     "longitude": 106.0,
-    "accuracy_m": 25,
-    "captured_at": "2026-10-28T01:00:00.000Z"
+    "captured_at": "2026-10-29T01:00:00.000Z"
   }
 }
 ```
@@ -117,8 +119,15 @@ Missing location is not evidence of denied iOS permission. The published templat
 sends `{}` and has no location-capture action. With `IP_OR_GPS`, an unrecognized
 network therefore requires GPS that this template does not send, even if iOS
 Precise Location is enabled. Use an approved company network or web attendance
-until the template can provide the complete location contract. Do not invent GPS
-accuracy or weaken the existing location policy. A successful token exchange
+until GPS capture is added to the installed template using the steps above.
+The Shortcut endpoint accepts omitted `accuracy_m` and persists it as explicit
+`null` (unknown), without fabricating a measurement. This exception is set by
+the authenticated Shortcut route, not by request fields. The web endpoint still
+requires measured accuracy. Supplied measurements still obey the configured
+accuracy limit. Location freshness, geofences, approved remote arrangements and
+the workplace's IP/GPS strategy continue to apply to both routes. Unknown
+accuracy means location quality cannot be verified against the accuracy limit.
+A successful token exchange
 followed by `LOCATION_REQUIRED` confirms authentication passed for that request.
 Pairing links are single-use and separate from the 90-day attendance token.
 
@@ -134,6 +143,16 @@ Each account has one active connection. A new pairing leaves the working token
 intact; a successful exchange atomically replaces it. Starting another pairing
 invalidates previous unused pairing codes. Revocation also cancels pending
 pairing. Token expiry is absolute and is never extended by check-in calls.
+
+The 90 days start when `/exchange` succeeds, not when the template is installed.
+Normal web logout/session expiry and backend deployments do not invalidate the
+Shortcut token. Daily use does not require a web login or a new pairing. Below
+seven days the result shows a reminder but the token still works until expiry.
+Earlier reconnection is necessary if the saved configuration is lost or the
+connection is explicitly revoked/replaced (including pairing the same account
+on another device). Current account status, employment and check-in permissions
+are still enforced on every request; a valid token alone does not guarantee an
+attendance entry.
 
 Credentials contain 256 random bits. Only SHA-256 hashes are stored in server-only
 Firestore collections `attendance_shortcut_connections`,

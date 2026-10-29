@@ -15,7 +15,7 @@ export const shortcutCheckInSchema = z
       .object({
         latitude: z.number().min(-90).max(90),
         longitude: z.number().min(-180).max(180),
-        accuracy_m: z.number().positive().max(10_000),
+        accuracy_m: z.number().positive().max(10_000).optional(),
         captured_at: z.string().datetime(),
       })
       .optional(),

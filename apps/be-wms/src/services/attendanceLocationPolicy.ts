@@ -6,7 +6,7 @@ import {
   AttendanceWorkArrangementType,
   AttendanceWorkMode,
   type AttendanceCoordinate,
-  type AttendanceLocationInput,
+  type AttendanceLocationSnapshot,
   type AttendanceWorkArrangement,
   type WarehouseAttendancePolicy,
 } from "@bduck/shared-types";
@@ -18,6 +18,11 @@ export interface AttendanceLocationDecision {
   distanceFromTargetM: number | null;
   arrangement: AttendanceWorkArrangement | null;
   rejectedReason: AttendanceRejectedReason | null;
+}
+
+// Trusted server option; never read this from a check-in request body.
+export interface AttendanceLocationOptions {
+  allowUnknownGpsAccuracy?: boolean;
 }
 
 const EARTH_RADIUS_M = 6_371_000;
@@ -55,12 +60,19 @@ const reject = (
 });
 
 const validateLocation = (
-  location: AttendanceLocationInput | undefined,
+  location: AttendanceLocationSnapshot | undefined,
   policy: WarehouseAttendancePolicy,
   now: Date,
+  options: AttendanceLocationOptions,
 ) => {
   if (!location) return AttendanceRejectedReason.LOCATION_REQUIRED;
-  if (location.accuracy_m > policy.gps_max_accuracy_m) {
+  if (
+    location.accuracy_m == null
+      ? !options.allowUnknownGpsAccuracy
+      : !Number.isFinite(location.accuracy_m) ||
+        location.accuracy_m <= 0 ||
+        location.accuracy_m > policy.gps_max_accuracy_m
+  ) {
     return AttendanceRejectedReason.GPS_ACCURACY_LOW;
   }
   const capturedAt = new Date(location.captured_at);
@@ -75,7 +87,7 @@ const validateLocation = (
 };
 
 const verifyTarget = (
-  location: AttendanceLocationInput,
+  location: AttendanceLocationSnapshot,
   coordinate: AttendanceCoordinate | null,
   radiusM: number,
 ) => {
@@ -91,16 +103,15 @@ const verifyTarget = (
     accepted: distance <= radiusM,
     distance,
     reason:
-      distance <= radiusM
-        ? null
-        : AttendanceRejectedReason.OUTSIDE_GEOFENCE,
+      distance <= radiusM ? null : AttendanceRejectedReason.OUTSIDE_GEOFENCE,
   };
 };
 
 export const evaluateAttendanceLocation = (input: {
   policy: WarehouseAttendancePolicy;
   matchedIp: boolean;
-  location?: AttendanceLocationInput;
+  location?: AttendanceLocationSnapshot;
+  options?: AttendanceLocationOptions;
   workplaceCoordinate: AttendanceCoordinate | null;
   arrangement: AttendanceWorkArrangement | null;
   now?: Date;
@@ -131,9 +142,12 @@ export const evaluateAttendanceLocation = (input: {
     location,
     policy,
     input.now || new Date(),
+    input.options ?? {},
   );
   if (invalidLocation || !location) {
-    return reject(invalidLocation || AttendanceRejectedReason.LOCATION_REQUIRED);
+    return reject(
+      invalidLocation || AttendanceRejectedReason.LOCATION_REQUIRED,
+    );
   }
 
   const office = verifyTarget(
@@ -142,10 +156,7 @@ export const evaluateAttendanceLocation = (input: {
     policy.gps_radius_m,
   );
   if (office.accepted) {
-    if (
-      strategy === AttendanceVerificationStrategy.IP_AND_GPS &&
-      !matchedIp
-    ) {
+    if (strategy === AttendanceVerificationStrategy.IP_AND_GPS && !matchedIp) {
       return reject(AttendanceRejectedReason.INVALID_IP);
     }
     return {
@@ -181,9 +192,7 @@ export const evaluateAttendanceLocation = (input: {
       arrangement.radius_m || policy.gps_radius_m,
     );
     if (!target.accepted) {
-      return reject(
-        target.reason || AttendanceRejectedReason.OUTSIDE_GEOFENCE,
-      );
+      return reject(target.reason || AttendanceRejectedReason.OUTSIDE_GEOFENCE);
     }
     distance = target.distance;
   }

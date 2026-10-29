@@ -7,7 +7,7 @@ import {
   isEmployeeAttendanceEligibleOnDate,
   type AttendanceCheckInContext,
   type AttendanceLateReport,
-  type AttendanceLocationInput,
+  type AttendanceLocationSnapshot,
   type AttendanceLog,
   type EmployeeProfile,
   type User,
@@ -31,6 +31,7 @@ import { warehouseRepository } from "../repositories/warehouseRepository.js";
 import {
   evaluateAttendanceLocation,
   type AttendanceLocationDecision,
+  type AttendanceLocationOptions,
 } from "./attendanceLocationPolicy.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
 
@@ -120,7 +121,7 @@ const buildLog = (
   rejectedReason: AttendanceRejectedReason | null,
   ipAddress: string | null,
   actionTime: Date,
-  location?: AttendanceLocationInput,
+  location?: AttendanceLocationSnapshot,
   decision?: AttendanceLocationDecision,
 ): Omit<AttendanceLog, "id"> => {
   const syncTime = new Date();
@@ -289,10 +290,11 @@ export const fetchAttendanceContext = async (
 
 export const checkInAttendance = async (
   user: RequestUser,
-  input: { action_time?: string; location?: AttendanceLocationInput },
+  input: { action_time?: string; location?: AttendanceLocationSnapshot },
   requestIpInput: string | Array<string | null | undefined> | null | undefined,
   auditMetadata?: AuditMetadata,
   profileInput?: EmployeeProfile | null,
+  locationOptions: AttendanceLocationOptions = {},
 ): Promise<AttendanceLog> => {
   const profile =
     profileInput === undefined
@@ -399,6 +401,7 @@ export const checkInAttendance = async (
     policy,
     matchedIp: Boolean(matchedIp),
     location: input.location,
+    options: locationOptions,
     workplaceCoordinate: warehouse?.coordinate || null,
     arrangement,
   });

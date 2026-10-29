@@ -76,3 +76,38 @@ test("credentials are random 256-bit values and hashes cannot be used as credent
   assert.notEqual(hashShortcutSecret(a), a);
   assert.equal(hashShortcutSecret(a).length, 64);
 });
+
+test("native Shortcut GPS may omit accuracy but must supply valid coordinates and capture time", () => {
+  const location = {
+    latitude: 10.7769,
+    longitude: 106.7009,
+    captured_at: "2026-10-29T01:00:00Z",
+  };
+  assert.equal(shortcutCheckInSchema.safeParse({ location }).success, true);
+  for (const accuracy_m of [null, 0, -1, "10", 10001]) {
+    assert.equal(
+      shortcutCheckInSchema.safeParse({ location: { ...location, accuracy_m } })
+        .success,
+      false,
+    );
+  }
+  assert.equal(
+    shortcutCheckInSchema.safeParse({
+      location: { ...location, captured_at: undefined },
+    }).success,
+    false,
+  );
+  assert.equal(
+    shortcutCheckInSchema.safeParse({
+      location: { ...location, longitude: 181 },
+    }).success,
+    false,
+  );
+  assert.equal(
+    shortcutCheckInSchema.safeParse({
+      location,
+      allowUnknownGpsAccuracy: true,
+    }).success,
+    false,
+  );
+});

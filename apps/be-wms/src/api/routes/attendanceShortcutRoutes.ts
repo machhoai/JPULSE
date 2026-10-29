@@ -151,7 +151,11 @@ router.post("/check-in", async (req, res) => {
     const input = shortcutCheckInSchema.parse(req.body ?? {});
     const log = await checkInAttendance(
       requireAuthenticatedRequestUser(req),
-      input,
+      {
+        location: input.location
+          ? { ...input.location, accuracy_m: input.location.accuracy_m ?? null }
+          : undefined,
+      },
       // Use Express's configured trusted proxy chain, not client-supplied IP headers.
       [req.ip || req.socket.remoteAddress],
       {
@@ -161,6 +165,7 @@ router.post("/check-in", async (req, res) => {
         session_token: null,
       },
       requireRequestAuthorization(req),
+      { allowUnknownGpsAccuracy: true },
     );
     return html(res, 201, {
       success: true,

@@ -48,6 +48,21 @@ test(
           10_000,
       );
       assert.equal((await store.verifyShortcutToken(first.token)).userId, uid);
+      // Check the same stored token near day 90 and at the exact expiry boundary.
+      // Browser sessions are not consulted and successful uses do not renew it.
+      const realNow = Date.now;
+      try {
+        Date.now = () => first.expires_at - 1;
+        for (let use = 0; use < 2; use++) {
+          const verified = await store.verifyShortcutToken(first.token);
+          assert.equal(verified.userId, uid);
+          assert.equal(verified.expiresAt, first.expires_at);
+        }
+        Date.now = () => first.expires_at;
+        await assert.rejects(store.verifyShortcutToken(first.token));
+      } finally {
+        Date.now = realNow;
+      }
       await assert.rejects(store.getShortcutPairingOwner(fresh.code));
       const next = await store.createShortcutPairing(uid);
       // Merely starting a new pairing does not revoke the working credential.
