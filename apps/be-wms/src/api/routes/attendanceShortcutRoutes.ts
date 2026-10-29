@@ -92,7 +92,7 @@ function errorDetails(error: unknown) {
   const locationReasons: Record<string, string> = {
     INVALID_IP: "Vui lòng kết nối mạng công ty để chấm công.",
     LOCATION_REQUIRED:
-      "Cần cung cấp vị trí GPS để chấm công. Vui lòng cấp quyền vị trí cho Shortcut.",
+      "Shortcut chưa gửi dữ liệu vị trí GPS. Hãy kết nối mạng công ty đã được cho phép hoặc mở trang chấm công trên web để gửi vị trí. Cấp quyền vị trí trong iOS chưa đủ nếu Shortcut chưa có bước lấy và gửi GPS.",
     GPS_ACCURACY_LOW:
       "Vị trí GPS chưa đủ chính xác. Vui lòng lấy lại vị trí rồi thử lại.",
     GPS_STALE: "Vị trí GPS đã quá cũ. Vui lòng lấy lại vị trí rồi thử lại.",

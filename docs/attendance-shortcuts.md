@@ -113,6 +113,15 @@ indefinitely. The prior token is revoked at successful exchange on the server.
 
 ## API and lifecycle
 
+Missing location is not evidence of denied iOS permission. The published template
+sends `{}` and has no location-capture action. With `IP_OR_GPS`, an unrecognized
+network therefore requires GPS that this template does not send, even if iOS
+Precise Location is enabled. Use an approved company network or web attendance
+until the template can provide the complete location contract. Do not invent GPS
+accuracy or weaken the existing location policy. A successful token exchange
+followed by `LOCATION_REQUIRED` confirms authentication passed for that request.
+Pairing links are single-use and separate from the 90-day attendance token.
+
 | Method | Path under `/api/attendance/shortcut` | Authentication                                              | Output                                 |
 | ------ | ------------------------------------- | ----------------------------------------------------------- | -------------------------------------- |
 | GET    | `/connection`                         | Existing web login + check-in permission                    | Connection state and template URL      |

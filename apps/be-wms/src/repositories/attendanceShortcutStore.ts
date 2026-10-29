@@ -34,13 +34,15 @@ export function createAttendanceShortcutStore(db: Firestore) {
   }
 
   async function getShortcutPairingOwner(code: string) {
-    if (!shortcutSecretSchema.safeParse(code).success)
-      throw new ShortcutCredentialError();
+    const invalidPairing = () =>
+      new ShortcutCredentialError(
+        "Mã kết nối đã dùng, hết hạn hoặc không hợp lệ. Vui lòng mở trang chấm công và tạo kết nối mới; không dùng lại liên kết cập nhật cũ.",
+      );
+    if (!shortcutSecretSchema.safeParse(code).success) throw invalidPairing();
     const pairing = (
       await pairings().doc(hashShortcutSecret(code)).get()
     ).data();
-    if (!pairing || pairing.expires_at <= Date.now())
-      throw new ShortcutCredentialError();
+    if (!pairing || pairing.expires_at <= Date.now()) throw invalidPairing();
     return pairing.user_id as string;
   }
 
