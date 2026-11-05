@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import type { UserFacilityAccessGrant } from "@bduck/shared-types";
 import {
   USER_ACCESS_COLLECTION,
@@ -15,12 +14,14 @@ import {
   onSnapshot,
   type DocumentSnapshot,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useEffect } from "react";
+
 import {
   buildMaterializedPermissions,
   needsGrantReload,
   parseActiveAccessMetadata,
 } from "@/lib/accessSnapshotPolicy";
+import { db } from "@/lib/firebase";
 import { useUserStore } from "@/stores/useUserStore";
 
 function logAccessError(error: unknown) {
@@ -94,18 +95,29 @@ export default function AccessVersionProvider() {
       }
     };
 
-    const unsubscribe = onSnapshot(
-      metadataRef,
-      { includeMetadataChanges: true },
-      (snapshot) => void applyServerSnapshot(snapshot),
-      (error) => {
-        requestGeneration += 1;
-        handleAccessFailure(error);
-      },
-    );
+    let listenerFailed = false;
+    const subscribe = () =>
+      onSnapshot(
+        metadataRef,
+        { includeMetadataChanges: true },
+        (snapshot) => void applyServerSnapshot(snapshot),
+        (error) => {
+          listenerFailed = true;
+          requestGeneration += 1;
+          handleAccessFailure(error);
+        },
+      );
+    let unsubscribe = subscribe();
 
     const handleOffline = () => useUserStore.getState().markAccessOffline();
     const handleOnline = async () => {
+      if (disposed || !window.navigator.onLine) return;
+      // Snapshot errors terminate the listener; a single read cannot restore it.
+      if (listenerFailed) {
+        unsubscribe();
+        listenerFailed = false;
+        unsubscribe = subscribe();
+      }
       const reconnectGeneration = ++requestGeneration;
       try {
         const snapshot = await getDocFromServer(metadataRef);
@@ -117,8 +129,14 @@ export default function AccessVersionProvider() {
       }
     };
 
+    const handleVisible = () => {
+      if (document.visibilityState === "visible") void handleOnline();
+    };
+
     window.addEventListener("offline", handleOffline);
     window.addEventListener("online", handleOnline);
+    window.addEventListener("focus", handleOnline);
+    document.addEventListener("visibilitychange", handleVisible);
     if (!window.navigator.onLine) handleOffline();
 
     return () => {
@@ -127,6 +145,8 @@ export default function AccessVersionProvider() {
       unsubscribe();
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
+      window.removeEventListener("focus", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisible);
     };
   }, [userId]);
 

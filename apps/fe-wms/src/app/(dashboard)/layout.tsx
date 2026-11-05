@@ -1,20 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useUserStore } from "../../stores/useUserStore";
-import { I18nProvider, useTranslation } from "../../lib/i18n";
+import { useEffect, useState } from "react";
+
+import { MFALockScreen } from "../../components/auth/MFALockScreen";
+import { DashboardBootstrapShell } from "../../components/layouts/DashboardBootstrapShell";
 import DashboardLayout from "../../components/layouts/DashboardLayout";
 import DashboardSkeleton from "../../components/layouts/DashboardSkeleton";
-import { DashboardBootstrapShell } from "../../components/layouts/DashboardBootstrapShell";
-import { usePagePermission } from "../../hooks/usePagePermission";
-import Forbidden403 from "../../components/shared/Forbidden403";
-import { MFALockScreen } from "../../components/auth/MFALockScreen";
-import { useMFA } from "../../hooks/useMFA";
-import { useCurrentUserRoleSync } from "../../hooks/useCurrentUserRoleSync";
-import GuideProvider from "../../components/providers/GuideProvider";
-import { resolveDashboardRuntimeFailure } from "../../lib/authNavigationPolicy";
 import LanguageSwitcher from "../../components/layouts/LanguageSwitcher";
+import GuideProvider from "../../components/providers/GuideProvider";
+import Forbidden403 from "../../components/shared/Forbidden403";
+import { useCurrentUserRoleSync } from "../../hooks/useCurrentUserRoleSync";
+import { useMFA } from "../../hooks/useMFA";
+import { usePagePermission } from "../../hooks/usePagePermission";
+import { resolveDashboardRuntimeFailure } from "../../lib/authNavigationPolicy";
+import { I18nProvider, useTranslation } from "../../lib/i18n";
+import { useUserStore } from "../../stores/useUserStore";
 
 /**
  * Dashboard Group Layout — Auth Guard + RBAC Guard + Layout wrapper
@@ -80,35 +81,38 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         };
 
         return (
-            <div className="relative flex min-h-screen items-center justify-center bg-slate-100 px-4">
-                <div className="absolute top-4 right-4 z-10">
-                    <LanguageSwitcher variant="light" />
-                </div>
-                <div className="w-full sm:max-w-80 rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
-                    <h1 className="text-lg font-semibold text-slate-900">
-                        {activeMessage.title}
-                    </h1>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                        {activeMessage.description}
-                    </p>
-                    <div className="mt-5 flex justify-center gap-3">
-                        <button
-                            type="button"
-                            onClick={() => window.location.reload()}
-                            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                        >
-                            {t.runtimeFailure?.retry || "Thử lại"}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => router.replace("/login")}
-                            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                        >
-                            {t.runtimeFailure?.relogin || "Đăng nhập lại"}
-                        </button>
+            <>
+                {isAuthenticated && <MFALockScreen />}
+                <div className="relative flex min-h-screen items-center justify-center bg-slate-100 px-4">
+                    <div className="absolute top-4 right-4 z-10">
+                        <LanguageSwitcher variant="light" />
+                    </div>
+                    <div className="w-full sm:max-w-80 rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+                        <h1 className="text-lg font-semibold text-slate-900">
+                            {activeMessage.title}
+                        </h1>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                            {activeMessage.description}
+                        </p>
+                        <div className="mt-5 flex justify-center gap-3">
+                            <button
+                                type="button"
+                                onClick={() => window.location.reload()}
+                                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                            >
+                                {t.runtimeFailure?.retry || "Thử lại"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => router.replace("/login")}
+                                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                            >
+                                {t.runtimeFailure?.relogin || "Đăng nhập lại"}
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </>
         );
     }
 

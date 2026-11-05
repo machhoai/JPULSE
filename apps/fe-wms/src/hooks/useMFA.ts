@@ -1,41 +1,61 @@
 import { useEffect } from "react";
+
 import { useMfaStore } from "../stores/useMfaStore";
 
-const IDLE_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours
+// Dashboard and lock screen share one monitor. Callbacks always read live state.
+let monitorUsers = 0;
+let stopMonitor: (() => void) | undefined;
+
+function startMonitor() {
+  const check = () => useMfaStore.getState().checkIdleTimeout();
+  const handleActivity = () => useMfaStore.getState().updateActivity();
+  const handleVisible = () => {
+    if (document.visibilityState === "visible") check();
+  };
+  const events = [
+    "pointermove",
+    "pointerdown",
+    "keydown",
+    "click",
+    "touchstart",
+    "scroll",
+  ];
+  check();
+  const interval = window.setInterval(check, 1000);
+  events.forEach((event) =>
+    window.addEventListener(event, handleActivity, {
+      capture: true,
+      passive: true,
+    }),
+  );
+  window.addEventListener("focus", check);
+  window.addEventListener("pageshow", check);
+  document.addEventListener("visibilitychange", handleVisible);
+  return () => {
+    window.clearInterval(interval);
+    events.forEach((event) =>
+      window.removeEventListener(event, handleActivity, true),
+    );
+    window.removeEventListener("focus", check);
+    window.removeEventListener("pageshow", check);
+    document.removeEventListener("visibilitychange", handleVisible);
+  };
+}
 
 export const useMFA = () => {
-  const { isLocked, lastActiveTime, lockScreen, unlockScreen, updateActivity } = useMfaStore();
+  const isLocked = useMfaStore((state) => state.isLocked);
+  const lockScreen = useMfaStore((state) => state.lockScreen);
+  const unlockScreen = useMfaStore((state) => state.unlockScreen);
 
   useEffect(() => {
-    // Check idle timeout every minute
-    const interval = setInterval(() => {
-      if (Date.now() - lastActiveTime > IDLE_TIMEOUT_MS && !isLocked) {
-        lockScreen();
-      }
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, [lastActiveTime, isLocked, lockScreen]);
-
-  useEffect(() => {
-    const handleActivity = () => {
-      // Throttle activity updates to once per minute to avoid excessive re-renders
-      if (Date.now() - lastActiveTime > 60000) {
-        updateActivity();
-      }
-    };
-
-    // Attach to standard DOM events
-    window.addEventListener("mousemove", handleActivity);
-    window.addEventListener("keydown", handleActivity);
-    window.addEventListener("click", handleActivity);
-
+    if (monitorUsers++ === 0) stopMonitor = startMonitor();
     return () => {
-      window.removeEventListener("mousemove", handleActivity);
-      window.removeEventListener("keydown", handleActivity);
-      window.removeEventListener("click", handleActivity);
+      if (--monitorUsers === 0) {
+        stopMonitor?.();
+        stopMonitor = undefined;
+      }
     };
-  }, [lastActiveTime, updateActivity]);
+  }, []);
 
   return { isLocked, lockScreen, unlockScreen };
 };
