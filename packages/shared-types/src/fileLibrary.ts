@@ -1,6 +1,8 @@
 import type { SoftDeletable } from "./utility.js";
 
-export type ManagedFileFormat = "pdf" | "docx" | "xlsx" | "csv";
+export const MANAGED_FILE_FORMATS = ["pdf", "docx", "xlsx", "xlsm", "csv"] as const;
+
+export type ManagedFileFormat = (typeof MANAGED_FILE_FORMATS)[number];
 
 export const FILE_TEMPLATE_CATEGORIES = [
   "finance",

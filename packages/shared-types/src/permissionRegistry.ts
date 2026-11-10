@@ -737,8 +737,8 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     group: "file_library",
     label: { vi: "Upload biểu mẫu", zh: "上传表单模板" },
     description: {
-      vi: "Cho phép tải lên biểu mẫu PDF, DOCX, XLSX hoặc CSV để người khác tải xuống.",
-      zh: "允许上传 PDF、DOCX、XLSX 或 CSV 表单模板供他人下载。",
+      vi: "Cho phép tải lên biểu mẫu PDF, DOCX, XLSX, XLSM hoặc CSV để người khác tải xuống.",
+      zh: "允许上传 PDF、DOCX、XLSX、XLSM 或 CSV 表单模板供他人下载。",
     },
   },
   {

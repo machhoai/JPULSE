@@ -6,6 +6,7 @@ const formatIconMap: Record<FileLibraryFormat, IconType> = {
     pdf: FaFilePdf,
     docx: FaFileWord,
     xlsx: FaFileExcel,
+    xlsm: FaFileExcel,
     csv: FaFileCsv,
     other: FaFileAlt,
 };
@@ -14,6 +15,7 @@ const formatClassMap: Record<FileLibraryFormat, string> = {
     pdf: "bg-[var(--color-error-bg)] text-[var(--color-error-text)]",
     docx: "bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]",
     xlsx: "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]",
+    xlsm: "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]",
     csv: "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]",
     other: "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)]",
 };

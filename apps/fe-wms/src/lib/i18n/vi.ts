@@ -633,7 +633,7 @@ const vi = {
             changeFile: "Đổi tệp",
             uploadButton: "Upload",
             removeFile: "Bỏ tệp",
-            supportHint: "Hỗ trợ PDF, DOCX, XLSX, CSV. Tối đa 20MB.",
+            supportHint: "Hỗ trợ PDF, DOCX, XLSX, XLSM, CSV. Tối đa 20MB.",
             invalidFile: "Tệp không hợp lệ",
             missingInfo: "Thiếu thông tin",
             missingInfoDesc: "Vui lòng nhập tên biểu mẫu và chọn tệp hợp lệ.",
@@ -646,7 +646,7 @@ const vi = {
             retry: "Thử lại",
             emptyTitle: "Chưa có biểu mẫu",
             emptyHint:
-                "Các biểu mẫu PDF, DOCX, XLSX hoặc CSV sẽ xuất hiện tại đây sau khi upload.",
+                "Các biểu mẫu PDF, DOCX, XLSX, XLSM hoặc CSV sẽ xuất hiện tại đây sau khi upload.",
             noViewTitle: "Chưa có quyền xem biểu mẫu",
             noViewHint:
                 "Bạn vẫn có thể upload nếu được cấp quyền upload, nhưng cần quyền xem để tải danh sách biểu mẫu.",

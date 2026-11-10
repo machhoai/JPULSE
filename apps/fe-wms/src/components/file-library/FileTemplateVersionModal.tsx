@@ -3,10 +3,16 @@
 import { useRef, useState } from "react";
 import { UploadCloud, X } from "lucide-react";
 import { gooeyToast } from "goey-toast";
-import type { FileTemplate, ManagedFileFormat } from "@bduck/shared-types";
+import type { FileTemplate } from "@bduck/shared-types";
 import type { UploadNewTemplateVersionPayload } from "@/hooks/useFileTemplates";
 import type { Dictionary } from "@/lib/i18n";
-import { formatFileSize, uploadFile, validateFile } from "@/lib/uploadFile";
+import {
+    FILE_TEMPLATE_ACCEPT,
+    FILE_TEMPLATE_UPLOAD_OPTIONS,
+    formatFileSize,
+    uploadFile,
+    validateFile,
+} from "@/lib/uploadFile";
 import { useUserStore } from "@/stores/useUserStore";
 import { getFileExtension, getFileFormat } from "@/utils/fileLibrary";
 import { FileLibraryFileIcon } from "./FileLibraryFileIcon";
@@ -17,9 +23,6 @@ interface FileTemplateVersionModalProps {
     onClose: () => void;
     onUpload: (payload: UploadNewTemplateVersionPayload) => Promise<unknown>;
 }
-
-const ACCEPT =
-    ".pdf,.docx,.xlsx,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv";
 
 export default function FileTemplateVersionModal({
     template,
@@ -37,7 +40,7 @@ export default function FileTemplateVersionModal({
 
     const handleFile = (nextFile: File | undefined) => {
         if (!nextFile) return;
-        const error = validateFile(nextFile);
+        const error = validateFile(nextFile, FILE_TEMPLATE_UPLOAD_OPTIONS);
         if (error) {
             gooeyToast.error(t.templates.invalidFile, {
                 description: error.message.vi,
@@ -64,12 +67,13 @@ export default function FileTemplateVersionModal({
                 file,
                 `file-templates/${userId || "unknown"}/versions/${template.id}`,
                 setProgress,
+                FILE_TEMPLATE_UPLOAD_OPTIONS,
             );
             await onUpload({
                 file_name: file.name,
                 file_url: url,
                 file_size: file.size,
-                file_format: format as ManagedFileFormat,
+                file_format: format,
             });
             onClose();
         };
@@ -115,7 +119,7 @@ export default function FileTemplateVersionModal({
                 <input
                     ref={inputRef}
                     type="file"
-                    accept={ACCEPT}
+                    accept={FILE_TEMPLATE_ACCEPT}
                     className="hidden"
                     disabled={isSubmitting}
                     onChange={(event) => handleFile(event.target.files?.[0])}

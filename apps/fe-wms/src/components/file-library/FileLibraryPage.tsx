@@ -23,7 +23,6 @@ import {
     normalizeFileLibrarySearch,
     toFileLibraryDate,
     type FileLibraryFilters,
-    type FileLibraryFormat,
 } from "@/utils/fileLibrary";
 import FileLibrarySkeleton from "./FileLibrarySkeleton";
 import FileLibraryTable from "./FileLibraryTable";
@@ -52,12 +51,11 @@ const defaultFilters: FileLibraryFilters = {
     sortDirection: "desc",
 };
 
-const metricTone: Record<FileLibraryFormat, string> = {
+const metricTone = {
     pdf: "bg-[var(--color-error-bg)] text-[var(--color-error-text)]",
     docx: "bg-[var(--color-status-approved-bg)] text-[var(--color-status-approved-text)]",
-    xlsx: "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]",
+    excel: "bg-[var(--color-status-completed-bg)] text-[var(--color-status-completed-text)]",
     csv: "bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)]",
-    other: "bg-[var(--color-status-draft-bg)] text-[var(--color-status-draft-text)]",
 };
 
 function MetricCard({
@@ -252,6 +250,7 @@ export default function FileLibraryPage() {
             pdf: 0,
             docx: 0,
             xlsx: 0,
+            xlsm: 0,
             csv: 0,
             other: 0,
         };
@@ -334,9 +333,9 @@ export default function FileLibraryPage() {
                         icon={<FileText size={17} />}
                     />
                     <MetricCard
-                        label="XLSX"
-                        value={counts.xlsx}
-                        tone={metricTone.xlsx}
+                        label="Excel"
+                        value={counts.xlsx + counts.xlsm}
+                        tone={metricTone.excel}
                         icon={<FileSpreadsheet size={17} />}
                     />
                     <MetricCard

@@ -4,6 +4,7 @@ import type {
   ExportVoucher,
   FileTemplateCategory,
   ImportVoucher,
+  ManagedFileFormat,
   TransferOrder,
   User,
 } from "@bduck/shared-types";
@@ -13,7 +14,7 @@ export type FileLibrarySourceType =
   | "EXPORT_VOUCHER"
   | "TRANSFER_ORDER";
 
-export type FileLibraryFormat = "pdf" | "docx" | "xlsx" | "csv" | "other";
+export type FileLibraryFormat = ManagedFileFormat | "other";
 export type FileLibrarySortBy = "uploadedAt" | "size" | "name";
 export type FileLibrarySortDirection = "asc" | "desc";
 
@@ -60,6 +61,7 @@ const formatByExtension: Record<string, FileLibraryFormat> = {
   docx: "docx",
   doc: "docx",
   xlsx: "xlsx",
+  xlsm: "xlsm",
   xls: "xlsx",
   csv: "csv",
 };

@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { MANAGED_FILE_FORMATS } from "@bduck/shared-types";
 import { z } from "zod";
 import {
   createFileTemplate,
@@ -10,7 +11,7 @@ import {
 import { getAuditRequestMetadata } from "../../utils/auditRequestMetadata.js";
 import { sendError, sendSuccess } from "../../utils/responseHelper.js";
 
-const fileFormatSchema = z.enum(["pdf", "docx", "xlsx", "csv"]);
+const fileFormatSchema = z.enum(MANAGED_FILE_FORMATS);
 const fileTemplateCategorySchema = z.enum([
   "finance",
   "admin",

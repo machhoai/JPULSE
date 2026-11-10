@@ -81,20 +81,22 @@ export default function FileTemplateVersionHistory({
                                 </p>
                             </div>
                             <div className="flex items-center gap-1">
-                                <a
-                                    href={
-                                        template.file_format === "pdf"
-                                            ? template.file_url
-                                            : `https://docs.google.com/viewer?url=${encodeURIComponent(template.file_url)}`
-                                    }
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-brand-primary)] transition hover:bg-[var(--color-brand-primary-muted)]"
-                                    title={t.openFile}
-                                    aria-label={t.openFile}
-                                >
-                                    <ExternalLink size={15} />
-                                </a>
+                                {template.file_format !== "xlsm" && (
+                                    <a
+                                        href={
+                                            template.file_format === "pdf"
+                                                ? template.file_url
+                                                : `https://docs.google.com/viewer?url=${encodeURIComponent(template.file_url)}`
+                                        }
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-brand-primary)] transition hover:bg-[var(--color-brand-primary-muted)]"
+                                        title={t.openFile}
+                                        aria-label={t.openFile}
+                                    >
+                                        <ExternalLink size={15} />
+                                    </a>
+                                )}
                                 <a
                                     href={template.file_url}
                                     download={template.file_name}
@@ -140,16 +142,18 @@ export default function FileTemplateVersionHistory({
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1">
-                                            <a
-                                                href={getViewUrl(entry)}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-brand-primary)] transition hover:bg-[var(--color-brand-primary-muted)]"
-                                                title={t.openFile}
-                                                aria-label={t.openFile}
-                                            >
-                                                <ExternalLink size={15} />
-                                            </a>
+                                            {entry.file_format !== "xlsm" && (
+                                                <a
+                                                    href={getViewUrl(entry)}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-brand-primary)] transition hover:bg-[var(--color-brand-primary-muted)]"
+                                                    title={t.openFile}
+                                                    aria-label={t.openFile}
+                                                >
+                                                    <ExternalLink size={15} />
+                                                </a>
+                                            )}
                                             <a
                                                 href={entry.file_url}
                                                 download={entry.file_name}

@@ -123,16 +123,18 @@ export default function FileTemplateGrid({
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    <a
-                                        href={getViewUrl(template)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-brand-primary)] transition hover:bg-[var(--color-brand-primary-muted)]"
-                                        title={t.openFile}
-                                        aria-label={t.openFile}
-                                    >
-                                        <ExternalLink size={14} />
-                                    </a>
+                                    {template.file_format !== "xlsm" && (
+                                        <a
+                                            href={getViewUrl(template)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-brand-primary)] transition hover:bg-[var(--color-brand-primary-muted)]"
+                                            title={t.openFile}
+                                            aria-label={t.openFile}
+                                        >
+                                            <ExternalLink size={14} />
+                                        </a>
+                                    )}
                                     <a
                                         href={template.file_url}
                                         download={template.file_name}

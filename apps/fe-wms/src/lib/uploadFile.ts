@@ -27,6 +27,21 @@ const ALLOWED_MIME_TYPES: Record<string, string> = {
 /** Fallback: also accept by extension when browser MIME type is empty/wrong */
 const ALLOWED_EXTENSIONS = new Set([".pdf", ".docx", ".xlsx", ".csv"]);
 
+const XLSM_MIME_TYPE = "application/vnd.ms-excel.sheet.macroenabled.12";
+
+export const FILE_TEMPLATE_ACCEPT = [
+  ...ALLOWED_EXTENSIONS,
+  ".xlsm",
+  ...Object.keys(ALLOWED_MIME_TYPES),
+  XLSM_MIME_TYPE,
+].join(",");
+
+export const FILE_TEMPLATE_UPLOAD_OPTIONS = { allowXlsm: true } as const;
+
+interface FileUploadOptions {
+  allowXlsm?: boolean;
+}
+
 /** Max 20MB per file (LUẬT THÉP §9) */
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
@@ -46,16 +61,23 @@ function getExtension(filename: string): string {
   return filename.slice(dotIndex).toLowerCase();
 }
 
-export function validateFile(file: File): FileValidationError | null {
+export function validateFile(
+  file: File,
+  { allowXlsm = false }: FileUploadOptions = {},
+): FileValidationError | null {
   const hasMimeMatch = !!ALLOWED_MIME_TYPES[file.type];
-  const hasExtMatch = ALLOWED_EXTENSIONS.has(getExtension(file.name));
+  const extension = getExtension(file.name);
+  const hasExtMatch =
+    ALLOWED_EXTENSIONS.has(extension) || (allowXlsm && extension === ".xlsm");
 
   if (!hasMimeMatch && !hasExtMatch) {
+    const xlsmVi = allowXlsm ? ", XLSM" : "";
+    const xlsmZh = allowXlsm ? "、XLSM" : "";
     return {
       type: "INVALID_TYPE",
       message: {
-        vi: `Định dạng không hỗ trợ. Chỉ chấp nhận: PDF, DOCX, XLSX, CSV.`,
-        zh: `不支持的格式。仅接受：PDF、DOCX、XLSX、CSV。`,
+        vi: `Định dạng không hỗ trợ. Chỉ chấp nhận: PDF, DOCX, XLSX${xlsmVi}, CSV.`,
+        zh: `不支持的格式。仅接受：PDF、DOCX、XLSX${xlsmZh}、CSV。`,
       },
     };
   }
@@ -83,6 +105,7 @@ export function validateFile(file: File): FileValidationError | null {
  * @param file        File object từ input[type=file]
  * @param storagePath Thư mục đích trên Storage (VD: 'temp-uploads/user123')
  * @param onProgress  Optional callback cho upload progress (0-100)
+ * @param options     Định dạng bổ sung được phép cho luồng tải lên
  * @returns           Download URL của file đã upload
  * @throws            Error nếu validate fail hoặc upload fail
  */
@@ -90,15 +113,18 @@ export async function uploadFile(
   file: File,
   storagePath: string,
   onProgress?: (percent: number) => void,
+  options?: FileUploadOptions,
 ): Promise<string> {
   // 1. Validate
-  const validationError = validateFile(file);
+  const validationError = validateFile(file, options);
   if (validationError) {
     throw new Error(validationError.message.vi);
   }
 
   // 2. Generate unique filename preserving original name for readability
-  const ext = ALLOWED_MIME_TYPES[file.type] || getExtension(file.name) || ".bin";
+  const extension = getExtension(file.name);
+  const isXlsm = options?.allowXlsm && extension === ".xlsm";
+  const ext = isXlsm ? extension : ALLOWED_MIME_TYPES[file.type] || extension || ".bin";
   // Sanitize original name: remove extension, replace special chars with underscore
   const baseName = file.name
     .replace(/\.[^.]+$/, "")           // remove extension
@@ -113,7 +139,8 @@ export async function uploadFile(
   // 3. Upload with progress tracking
   return new Promise((resolve, reject) => {
     const uploadTask = uploadBytesResumable(storageRef, file, {
-      contentType: file.type,
+      contentType: isXlsm ? XLSM_MIME_TYPE : file.type,
+      ...(isXlsm && { contentDisposition: "attachment" }),
       customMetadata: {
         originalName: file.name,
         uploadedAt: new Date().toISOString(),

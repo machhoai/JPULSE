@@ -39,6 +39,7 @@ const formatOptions: Array<FileLibraryFormat | "ALL"> = [
     "pdf",
     "docx",
     "xlsx",
+    "xlsm",
     "csv",
 ];
 
@@ -197,7 +198,7 @@ export default function FileLibraryToolbar({
                         {t.formatFilter}
                     </span>
                     {formatOptions.map((option) => {
-                        const Icon = option === "xlsx" || option === "csv"
+                        const Icon = option === "xlsx" || option === "xlsm" || option === "csv"
                             ? FileSpreadsheet
                             : FileText;
                         return (

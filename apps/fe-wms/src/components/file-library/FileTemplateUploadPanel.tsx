@@ -3,9 +3,15 @@
 import { useRef, useState } from "react";
 import { UploadCloud, X } from "lucide-react";
 import { gooeyToast } from "goey-toast";
-import type { FileTemplateCategory, ManagedFileFormat } from "@bduck/shared-types";
+import type { FileTemplateCategory } from "@bduck/shared-types";
 import type { Dictionary } from "@/lib/i18n";
-import { uploadFile, validateFile, formatFileSize } from "@/lib/uploadFile";
+import {
+    FILE_TEMPLATE_ACCEPT,
+    FILE_TEMPLATE_UPLOAD_OPTIONS,
+    formatFileSize,
+    uploadFile,
+    validateFile,
+} from "@/lib/uploadFile";
 import { useUserStore } from "@/stores/useUserStore";
 import { FILE_TEMPLATE_CATEGORY_OPTIONS } from "@/utils/fileTemplateCategories";
 import {
@@ -19,9 +25,6 @@ interface FileTemplateUploadPanelProps {
     t: Dictionary["fileLibrary"];
     onCreate: (payload: CreateFileTemplatePayload) => Promise<unknown>;
 }
-
-const ACCEPT =
-    ".pdf,.docx,.xlsx,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv";
 
 export default function FileTemplateUploadPanel({
     t,
@@ -65,7 +68,7 @@ export default function FileTemplateUploadPanel({
 
     const handleFile = (nextFile: File | undefined) => {
         if (!nextFile) return;
-        const error = validateFile(nextFile);
+        const error = validateFile(nextFile, FILE_TEMPLATE_UPLOAD_OPTIONS);
         if (error) {
             gooeyToast.error(t.templates.invalidFile, {
                 description: error.message.vi,
@@ -95,6 +98,7 @@ export default function FileTemplateUploadPanel({
                 file,
                 `file-templates/${userId || "unknown"}`,
                 setProgress,
+                FILE_TEMPLATE_UPLOAD_OPTIONS,
             );
             await onCreate({
                 title: title.trim(),
@@ -103,7 +107,7 @@ export default function FileTemplateUploadPanel({
                 file_name: file.name,
                 file_url: url,
                 file_size: file.size,
-                file_format: format as ManagedFileFormat,
+                file_format: format,
             });
             setTitle("");
             setDescription("");
@@ -193,7 +197,7 @@ export default function FileTemplateUploadPanel({
                     <input
                         ref={inputRef}
                         type="file"
-                        accept={ACCEPT}
+                        accept={FILE_TEMPLATE_ACCEPT}
                         className="hidden"
                         disabled={isSubmitting}
                         onChange={(event) => handleFile(event.target.files?.[0])}
