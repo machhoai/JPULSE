@@ -1,7 +1,9 @@
-import type {
-  MarketingVoucherCampaignPage,
-  MarketingVoucherCodePage,
-  MarketingVoucherJobPage,
+import {
+  MARKETING_VOUCHER_CAMPAIGNS_COLLECTION,
+  normalizeMarketingVoucherPrefix,
+  type MarketingVoucherCampaignPage,
+  type MarketingVoucherCodePage,
+  type MarketingVoucherJobPage,
 } from "@bduck/shared-types";
 
 import { db } from "../config/firebase.js";
@@ -33,6 +35,28 @@ export const findMarketingVoucherCampaignById = async (campaignId: string) => {
   return snapshot.exists && snapshot.get("is_deleted") !== true
     ? mapMarketingVoucherCampaign(snapshot)
     : null;
+};
+
+export const listMarketingVoucherAffixes = async () => {
+  const snapshot = await db
+    .collection(MARKETING_VOUCHER_CAMPAIGNS_COLLECTION)
+    .select("prefix", "suffix")
+    .get();
+  const prefixes = new Set<string>();
+  const suffixes = new Set<string>();
+  for (const doc of snapshot.docs) {
+    const storedPrefix = doc.get("prefix");
+    const storedSuffix = doc.get("suffix");
+    const prefix = typeof storedPrefix === "string"
+      ? normalizeMarketingVoucherPrefix(storedPrefix)
+      : "";
+    const suffix = typeof storedSuffix === "string"
+      ? storedSuffix.trim().toUpperCase()
+      : "";
+    if (prefix) prefixes.add(prefix);
+    if (suffix) suffixes.add(suffix);
+  }
+  return { prefixes: [...prefixes].sort(), suffixes: [...suffixes].sort() };
 };
 
 export const listMarketingVoucherCampaigns = async (input: {

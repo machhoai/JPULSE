@@ -18,6 +18,7 @@ import {
 import { createMarketingVoucherExtensionJobRecord } from "../repositories/marketingVoucherExtensionJobRepository.js";
 import {
   findMarketingVoucherCampaignById,
+  listMarketingVoucherAffixes,
   listMarketingVoucherCampaigns,
 } from "../repositories/marketingVoucherQueryRepository.js";
 
@@ -65,12 +66,7 @@ export const getMarketingVoucherCampaign = async (
   return requireCampaign(campaignId);
 };
 
-export const createMarketingVoucherCampaign = async (
-  request: CreateMarketingVoucherCampaignInput,
-  actorId: string,
-  authorization: AuthorizationService,
-  metadata: MarketingVoucherRequestMetadata,
-) => {
+const assertCanCreateCampaign = (authorization: AuthorizationService) => {
   assertMarketingVoucherPermission(
     authorization,
     "marketing_vouchers.campaigns.write",
@@ -79,6 +75,22 @@ export const createMarketingVoucherCampaign = async (
     authorization,
     "marketing_vouchers.codes.generate",
   );
+};
+
+export const getMarketingVoucherAffixes = (
+  authorization: AuthorizationService,
+) => {
+  assertCanCreateCampaign(authorization);
+  return listMarketingVoucherAffixes();
+};
+
+export const createMarketingVoucherCampaign = async (
+  request: CreateMarketingVoucherCampaignInput,
+  actorId: string,
+  authorization: AuthorizationService,
+  metadata: MarketingVoucherRequestMetadata,
+) => {
+  assertCanCreateCampaign(authorization);
   const result = await createMarketingVoucherCampaignRecord({
     campaign: request,
     context: marketingVoucherOperationContext({

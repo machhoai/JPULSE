@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 import type {
   MarketingVoucherCampaign,
   MarketingVoucherCampaignPurpose,
@@ -16,13 +18,21 @@ export function MarketingVoucherCampaignFields({
   campaign,
   draft,
   copy,
+  prefixError,
+  suffixError,
+  suffixNotice,
   updateDraft,
 }: {
   campaign: MarketingVoucherCampaign | null;
   draft: MarketingVoucherCampaignDraft;
   copy: Dictionary["marketingVouchers"];
+  prefixError: string;
+  suffixError: string;
+  suffixNotice: string;
   updateDraft: (patch: Partial<MarketingVoucherCampaignDraft>) => void;
 }) {
+  const prefixMessageId = useId();
+  const suffixMessageId = useId();
   return (
     <>
       <label className="block text-xs font-semibold text-slate-700">
@@ -142,11 +152,19 @@ export function MarketingVoucherCampaignFields({
           <label className="block text-xs font-semibold text-slate-700">
             {copy.form.prefix}
             <input
-              maxLength={20}
+              required
+              maxLength={22}
+              aria-invalid={Boolean(prefixError)}
+              aria-describedby={prefixError ? prefixMessageId : undefined}
               className={inputClass}
               value={draft.prefix}
               onChange={(event) => updateDraft({ prefix: event.target.value })}
             />
+            {prefixError && (
+              <span id={prefixMessageId} role="alert" className="mt-1 block text-rose-700">
+                {prefixError}
+              </span>
+            )}
           </label>
           <label className="block text-xs font-semibold text-slate-700">
             {copy.form.codeLength}
@@ -166,10 +184,21 @@ export function MarketingVoucherCampaignFields({
             {copy.form.suffix}
             <input
               maxLength={20}
+              aria-invalid={Boolean(suffixError)}
+              aria-describedby={suffixError || suffixNotice ? suffixMessageId : undefined}
               className={inputClass}
               value={draft.suffix}
               onChange={(event) => updateDraft({ suffix: event.target.value })}
             />
+            {suffixError || suffixNotice ? (
+              <span
+                id={suffixMessageId}
+                role={suffixError ? "alert" : "status"}
+                className={suffixError ? "mt-1 block text-rose-700" : "mt-1 block text-slate-600"}
+              >
+                {suffixError || suffixNotice}
+              </span>
+            ) : null}
           </label>
         </div>
       ) : null}

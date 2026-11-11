@@ -33,6 +33,25 @@ describe("marketing voucher schemas", () => {
     assert.ok(parsed.action_time instanceof Date);
   });
 
+  it("accepts dotted prefixes with or without surrounding quotes", () => {
+    for (const prefix of ["12.11", ' "12.11" ', "sale.12"]) {
+      assert.equal(
+        createMarketingVoucherCampaignSchema.parse({ ...validCampaign, prefix }).prefix,
+        prefix.includes("12.11") ? "12.11" : "SALE.12",
+      );
+    }
+    for (const prefix of ["12/11", " "]) {
+      const invalid = createMarketingVoucherCampaignSchema.safeParse({
+        ...validCampaign,
+        prefix,
+      });
+      assert.equal(invalid.success, false);
+      if (!invalid.success) {
+        assert.deepEqual(invalid.error.issues[0]?.path, ["prefix"]);
+      }
+    }
+  });
+
   it("rejects unsafe occupancy for short random codes", () => {
     const parsed = createMarketingVoucherCampaignSchema.safeParse({
       ...validCampaign,

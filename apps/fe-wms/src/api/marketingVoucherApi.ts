@@ -54,6 +54,16 @@ const voucherFetch = async <T>(
 export const createMarketingVoucherIdempotencyKey = (prefix: string) =>
   `${prefix}:${crypto.randomUUID()}`;
 
+export const listMarketingVoucherAffixes = (
+  fallbackMessage: string,
+  signal: AbortSignal,
+) =>
+  voucherFetch<{ prefixes: string[]; suffixes: string[] }>(
+    "/campaign-affixes",
+    fallbackMessage,
+    { method: "GET", signal },
+  );
+
 export const createMarketingVoucherCampaign = (
   input: CreateMarketingVoucherCampaignInput,
   fallbackMessage: string,

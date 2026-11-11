@@ -79,13 +79,19 @@ const rewardFieldsSchema = z
     }
   });
 
+export const normalizeMarketingVoucherPrefix = (value: string): string =>
+  value.trim().replace(/^"([^"]*)"$/u, "$1").trim().toUpperCase();
+
 export const createMarketingVoucherCampaignSchema = z
   .object({
     name: safeTextSchema(160).min(1),
     description: safeTextSchema(2_000),
     valid_from: localDateSchema,
     valid_to: localDateSchema,
-    prefix: safeTextSchema(20).regex(/^[A-Za-z0-9-]*$/u),
+    prefix: z
+      .string()
+      .transform(normalizeMarketingVoucherPrefix)
+      .pipe(z.string().min(1).max(20).regex(/^[A-Z0-9.-]+$/u)),
     code_length: z.number().int().min(4).max(12),
     suffix: safeTextSchema(20).regex(/^[A-Za-z0-9-]*$/u),
     purpose: marketingVoucherCampaignPurposeSchema,

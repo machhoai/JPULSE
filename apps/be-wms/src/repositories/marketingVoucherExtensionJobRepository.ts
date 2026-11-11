@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import {
   AuditAction,
   MARKETING_VOUCHER_CODES_COLLECTION,
+  marketingVoucherToday,
   type ExtendMarketingVoucherCampaignInput,
   type MarketingVoucherCampaignMutationResult,
 } from "@bduck/shared-types";
@@ -74,12 +75,34 @@ export const createMarketingVoucherExtensionJobRecord = async (input: {
       );
       assertCampaignMutable(previous);
       assertCampaignActivityAllowed(previous, "EXTEND");
-      if (input.request.valid_to <= previous.valid_to) {
+      const now = new Date();
+      const targetValidTo = input.request.valid_to;
+      if (targetValidTo === previous.valid_to) {
         throw marketingVoucherError(
           "MARKETING_VOUCHER_EXTENSION_DATE_INVALID",
           {
-            vi: "Ngày gia hạn phải sau ngày hết hạn hiện tại.",
-            zh: "延期日期必须晚于当前到期日。",
+            vi: "Ngày hết hạn mới phải khác ngày hết hạn hiện tại.",
+            zh: "新到期日必须与当前到期日不同。",
+          },
+          400,
+        );
+      }
+      if (targetValidTo < previous.valid_from) {
+        throw marketingVoucherError(
+          "MARKETING_VOUCHER_DATE_RANGE_INVALID",
+          {
+            vi: "Ngày hết hạn phải bằng hoặc sau ngày bắt đầu.",
+            zh: "到期日期必须等于或晚于生效日期。",
+          },
+          400,
+        );
+      }
+      if (targetValidTo < previous.valid_to && targetValidTo < marketingVoucherToday(now)) {
+        throw marketingVoucherError(
+          "MARKETING_VOUCHER_SHORTEN_DATE_IN_PAST",
+          {
+            vi: "Chỉ có thể rút ngắn ngày hết hạn đến hôm nay hoặc muộn hơn.",
+            zh: "缩短有效期时，新到期日不得早于今天。",
           },
           400,
         );
@@ -98,13 +121,12 @@ export const createMarketingVoucherExtensionJobRecord = async (input: {
           409,
         );
       }
-      const now = new Date();
       const job = newMarketingVoucherJob({
         id: jobId,
         campaignId: previous.id,
         type: "EXTEND_EXPIRY",
         generationMode: null,
-        targetValidTo: input.request.valid_to,
+        targetValidTo,
         total,
         context: input.context,
         now,
@@ -131,7 +153,7 @@ export const createMarketingVoucherExtensionJobRecord = async (input: {
         old_value: previous,
         new_value: updated,
         sync_time: now,
-        notes: `Queued expiry extension to ${input.request.valid_to}`,
+        notes: `Queued expiry change from ${previous.valid_to} to ${targetValidTo}`,
       });
       writeMarketingVoucherOperation(
         transaction,

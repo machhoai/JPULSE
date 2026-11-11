@@ -6,6 +6,7 @@ import {
   deleteMarketingVoucherCampaignHandler,
   extendMarketingVoucherCampaignHandler,
   getMarketingVoucherCampaignHandler,
+  listMarketingVoucherAffixesHandler,
   listMarketingVoucherCampaignsHandler,
   updateMarketingVoucherCampaignHandler,
   updateMarketingVoucherAppearanceHandler,
@@ -48,6 +49,14 @@ router.get(
   "/campaigns",
   requireAnyScopedPermission("marketing_vouchers.read"),
   listMarketingVoucherCampaignsHandler,
+);
+router.get(
+  "/campaign-affixes",
+  requireAnyScopedPermission([
+    "marketing_vouchers.campaigns.write",
+    "marketing_vouchers.codes.generate",
+  ]),
+  listMarketingVoucherAffixesHandler,
 );
 router.get(
   "/campaigns/:campaignId",

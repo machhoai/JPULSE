@@ -185,6 +185,7 @@ test(
       campaign: {
         ...created.campaign,
         name: `Event ${suffix}`,
+        prefix: "EVENT",
         purpose: "EVENT",
         requested_code_count: 1,
         idempotency_key: `event-${suffix}`,

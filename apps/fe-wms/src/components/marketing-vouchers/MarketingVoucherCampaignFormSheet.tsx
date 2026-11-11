@@ -3,6 +3,7 @@
 import {
   createMarketingVoucherCampaignSchema,
   type MarketingVoucherCampaign,
+  normalizeMarketingVoucherPrefix,
   updateMarketingVoucherCampaignSchema,
 } from "@bduck/shared-types";
 import { X } from "lucide-react";
@@ -11,6 +12,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import {
   createMarketingVoucherCampaign,
   createMarketingVoucherIdempotencyKey,
+  listMarketingVoucherAffixes,
   updateMarketingVoucherCampaign,
 } from "@/api/marketingVoucherApi";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -21,6 +23,7 @@ import {
   useMarketingVoucherDraftStore,
   type MarketingVoucherCampaignDraft,
 } from "@/stores/useMarketingVoucherDraftStore";
+import type { DetailedApiError } from "@/utils/apiError";
 
 import { MarketingVoucherCampaignFields } from "./MarketingVoucherCampaignFields";
 
@@ -63,14 +66,40 @@ export function MarketingVoucherCampaignFormSheet({
     emptyMarketingVoucherCampaignDraft(),
   );
   const [validationError, setValidationError] = useState("");
+  const [affixErrors, setAffixErrors] = useState({ prefix: "", suffix: "" });
+  const [rejectedPrefix, setRejectedPrefix] = useState<string | null>(null);
+  const [affixes, setAffixes] =
+    useState<Awaited<ReturnType<typeof listMarketingVoucherAffixes>>>();
+  const [affixesFailed, setAffixesFailed] = useState(false);
   const { isPending, runMutation } = useMarketingVoucherMutation();
   const draft = campaign ? editDraft : storedDraft;
   const title = campaign ? copy.form.editTitle : copy.form.createTitle;
+  const prefix = normalizeMarketingVoucherPrefix(draft.prefix);
+  const suffix = draft.suffix.trim().toUpperCase();
+  const duplicatePrefix =
+    prefix === rejectedPrefix || affixes?.prefixes.includes(prefix);
 
   useEffect(() => {
     if (campaign) setEditDraft(campaignToDraft(campaign));
     setValidationError("");
+    setAffixErrors({ prefix: "", suffix: "" });
+    setRejectedPrefix(null);
   }, [campaign, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || campaign) return;
+    const controller = new AbortController();
+    setAffixes(undefined);
+    setAffixesFailed(false);
+    void listMarketingVoucherAffixes(copy.form.affixesFailed, controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted) setAffixes(data);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setAffixesFailed(true);
+      });
+    return () => controller.abort();
+  }, [campaign, copy.form.affixesFailed, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -87,6 +116,10 @@ export function MarketingVoucherCampaignFormSheet({
   }, [isOpen, isPending, onClose]);
 
   const updateDraft = (patch: Partial<MarketingVoucherCampaignDraft>) => {
+    setAffixErrors((current) => ({
+      prefix: patch.prefix === undefined ? current.prefix : "",
+      suffix: patch.suffix === undefined ? current.suffix : "",
+    }));
     if (campaign) setEditDraft((current) => ({ ...current, ...patch }));
     else updateStoredDraft(patch);
   };
@@ -117,20 +150,31 @@ export function MarketingVoucherCampaignFormSheet({
         })
       : createMarketingVoucherCampaignSchema.safeParse({
           ...base,
-          prefix: draft.prefix.toUpperCase(),
+          prefix: draft.prefix,
           code_length: Number(draft.code_length),
           suffix: draft.suffix.toUpperCase(),
           accent_color: draft.accent_color.toUpperCase(),
           requested_code_count: Number(draft.requested_code_count),
         });
     if (!parsed.success) {
-      const issue = parsed.error.issues[0]?.message;
+      const issues = parsed.error.issues;
+      const prefixInvalid = issues.some(({ path }) => path[0] === "prefix");
+      const suffixInvalid = issues.some(({ path }) => path[0] === "suffix");
+      setAffixErrors({
+        prefix: prefixInvalid ? copy.form.prefixInvalid : "",
+        suffix: suffixInvalid ? copy.form.suffixInvalid : "",
+      });
+      const issue = issues.find(
+        ({ path }) => path[0] !== "prefix" && path[0] !== "suffix",
+      )?.message;
       setValidationError(
         issue === "VALID_TO_BEFORE_VALID_FROM"
           ? copy.form.invalidDate
           : issue === "REQUESTED_CODE_COUNT_EXCEEDS_SAFE_CODE_SPACE"
             ? copy.form.unsafeCodeSpace
-            : copy.form.required,
+            : issue
+              ? copy.form.required
+              : "",
       );
       return;
     }
@@ -151,11 +195,25 @@ export function MarketingVoucherCampaignFormSheet({
       });
       return;
     }
+    if (duplicatePrefix) return;
     const createInput = createMarketingVoucherCampaignSchema.parse(parsed.data);
     await runMutation({
       key: "create",
-      task: () =>
-        createMarketingVoucherCampaign(createInput, copy.toasts.error),
+      task: async () => {
+        try {
+          return await createMarketingVoucherCampaign(
+            createInput,
+            copy.toasts.error,
+          );
+        } catch (error) {
+          const apiError = error as DetailedApiError | null;
+          const data = apiError?.details as { code?: string } | null;
+          if (data?.code === "MARKETING_VOUCHER_PREFIX_ALREADY_USED") {
+            setRejectedPrefix(createInput.prefix);
+          }
+          throw error;
+        }
+      },
       messages: { ...copy.toasts, retry: t.common.retry },
       onSuccess: () => {
         resetStoredDraft();
@@ -192,8 +250,36 @@ export function MarketingVoucherCampaignFormSheet({
           campaign={campaign}
           draft={draft}
           copy={copy}
+          prefixError={
+            affixErrors.prefix || (duplicatePrefix ? copy.form.prefixDuplicate : "")
+          }
+          suffixError={affixErrors.suffix}
+          suffixNotice={affixes?.suffixes.includes(suffix) ? copy.form.suffixReused : ""}
           updateDraft={updateDraft}
         />
+        {!campaign && (
+          <details className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
+            <summary className="cursor-pointer font-medium">
+              {copy.form.usedAffixes}
+            </summary>
+            {affixes ? (
+              <dl className="mt-2 max-h-40 space-y-2 overflow-y-auto break-words">
+                <div>
+                  <dt className="font-medium">{copy.form.prefix}</dt>
+                  <dd>{affixes.prefixes.join(", ") || copy.form.noAffixes}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium">{copy.form.suffix}</dt>
+                  <dd>{affixes.suffixes.join(", ") || copy.form.noAffixes}</dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="mt-2" role="status">
+                {affixesFailed ? copy.form.affixesFailed : copy.form.affixesLoading}
+              </p>
+            )}
+          </details>
+        )}
         {validationError ? (
           <p
             role="alert"

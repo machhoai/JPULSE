@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   AuditAction,
+  normalizeMarketingVoucherPrefix,
   type CreateMarketingVoucherCampaignInput,
   type MarketingVoucherCampaign,
   type MarketingVoucherCampaignMutationResult,
@@ -83,6 +84,27 @@ export const createMarketingVoucherCampaignRecord = async (input: {
       };
     }
 
+    const prefix = normalizeMarketingVoucherPrefix(input.campaign.prefix);
+    const prefixRef = db
+      .collection("marketing_voucher_prefixes")
+      .doc(`prefix-${prefix}`);
+    const reservation = await transaction.get(prefixRef);
+    // Older campaigns were created before prefix reservations existed.
+    const existing = await transaction.get(
+      campaignRef(campaignId).parent.where("prefix", "==", prefix).limit(1),
+    );
+    if (reservation.exists || !existing.empty) {
+      throw marketingVoucherError(
+        "MARKETING_VOUCHER_PREFIX_ALREADY_USED",
+        {
+          vi: "Tiền tố này đã được sử dụng. Vui lòng nhập tiền tố khác.",
+          zh: "此前缀已使用，请输入其他前缀。",
+        },
+        409,
+      );
+    }
+    transaction.create(prefixRef, { campaign_id: campaignId });
+
     const now = new Date();
     const campaign: MarketingVoucherCampaign = {
       id: campaignId,
@@ -92,7 +114,7 @@ export const createMarketingVoucherCampaignRecord = async (input: {
       reward_value: input.campaign.reward_value,
       valid_from: input.campaign.valid_from,
       valid_to: input.campaign.valid_to,
-      prefix: input.campaign.prefix.toUpperCase(),
+      prefix,
       code_length: input.campaign.code_length,
       suffix: input.campaign.suffix.toUpperCase(),
       purpose: input.campaign.purpose,
@@ -223,6 +245,20 @@ export const updateMarketingVoucherCampaignRecord = async (input: {
       input.patch.expected_revision,
     );
     assertCampaignMutable(previous);
+    if (previous.active_extension_job_id && input.patch.valid_from !== undefined) {
+      const expiryJob = await transaction.get(jobRef(previous.active_extension_job_id));
+      const targetValidTo = expiryJob.get("target_valid_to");
+      if (typeof targetValidTo === "string" && input.patch.valid_from > targetValidTo) {
+        throw marketingVoucherError(
+          "MARKETING_VOUCHER_DATE_RANGE_INVALID",
+          {
+            vi: "Ngày bắt đầu phải bằng hoặc trước ngày hết hạn đang được cập nhật.",
+            zh: "开始日期不得晚于正在更新的到期日。",
+          },
+          400,
+        );
+      }
+    }
     if (
       input.patch.valid_to !== undefined &&
       input.patch.valid_to !== previous.valid_to &&
@@ -231,8 +267,8 @@ export const updateMarketingVoucherCampaignRecord = async (input: {
       throw marketingVoucherError(
         "MARKETING_VOUCHER_USE_EXTEND_OPERATION",
         {
-          vi: "Chiến dịch đã có mã. Hãy dùng chức năng gia hạn để đổi ngày hết hạn.",
-          zh: "活动已有券码，请使用延期功能修改到期日。",
+          vi: "Chiến dịch đã có mã. Hãy dùng thao tác Đổi ngày hết hạn.",
+          zh: "活动已有券码，请使用更改到期日操作。",
         },
         409,
       );

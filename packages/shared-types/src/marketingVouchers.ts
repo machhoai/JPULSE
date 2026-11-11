@@ -13,6 +13,19 @@ export const MARKETING_VOUCHER_MIGRATION_REPORTS_COLLECTION =
   "marketing_voucher_migration_reports" as const;
 export const MARKETING_VOUCHER_CODE_ALPHABET_SIZE = 32;
 
+export const marketingVoucherToday = (now = new Date()): LocalDate => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const { year, month, day } = Object.fromEntries(
+    parts.map(({ type, value }) => [type, value]),
+  );
+  return `${year}-${month}-${day}`;
+};
+
 export const getMarketingVoucherSafeCodeCapacity = (
   codeLength: number,
 ): number => Math.floor(MARKETING_VOUCHER_CODE_ALPHABET_SIZE ** codeLength / 4);

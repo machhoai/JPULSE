@@ -1,6 +1,6 @@
 "use client";
 
-import type { MarketingVoucherCampaign } from "@bduck/shared-types";
+import { marketingVoucherToday, type MarketingVoucherCampaign } from "@bduck/shared-types";
 import { useEffect, useState, type FormEvent } from "react";
 
 import {
@@ -47,6 +47,11 @@ export function MarketingVoucherCampaignActionSheet({
   }, [campaign, action]);
 
   if (!campaign || !action) return null;
+  const today = marketingVoucherToday();
+  const earliestChange = today < campaign.valid_to ? today : campaign.valid_to;
+  const minimumValidTo = campaign.valid_from > earliestChange
+    ? campaign.valid_from
+    : earliestChange;
   const titles = {
     pause: copy.action.pauseTitle,
     activate: copy.action.activateTitle,
@@ -58,7 +63,7 @@ export function MarketingVoucherCampaignActionSheet({
     pause: copy.action.pauseDescription,
     activate: copy.action.activateDescription,
     generate: "",
-    extend: "",
+    extend: copy.action.changeExpiryDescription,
     end: copy.action.endDescription,
   };
 
@@ -88,8 +93,16 @@ export function MarketingVoucherCampaignActionSheet({
           copy.toasts.error,
         );
     } else if (action === "extend") {
-      if (!validTo || validTo <= campaign.valid_to) {
+      if (validTo === campaign.valid_to) {
+        setError(copy.action.sameExpiryDate);
+        return;
+      }
+      if (!validTo || validTo < campaign.valid_from) {
         setError(copy.form.invalidDate);
+        return;
+      }
+      if (validTo < campaign.valid_to && validTo < marketingVoucherToday(actionTime)) {
+        setError(copy.action.shortenDateInPast);
         return;
       }
       task = () =>
@@ -180,11 +193,14 @@ export function MarketingVoucherCampaignActionSheet({
             <input
               autoFocus
               required
-              min={campaign.valid_to}
+              min={minimumValidTo}
               type="date"
               className={inputClass}
               value={validTo}
-              onChange={(event) => setValidTo(event.target.value)}
+              onChange={(event) => {
+                setValidTo(event.target.value);
+                setError("");
+              }}
             />
           </label>
         ) : null}

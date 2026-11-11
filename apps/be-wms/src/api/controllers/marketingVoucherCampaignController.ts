@@ -15,6 +15,7 @@ import {
   createMarketingVoucherCampaign,
   deleteMarketingVoucherCampaign,
   extendMarketingVoucherCampaign,
+  getMarketingVoucherAffixes,
   getMarketingVoucherCampaign,
   getMarketingVoucherCampaigns,
   updateMarketingVoucherCampaign,
@@ -44,6 +45,20 @@ export const listMarketingVoucherCampaignsHandler = async (
       vi: "Đã tải danh sách chiến dịch.",
       zh: "优惠券活动列表已加载。",
     });
+  } catch (error) {
+    return handleMarketingVoucherError(res, error);
+  }
+};
+
+export const listMarketingVoucherAffixesHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const data = await getMarketingVoucherAffixes(
+      requireRequestAuthorization(req),
+    );
+    return sendSuccess(res, data);
   } catch (error) {
     return handleMarketingVoucherError(res, error);
   }
@@ -193,7 +208,7 @@ export const extendMarketingVoucherCampaignHandler = async (
     return sendSuccess(
       res,
       data,
-      { vi: "Đã xếp hàng gia hạn chiến dịch.", zh: "活动延期任务已排队。" },
+      { vi: "Đã xếp hàng cập nhật ngày hết hạn.", zh: "到期日更新任务已排队。" },
       202,
     );
   } catch (error) {

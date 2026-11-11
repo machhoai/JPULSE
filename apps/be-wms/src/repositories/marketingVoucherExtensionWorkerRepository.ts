@@ -184,7 +184,7 @@ export const processMarketingVoucherExtensionChunk = async (
       old_value: previousJob,
       new_value: updatedJob,
       sync_time: now,
-      notes: `Extended ${eligible.length} voucher codes to ${previousJob.target_valid_to}`,
+      notes: `Updated expiry of ${eligible.length} voucher codes to ${previousJob.target_valid_to}`,
     });
     return { job: updatedJob, should_dispatch: !completed, no_op: false };
   });
@@ -230,7 +230,7 @@ export const failMarketingVoucherExtensionJob = async (
       old_value: job,
       new_value: updatedJob,
       sync_time: now,
-      notes: `Extension failed: ${failure.code}`,
+      notes: `Expiry update failed: ${failure.code}`,
     });
   });
 };
