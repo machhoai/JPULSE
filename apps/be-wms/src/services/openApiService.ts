@@ -10,6 +10,18 @@ export interface OpenApiActionResponse {
   [key: string]: unknown;
 }
 
+export class OpenApiActionError extends Error {
+  constructor(
+    action: string,
+    public readonly status: number,
+    public readonly response: OpenApiActionResponse | null,
+  ) {
+    super(
+      `[openApiService] ${action} failed: ${response?.msg || response?.desc || `HTTP ${status}`}`,
+    );
+  }
+}
+
 const buildActionUrl = (baseUrl: string) => {
   const trimmed = baseUrl.replace(/\/+$/, "");
   return trimmed.endsWith("/openapi/action")
@@ -41,9 +53,20 @@ export const callOpenApiAction = async (
   warehouseId: string,
   action: string,
   body: Record<string, unknown> = {},
+  options?: { signal: AbortSignal; requireHttps?: boolean },
 ): Promise<OpenApiActionResponse> => {
   const config = await resolveOpenApiConfig(warehouseId);
   const version = getActionVersion(config, action);
+  return sendOpenApiAction(config, action, version, body, options);
+};
+
+export const sendOpenApiAction = async (
+  config: Pick<Awaited<ReturnType<typeof resolveOpenApiConfig>>, "app_id" | "secret_key" | "base_url">,
+  action: string,
+  version: string,
+  body: Record<string, unknown>,
+  options?: { signal: AbortSignal; requireHttps?: boolean },
+): Promise<OpenApiActionResponse> => {
   const timestamp = String(Date.now());
   const bodyText = JSON.stringify(body);
   const payload = {
@@ -62,19 +85,28 @@ export const callOpenApiAction = async (
     body: bodyText,
   };
 
-  const response = await fetch(buildActionUrl(config.base_url), {
+  const url = buildActionUrl(config.base_url);
+  if (options?.requireHttps && new URL(url).protocol !== "https:") {
+    throw new Error("Member OpenAPI requires HTTPS");
+  }
+  const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    ...(options && { signal: options.signal, redirect: "error" as const }),
   });
-  const json = (await response.json().catch(() => null)) as
-    | OpenApiActionResponse
-    | null;
+  const json = (await response
+    .json()
+    .catch(() => null)) as OpenApiActionResponse | null;
 
   if (!response.ok || !json) {
-    throw new Error(`[openApiService] ${action} failed: HTTP ${response.status}`);
+    if (options) throw new OpenApiActionError(action, response.status, json);
+    throw new Error(
+      `[openApiService] ${action} failed: HTTP ${response.status}`,
+    );
   }
   if (json.success === false) {
+    if (options) throw new OpenApiActionError(action, response.status, json);
     throw new Error(
       `[openApiService] ${action} failed: ${json.msg || json.desc || "unknown error"}`,
     );

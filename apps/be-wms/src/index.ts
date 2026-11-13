@@ -54,6 +54,7 @@ import systemConfigRoutes from "./api/routes/systemConfigRoutes.js";
 import transferOrderRoutes from "./api/routes/transferOrderRoutes.js";
 import userRoutes from "./api/routes/userRoutes.js";
 import warehouseRoutes from "./api/routes/warehouseRoutes.js";
+import { zaloMemberCors, zaloMemberRoutes } from "./api/routes/zaloMemberRoutes.js";
 import { renderShortcutResult } from "./services/attendanceShortcutPolicy.js";
 import { startExternalQueueAutoSubmitWorker } from "./services/externalQueueAutoSubmitWorker.js";
 import { startLocalMarketingVoucherWorkerRecovery } from "./services/marketingVoucherTaskDispatcher.js";
@@ -66,6 +67,7 @@ const PORT = process.env.PORT || process.env.BE_WMS_PORT || 4000;
 // ---------------------------------------------------------------------------
 app.set("trust proxy", resolveTrustProxySetting());
 app.use(helmet());
+app.use("/api/zalo-members", cors(zaloMemberCors));
 app.use(
   cors({
     origin: process.env.BE_WMS_CORS_ORIGIN?.split(",") ?? [
@@ -109,6 +111,7 @@ app.use("/api/attendance/shortcut/check-in", shortcutBodyErrorHandler);
 app.use(cookieParser());
 app.use(selectLocalFirebaseTarget);
 app.use("/api", apiRateLimiter);
+app.use("/api/zalo-members", zaloMemberRoutes);
 
 // ---------------------------------------------------------------------------
 // Routes

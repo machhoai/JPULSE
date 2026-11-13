@@ -154,6 +154,8 @@ export const posDeviceWatchRateLimiter = createRateLimiter(
   resolvePosDeviceWatchRateLimitKey,
 );
 
+export const zaloMemberRateLimiter = createRateLimiter(60_000, 30);
+
 export const publicInvoiceReadRateLimiter = createRateLimiter(
   parsePositiveInteger(
     process.env.BE_WMS_PUBLIC_INVOICE_READ_WINDOW_MS,
