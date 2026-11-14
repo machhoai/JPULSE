@@ -24,6 +24,7 @@ const messages: Record<string, string> = {
   NOT_CONFIGURED: "Kết nối thành viên chưa được cấu hình.",
   PHONE_NOT_VERIFIED: "Chưa xác minh được số điện thoại. Vui lòng thử lại.",
   SESSION_EXPIRED: "Phiên đã hết hạn. Vui lòng quay lại và đăng nhập lại.",
+  SESSION_REVOKED: "Quyền chia sẻ đã được rút lại. Bạn có thể cấp lại quyền khi đăng nhập.",
   REGISTRATION_UNAVAILABLE:
     "Đăng ký trực tuyến chưa mở. Vui lòng liên hệ quầy hỗ trợ.",
   PROFILE_INCOMPLETE:

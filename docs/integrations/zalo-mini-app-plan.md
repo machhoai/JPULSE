@@ -1,5 +1,7 @@
 # Kế hoạch triển khai Mini App thẻ thành viên B.Duck
 
+[Hồ sơ xin quyền số điện thoại và cấu hình webhook](zalo-mini-app-zalo-review.md) · [Dự thảo điều khoản sử dụng](zalo-mini-app-terms.vi.md)
+
 ## Phạm vi đã cập nhật · Tra cứu theo số điện thoại
 
 My B.Duck xác minh số điện thoại qua Zalo rồi tra hồ sơ và số dư theo cơ sở qua Joyworld. Khách có hồ sơ vào thẳng màn hình số dư, kể cả khi chưa được cấp thẻ vật lý. Khách chưa đăng ký thấy thông báo và nút **Đăng ký**. Biểu mẫu dùng số Zalo đã xác minh, họ tên, ngày sinh, giới tính và email. Cần đối chiếu với màn hình POS thật để xác nhận các trường và quy tắc bắt buộc. Đăng ký tạo hồ sơ thành viên để cấp thẻ tại quầy sau.

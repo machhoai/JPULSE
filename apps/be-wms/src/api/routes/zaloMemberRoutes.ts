@@ -2,6 +2,12 @@ import { createHash, createHmac } from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { zaloMemberRateLimiter } from "../middlewares/rateLimitMiddleware.js";
+import { db } from "../../config/firebase.js";
+import {
+  createZaloMemberConsentStore,
+  verifyZaloWebhookSignature,
+  zaloConsentEvent,
+} from "../../services/zaloMemberConsent.js";
 import {
   issueZaloMemberSession,
   readZaloMemberSession,
@@ -15,6 +21,7 @@ import {
 
 const origin = "https://h5.zdn.vn";
 export const zaloMemberRoutes: Router = Router();
+const consentStore = createZaloMemberConsentStore(db);
 zaloMemberRoutes.use((_request, response, next) => {
   response.set("Cache-Control", "no-store");
   next();
@@ -101,9 +108,11 @@ function customerResult(
 
 function handler(operation: "lookup" | "register" | "update") {
   return async (request: Request, response: Response) => {
+    const issuedAt = Date.now();
     const secret = process.env.ZALO_MEMBER_APP_SECRET;
+    const appId = process.env.ZALO_MEMBER_MINI_APP_ID;
     const hk = getZaloHkMemberConfig();
-    if (!secret || !hk) {
+    if (!secret || !appId || !hk) {
       response.status(503).json({ code: "NOT_CONFIGURED" });
       return;
     }
@@ -129,7 +138,7 @@ function handler(operation: "lookup" | "register" | "update") {
         JSON.parse(process.env.ZALO_MEMBER_BALANCE_LABELS || "{}"),
       );
       let session = bearer
-        ? readZaloMemberSession(bearer, secret, hk.shopId)
+        ? readZaloMemberSession(bearer, secret, hk.shopId, appId)
         : null;
       let sessionToken: string | undefined;
       if (!session && !bearer && operation === "lookup" && input.success) {
@@ -157,12 +166,13 @@ function handler(operation: "lookup" | "register" | "update") {
           normalizePhone(verified.data.data.number);
         if (identity.success && phone) {
           const verifiedIdentity = {
+            appId,
             sub: identity.data.id,
             phone,
             shopId: hk.shopId,
           };
-          sessionToken = issueZaloMemberSession(verifiedIdentity, secret);
-          session = readZaloMemberSession(sessionToken, secret, hk.shopId);
+          sessionToken = issueZaloMemberSession(verifiedIdentity, secret, issuedAt);
+          session = readZaloMemberSession(sessionToken, secret, hk.shopId, appId);
         }
       }
       if (!session) {
@@ -172,12 +182,21 @@ function handler(operation: "lookup" | "register" | "update") {
         return;
       }
       const { phone } = session;
+      const isRevoked = () => consentStore.isRevoked(appId, session.sub, secret, session.issuedAt);
+      if (await isRevoked()) {
+        response.status(401).json({ code: "SESSION_REVOKED" });
+        return;
+      }
       if (operation !== "lookup" && request.body?.expectedPhone !== phone) {
         response.status(409).json({ code: "PHONE_CHANGED" });
         return;
       }
 
       const current = await findZaloHkMember(hk, phone);
+      if (await isRevoked()) {
+        response.status(401).json({ code: "SESSION_REVOKED" });
+        return;
+      }
       if (
         operation === "lookup" ||
         !details.success ||
@@ -238,6 +257,10 @@ function handler(operation: "lookup" | "register" | "update") {
         }
       }
       const refreshed = await findZaloHkMember(hk, phone);
+      if (await isRevoked()) {
+        response.status(401).json({ code: "SESSION_REVOKED" });
+        return;
+      }
       if (!refreshed) throw new Error("Member not yet available");
       const result = customerResult(phone, refreshed, balanceLabels);
       response.json({
@@ -258,6 +281,38 @@ function handler(operation: "lookup" | "register" | "update") {
 zaloMemberRoutes.post("/lookup", zaloMemberRateLimiter, handler("lookup"));
 zaloMemberRoutes.post("/register", zaloMemberRateLimiter, handler("register"));
 zaloMemberRoutes.post("/profile", zaloMemberRateLimiter, handler("update"));
+
+zaloMemberRoutes.post("/webhook", async (request, response) => {
+  const appId = process.env.ZALO_MEMBER_MINI_APP_ID;
+  const apiKey = process.env.ZALO_MEMBER_WEBHOOK_API_KEY;
+  const secret = process.env.ZALO_MEMBER_APP_SECRET;
+  if (!appId || !apiKey || !secret) {
+    response.status(503).json({ code: "NOT_CONFIGURED" });
+    return;
+  }
+
+  const event = zaloConsentEvent.safeParse(request.body);
+  if (!event.success) {
+    response.status(400).json({ code: "INVALID_EVENT" });
+    return;
+  }
+  if (
+    event.data.appId !== appId ||
+    !verifyZaloWebhookSignature(request.body, request.get("x-zevent-signature"), apiKey)
+  ) {
+    response.status(403).json({ code: "INVALID_SIGNATURE" });
+    return;
+  }
+
+  try {
+    const { userId, timestamp = Date.now() } = event.data;
+    await consentStore.revoke(appId, userId, secret, timestamp);
+    response.json({ success: true });
+  } catch {
+    console.error("[zalo-members] Failed to persist consent revocation");
+    response.status(503).json({ code: "CONSENT_STORE_UNAVAILABLE" });
+  }
+});
 
 export const zaloMemberCors = {
   origin,
