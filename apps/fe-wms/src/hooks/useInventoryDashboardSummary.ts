@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import type { InventoryDashboardSummary } from "@bduck/shared-types";
-import { subscribeDataMutation } from "@/lib/dataInvalidation";
+import { useCallback, useEffect, useRef, useState } from "react";
+
 import { isMissingApiRoute } from "@/lib/apiRolloutCompatibility";
+import { subscribeDataMutation } from "@/lib/dataInvalidation";
 import { createDetailedApiError } from "@/utils/apiError";
+import { authenticatedFetch } from "@/utils/authenticatedFetch";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
@@ -31,12 +33,9 @@ export function useInventoryDashboardSummary(warehouseId?: string) {
       const params = new URLSearchParams();
       if (warehouseId) params.set("warehouse_id", warehouseId);
       const query = params.size > 0 ? `?${params.toString()}` : "";
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `${API_BASE_URL}/api/dashboard/summary${query}`,
-        {
-          credentials: "include",
-          signal: AbortSignal.timeout(DASHBOARD_TIMEOUT_MS),
-        },
+        { signal: AbortSignal.timeout(DASHBOARD_TIMEOUT_MS) },
       );
       const body = await response.json().catch(() => null);
       if (isMissingApiRoute(response.status)) {
