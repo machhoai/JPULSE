@@ -1,0 +1,17 @@
+@import "tailwindcss" source(none);
+@source "./";
+
+@theme {
+  --font-sans: "Be Vietnam Pro", system-ui, sans-serif;
+  --color-canvas: #fffaf0;
+  --color-ink: #25173f;
+  --color-muted: #60556c;
+  --color-brand: #4d2583;
+  --color-brand-deep: #391862;
+  --color-surface: #fffefa;
+  --color-line: #e7dceb;
+  --color-lavender: #f4ebff;
+  --color-sun: #ffdc25;
+  --color-danger: #9e2342;
+  --color-success: #1e6141;
+}

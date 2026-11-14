@@ -1,0 +1,15 @@
+{
+  "app": {
+    "title": "B.Duck CityFuns",
+    "headerTitle": "Thẻ thành viên",
+    "headerColor": "#fffaf0",
+    "textColor": "black",
+    "statusBar": "normal",
+    "leftButton": "back",
+    "actionBarHidden": false
+  },
+  "debug": false,
+  "listCSS": [],
+  "listSyncJS": [],
+  "listAsyncJS": []
+}
