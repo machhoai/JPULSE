@@ -140,8 +140,12 @@ export const invoiceIssueRepository = {
         if (
           !document ||
           !source ||
+          document.is_deleted === true ||
+          source.is_deleted === true ||
           document.warehouse_id !== input.warehouseId ||
           source.warehouse_id !== input.warehouseId ||
+          (typeof posOrder?.warehouseId === "string" &&
+            posOrder.warehouseId !== input.warehouseId) ||
           ![
             InvoiceDocumentStatus.NEEDS_REVIEW,
             InvoiceDocumentStatus.NEEDS_SECOND_REVIEW,

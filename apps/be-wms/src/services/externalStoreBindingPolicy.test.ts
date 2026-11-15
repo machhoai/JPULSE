@@ -81,3 +81,25 @@ test("aggregate revenue counts a consolidated binding only once", () => {
     [LM81],
   );
 });
+
+test("an order linked to another store is excluded from an unrelated sync", () => {
+  const vivo = "vivo";
+  const candidates = [
+    { value: "landmark-order", linkedWarehouseId: LM81 },
+    { value: "vivo-order", linkedWarehouseId: vivo },
+  ];
+
+  const vivoOrders = partitionExternalOrders({
+    canonicalWarehouseId: vivo,
+    memberWarehouseIds: [vivo],
+    candidates,
+  });
+  assert.deepEqual([...vivoOrders], [[vivo, ["vivo-order"]]]);
+
+  const landmarkOrders = partitionExternalOrders({
+    canonicalWarehouseId: LM81,
+    memberWarehouseIds: [LM81, AEON],
+    candidates,
+  });
+  assert.deepEqual([...landmarkOrders], [[LM81, ["landmark-order"]]]);
+});
