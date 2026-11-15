@@ -30,6 +30,9 @@ const isInvoiceApiError = (error: unknown): error is InvoiceApiErrorLike =>
 
 const actionForError = (error: unknown) => {
   if (isInvoiceApiError(error)) {
+    if (error.code === "STORE_CONFIG_VALIDATION_REQUIRED") {
+      return "Bỏ chọn Bật cấu hình sau khi xác minh rồi bấm Lưu & xác minh MISA. Khi xác minh thành công, chọn lại ô này và bấm Lưu & xác minh MISA.";
+    }
     if (error.statusCode === 401 || error.statusCode === 403) {
       return "Kiểm tra quyền tại cửa hàng đang chọn hoặc đăng nhập lại. Nếu vẫn lỗi, gửi mã kỹ thuật cho IT.";
     }

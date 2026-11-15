@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import {
   AuditAction,
   MeInvoiceSignType,
@@ -133,7 +134,7 @@ const needsValidation = (
         ]),
       )
     : null;
-  return JSON.stringify(nextFields) !== JSON.stringify(previousFields);
+  return !isDeepStrictEqual(nextFields, previousFields);
 };
 
 export const saveMeInvoiceStoreConfig = async (
@@ -168,6 +169,7 @@ export const saveMeInvoiceStoreConfig = async (
   ) {
     throw {
       statusCode: 400,
+      code: "STORE_CONFIG_VALIDATION_REQUIRED",
       messages: {
         vi: "Phải lưu ở trạng thái tắt và xác minh ký hiệu MISA thành công trước khi bật cấu hình cửa hàng.",
         zh: "启用门店配置前，必须先以禁用状态保存并成功验证 MISA 发票系列。",
@@ -199,7 +201,10 @@ export const saveMeInvoiceStoreConfig = async (
   if (!previous)
     Object.assign(payload, { created_by: actorId, created_at: now });
 
-  await meInvoiceConfigRepository.setStoreConfig(warehouseId, payload);
+  // Replace each submitted field so deleted mapping entries are removed.
+  await meInvoiceConfigRepository.setStoreConfig(warehouseId, payload, {
+    mergeFields: Object.keys(payload),
+  });
   const stored = await meInvoiceConfigRepository.getStoreConfig(warehouseId);
   if (!stored)
     throw new Error("Unable to reload saved meInvoice store config.");
