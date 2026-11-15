@@ -1,3 +1,4 @@
+import type { SetOptions } from "firebase-admin/firestore";
 import { db } from "../config/firebase.js";
 import type { EncryptedCredential } from "../services/meInvoiceCredentialCrypto.js";
 
@@ -60,8 +61,12 @@ export const meInvoiceConfigRepository = {
     return snapshot.exists ? (snapshot.data() as Record<string, unknown>) : null;
   },
 
-  async setStoreConfig(warehouseId: string, value: Record<string, unknown>): Promise<void> {
-    await storeConfigs.doc(warehouseId).set(value, { merge: true });
+  async setStoreConfig(
+    warehouseId: string,
+    value: Record<string, unknown>,
+    options: SetOptions = { merge: true },
+  ): Promise<void> {
+    await storeConfigs.doc(warehouseId).set(value, options);
   },
 
   async getToken(accountId: string): Promise<StoredMeInvoiceToken | null> {

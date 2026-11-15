@@ -17,3 +17,17 @@ test("invoice errors include cause, recovery and technical code", () => {
   assert.match(result.description, /Cách xử lý:/);
   assert.match(result.description, /MISA_RATE_LIMIT · HTTP 429/);
 });
+
+test("store configuration validation errors show the enablement steps", () => {
+  const result = invoiceErrorToast(
+    Object.assign(new Error("Cấu hình cần xác minh trước khi bật"), {
+      statusCode: 400,
+      code: "STORE_CONFIG_VALIDATION_REQUIRED",
+    }),
+    "SAVE",
+    "Không thể lưu cấu hình",
+  );
+  assert.match(result.description, /Bỏ chọn Bật cấu hình sau khi xác minh/);
+  assert.match(result.description, /Lưu & xác minh MISA/);
+  assert.doesNotMatch(result.description, /Kiểm tra kết nối mạng/);
+});

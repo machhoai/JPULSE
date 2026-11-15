@@ -52,9 +52,15 @@ const handleError = (res: Response, error: unknown) => {
   const apiError = error as {
     statusCode?: number;
     messages?: { vi: string; zh: string };
+    code?: string;
   };
   if (apiError.statusCode && apiError.messages) {
-    return sendError(res, apiError.messages, apiError.statusCode);
+    return sendError(
+      res,
+      apiError.messages,
+      apiError.statusCode,
+      apiError.code ? { code: apiError.code } : null,
+    );
   }
   return sendError(
     res,
