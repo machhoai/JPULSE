@@ -32,10 +32,8 @@ export const partitionExternalOrders = <T>(input: {
   const members = new Set(input.memberWarehouseIds);
   const result = new Map<string, T[]>();
   for (const candidate of input.candidates) {
-    const warehouseId =
-      candidate.linkedWarehouseId && members.has(candidate.linkedWarehouseId)
-        ? candidate.linkedWarehouseId
-        : input.canonicalWarehouseId;
+    const warehouseId = candidate.linkedWarehouseId ?? input.canonicalWarehouseId;
+    if (!members.has(warehouseId)) continue;
     result.set(warehouseId, [...(result.get(warehouseId) ?? []), candidate.value]);
   }
   return result;
