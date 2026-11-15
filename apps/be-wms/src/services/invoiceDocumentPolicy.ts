@@ -219,6 +219,12 @@ export const invoiceDocumentShouldRefreshFromSource = (
   return invoiceDocumentNeedsSourceUpdate(current, next);
 };
 
+const hasDisabledStoreIssue = (document: Record<string, unknown>): boolean =>
+  Array.isArray(document.validation_issues) &&
+  document.validation_issues.some(
+    (issue: InvoicePreflightIssue) => issue?.code === "STORE_CONFIG_DISABLED",
+  );
+
 export const invoiceDocumentNeedsSourceUpdate = (
   current: Record<string, unknown>,
   next: Record<string, unknown>,
@@ -228,4 +234,5 @@ export const invoiceDocumentNeedsSourceUpdate = (
   calculationHash(current.calculation) !== calculationHash(next.calculation) ||
   current.payment_method_name !== next.payment_method_name ||
   current.meinvoice_account_id !== next.meinvoice_account_id ||
+  hasDisabledStoreIssue(current) !== hasDisabledStoreIssue(next) ||
   invoiceSourceContentChanged(current, next);

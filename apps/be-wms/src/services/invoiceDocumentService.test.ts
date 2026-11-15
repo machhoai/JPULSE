@@ -176,6 +176,27 @@ const comparableDraft = (line = sourceLine) => ({
   validation_issues: [],
 });
 
+test("enabling the store refreshes stale drafts even when the source and totals match", () => {
+  const next = comparableDraft();
+  const blocked = {
+    ...next,
+    status: InvoiceDocumentStatus.NEEDS_CORRECTION,
+    issue_eligible: false,
+    validation_issues: [{ code: "STORE_CONFIG_DISABLED" }],
+  };
+  assert.equal(invoiceSourceContentChanged(blocked, next), false);
+  assert.equal(invoiceDocumentShouldRefreshFromSource(blocked, next), true);
+  assert.equal(invoiceDocumentShouldRefreshFromSource(next, blocked), true);
+  assert.equal(invoiceDocumentShouldRefreshFromSource(next, next), false);
+  assert.equal(
+    invoiceDocumentShouldRefreshFromSource(
+      { ...blocked, content_edited: true },
+      next,
+    ),
+    false,
+  );
+});
+
 test("customer buyer submissions do not block equivalent JPOS to HKAPI enrichment", () => {
   const posLine = {
     ...sourceLine,
