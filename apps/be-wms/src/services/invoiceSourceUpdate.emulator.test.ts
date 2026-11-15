@@ -386,5 +386,56 @@ test(
       (await db.collection("invoice_documents").doc(id).get()).data()?.revision,
       6,
     );
+
+    const blockedId = createHash("sha256")
+      .update(`${warehouseId}:disabled-store`)
+      .digest("hex");
+    const recoveredSource = {
+      ...original,
+      id: blockedId,
+      source_order_id: "ORD-3",
+      invoice_document_id: blockedId,
+    };
+    const blockedSeed = buildInitialInvoiceDocument(
+      recoveredSource,
+      config,
+      account,
+      "system",
+    )!;
+    const orderRef = db.collection("invoice_source_orders").doc(blockedId);
+    const draftRef = db.collection("invoice_documents").doc(blockedId);
+    await orderRef.set(recoveredSource);
+    await draftRef.set({
+      ...blockedSeed,
+      buyer,
+      status: InvoiceDocumentStatus.NEEDS_CORRECTION,
+      issue_eligible: false,
+      validation_issues: [
+        {
+          code: "STORE_CONFIG_DISABLED",
+          path: "store_config.enabled",
+          message: "Cấu hình meInvoice của cửa hàng chưa được bật.",
+          severity: "ERROR",
+        },
+      ],
+    });
+    const recovered = await service.prepareInvoiceDocumentFromSourceOrder(
+      blockedId,
+      warehouseId,
+      recoveredSource.source_payload_hash,
+      "system",
+      authorization,
+      undefined,
+      { safeAutoRebase: true },
+    );
+    assert.equal(recovered.revision, 2);
+    assert.equal(recovered.status, InvoiceDocumentStatus.READY_TO_ISSUE);
+    assert.equal(recovered.issue_eligible, true);
+    assert.deepEqual(recovered.validation_issues, []);
+    assert.deepEqual(recovered.buyer, buyer);
+    assert.equal(
+      (await orderRef.get()).data()?.invoice_document_status,
+      InvoiceDocumentStatus.READY_TO_ISSUE,
+    );
   },
 );
