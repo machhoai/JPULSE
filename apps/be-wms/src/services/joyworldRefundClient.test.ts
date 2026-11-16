@@ -47,15 +47,18 @@ test("enables remote refund for every warehouse without a canary list", async ()
   }
 });
 
-test("accepts an exact full-refund reconciliation", () => {
+test("accepts refund reconciliation when POS uses QR and JoyWorld records cash", () => {
+  const localOrder = {
+    localOrderNumber: "O-1",
+    totalAmount: 180000,
+    paymentMethod: "QR_CODE",
+    items: [
+      { goodsId: "g1", goodsName: "Vé lượt", quantity: 1, price: 180000 },
+    ],
+  };
   assert.doesNotThrow(() =>
     assertJoyworldRefundMatchesLocal({
-      localOrderNumber: "O-1",
-      totalAmount: 180000,
-      paymentMethod: "CASH",
-      items: [
-        { goodsId: "g1", goodsName: "Vé lượt", quantity: 1, price: 180000 },
-      ],
+      ...localOrder,
       remote: {
         orderId: "00000000-0000-4000-8000-000000000001",
         orderNumber: "O-1",

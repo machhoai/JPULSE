@@ -41,10 +41,10 @@ const text = (value: unknown): string | null =>
 const amountMatches = (left: number, right: number): boolean =>
   Math.abs(left - right) < 0.01;
 
+// JoyWorld requires API-created orders to use cash even if POS collects by QR.
 export const assertJoyworldRefundMatchesLocal = (input: {
   localOrderNumber: string;
   totalAmount: number;
-  paymentMethod: string;
   items: PosOrderListItem[];
   remote: JoyworldRefundDetailsResponse["data"];
 }): void => {
@@ -70,15 +70,6 @@ export const assertJoyworldRefundMatchesLocal = (input: {
     ) {
       throw new JoyworldRefundError("REMOTE_ORDER_ITEMS_MISMATCH");
     }
-  }
-  const codes = input.remote.payModeInfo.map((item) => item.payMethodCode);
-  if (
-    (input.paymentMethod === "CASH" &&
-      !codes.some((code) => code === "CashPaymentExecutor")) ||
-    (input.paymentMethod === "QR_CODE" &&
-      codes.some((code) => code === "CashPaymentExecutor"))
-  ) {
-    throw new JoyworldRefundError("REMOTE_PAYMENT_METHOD_MISMATCH");
   }
 };
 

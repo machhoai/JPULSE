@@ -86,8 +86,6 @@ const prepareRemoteRefund = async (warehouseId: string, order: RawPosOrder) => {
   assertJoyworldRefundMatchesLocal({
     localOrderNumber: remoteOrderNumber,
     totalAmount: order.totalAmount,
-    paymentMethod:
-      typeof order.paymentMethod === "string" ? order.paymentMethod : "",
     items: orderItems(order),
     remote: details,
   });
