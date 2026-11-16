@@ -163,6 +163,20 @@ export interface MarketingVoucherCode extends SoftDeletable, ISOTimestamped {
   legacy_metadata: MarketingVoucherLegacyMetadata | null;
 }
 
+export const getMarketingVoucherRewardValue = (
+  code: MarketingVoucherCode,
+  campaign?: MarketingVoucherCampaign,
+): number => {
+  if (
+    campaign?.id === code.campaign_id &&
+    campaign.reward_type === code.reward_type &&
+    (code.status === "AVAILABLE" || code.status === "DISTRIBUTED")
+  ) {
+    return campaign.reward_value;
+  }
+  return code.reward_value;
+};
+
 export const MARKETING_VOUCHER_JOB_TYPES = [
   "GENERATE_CODES",
   "EXTEND_EXPIRY",

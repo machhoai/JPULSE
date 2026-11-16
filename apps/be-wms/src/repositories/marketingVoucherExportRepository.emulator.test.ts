@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
 
+import ExcelJS from "exceljs";
+
 import type { MarketingVoucherExportWorkerDependencies } from "../services/marketingVoucherExportWorkerDependencies.js";
+import { createMarketingVoucherWorkbook } from "../services/marketingVoucherWorkbookService.js";
 
 const errorCode = (error: unknown) =>
   error && typeof error === "object" && "code" in error
@@ -15,7 +18,10 @@ test(
   async () => {
     const [
       { db },
-      { createMarketingVoucherCampaignRecord },
+      {
+        createMarketingVoucherCampaignRecord,
+        updateMarketingVoucherCampaignRecord,
+      },
       { processMarketingVoucherGenerationChunk },
       { createMarketingVoucherExportJobRecord },
       { changeMarketingVoucherCampaignStatusRecord },
@@ -64,10 +70,20 @@ test(
       .collection("marketing_voucher_campaigns")
       .doc(created.campaign.id)
       .get();
+    const updated = await updateMarketingVoucherCampaignRecord({
+      campaign_id: created.campaign.id,
+      patch: {
+        reward_value: 3,
+        expected_revision: campaign.get("revision"),
+        idempotency_key: `update-${suffix}`,
+        action_time: actionTime,
+      },
+      context: context("update"),
+    });
     const exportRequest = {
       campaign_id: created.campaign.id,
       locale: "vi" as const,
-      expected_revision: campaign.get("revision") as number,
+      expected_revision: updated.campaign.revision,
       idempotency_key: `export-${suffix}`,
       action_time: actionTime,
     };
@@ -145,8 +161,7 @@ test(
       };
     };
     const dependencies: MarketingVoucherExportWorkerDependencies = {
-      createWorkbook: async ({ codes }) =>
-        Buffer.from(codes.map((code) => code.id).join("\n")),
+      createWorkbook: createMarketingVoucherWorkbook,
       saveFile: (path, buffer) => save(path, buffer),
       saveManifest: (path, manifest) =>
         save(path, Buffer.from(JSON.stringify(manifest))),
@@ -180,6 +195,15 @@ test(
       3,
     );
     assert.ok(stored.has(exportResult.job.output_storage_path!));
+    for (const part of exportResult.job.export_parts) {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(stored.get(part.storage_path)! as never);
+      const worksheet = workbook.worksheets[0]!;
+      assert.equal(worksheet.rowCount, part.row_count + 1);
+      for (let row = 2; row <= worksheet.rowCount; row += 1) {
+        assert.equal(worksheet.getCell(row, 4).value, 3);
+      }
+    }
 
     const eventCampaign = await createMarketingVoucherCampaignRecord({
       campaign: {

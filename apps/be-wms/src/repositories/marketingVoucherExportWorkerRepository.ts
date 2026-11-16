@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   AuditAction,
+  getMarketingVoucherRewardValue,
   MARKETING_VOUCHER_CODES_COLLECTION,
   type MarketingVoucherExportManifest,
   type MarketingVoucherExportPart,
@@ -216,7 +217,13 @@ export async function processMarketingVoucherExportChunk(
   const partIndex = initialJob.export_parts.length + 1;
   const buffer = await dependencies.createWorkbook({
     campaignName: campaign.name,
-    codes: candidates.docs.map(mapMarketingVoucherCode),
+    codes: candidates.docs.map((snapshot) => {
+      const code = mapMarketingVoucherCode(snapshot);
+      return {
+        ...code,
+        reward_value: getMarketingVoucherRewardValue(code, campaign),
+      };
+    }),
     locale: initialJob.export_locale ?? "vi",
     qrConcurrency: options.qrConcurrency ?? configuredQrConcurrency(),
   });

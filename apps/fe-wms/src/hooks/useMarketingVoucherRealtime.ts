@@ -108,6 +108,48 @@ const useVoucherQuery = <T>(
   return state;
 };
 
+export const useMarketingVoucherCampaignsById = (
+  enabled: boolean,
+  campaignIds: string[],
+) => {
+  const accessEpoch = useUserStore((state) => state.accessEpoch);
+  const [campaigns, setCampaigns] = useState(new Map<string, MarketingVoucherCampaign>());
+  const idsKey = JSON.stringify(campaignIds);
+
+  useEffect(() => {
+    setCampaigns(new Map());
+    const ids = JSON.parse(idsKey) as string[];
+    if (!enabled || ids.length === 0) return;
+
+    let subscriptions: (() => void)[] = [];
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      subscriptions.forEach((unsubscribe) => unsubscribe());
+      setCampaigns(new Map());
+      subscriptions = user ? ids.map((id) => onSnapshot(
+        doc(db, "marketing_voucher_campaigns", id),
+        (snapshot) => {
+          setCampaigns((current) => {
+            const next = new Map(current);
+            if (snapshot.exists() && snapshot.get("is_deleted") !== true) {
+              next.set(id, mapMarketingVoucherCampaignDocument(snapshot));
+            } else {
+              next.delete(id);
+            }
+            return next;
+          });
+        },
+        (error) => console.error("[marketingVoucherCampaigns] listener error:", error),
+      )) : [];
+    });
+    return () => {
+      unsubscribeAuth();
+      subscriptions.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [accessEpoch, enabled, idsKey]);
+
+  return campaigns;
+};
+
 export const useMarketingVoucherCampaigns = (enabled: boolean) => {
   const realtimeQuery = useMemo(
     () =>

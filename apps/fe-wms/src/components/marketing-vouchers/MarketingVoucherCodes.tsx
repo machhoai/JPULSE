@@ -3,6 +3,7 @@
 import {
   MARKETING_VOUCHER_CODE_STATUSES,
   MARKETING_VOUCHER_REWARD_TYPES,
+  getMarketingVoucherRewardValue,
   type MarketingVoucherCampaign,
   type MarketingVoucherCodeStatus,
   type MarketingVoucherRewardType,
@@ -17,7 +18,10 @@ import {
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { MarketingVoucherSkeleton } from "@/components/marketing-vouchers/MarketingVoucherSkeleton";
-import { useMarketingVoucherCodes } from "@/hooks/useMarketingVoucherRealtime";
+import {
+  useMarketingVoucherCampaignsById,
+  useMarketingVoucherCodes,
+} from "@/hooks/useMarketingVoucherRealtime";
 import { useTranslation } from "@/lib/i18n";
 import { marketingVoucherToday } from "@/utils/marketingVoucherUi";
 
@@ -63,9 +67,35 @@ export function MarketingVoucherCodes({
     filters,
     cursor: cursors[pageIndex] ?? null,
   });
-  const campaignMap = useMemo(
+  const listedCampaigns = useMemo(
     () => new Map(campaigns.map((campaign) => [campaign.id, campaign])),
     [campaigns],
+  );
+  const missingCampaignIds = useMemo(
+    () =>
+      [...new Set(result.records.map((code) => code.campaign_id))]
+        .filter((id) => id && !listedCampaigns.has(id))
+        .sort(),
+    [listedCampaigns, result.records],
+  );
+  const missingCampaigns = useMarketingVoucherCampaignsById(
+    canRead,
+    missingCampaignIds,
+  );
+  const campaignMap = useMemo(
+    () => new Map([...missingCampaigns, ...listedCampaigns]),
+    [listedCampaigns, missingCampaigns],
+  );
+  const records = useMemo(
+    () =>
+      result.records.map((code) => ({
+        ...code,
+        reward_value: getMarketingVoucherRewardValue(
+          code,
+          campaignMap.get(code.campaign_id),
+        ),
+      })),
+    [campaignMap, result.records],
   );
   const today = marketingVoucherToday();
 
@@ -85,7 +115,7 @@ export function MarketingVoucherCodes({
   const selectableIds = result.records
     .filter((code) => ["AVAILABLE", "DISTRIBUTED"].includes(code.status))
     .map((code) => code.id);
-  const selectedCodes = result.records.filter((code) => selected.has(code.id));
+  const selectedCodes = records.filter((code) => selected.has(code.id));
   const selectedCampaignIds = new Set(
     selectedCodes.map((code) => code.campaign_id),
   );
@@ -238,7 +268,7 @@ export function MarketingVoucherCodes({
         <MarketingVoucherEmptyState title={copy.codes.empty} />
       ) : (
         <MarketingVoucherCodeResults
-          records={result.records}
+          records={records}
           campaignMap={campaignMap}
           canSelect={canRevoke || canEmail}
           selected={selected}
