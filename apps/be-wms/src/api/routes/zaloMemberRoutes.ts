@@ -27,14 +27,9 @@ zaloMemberRoutes.use((_request, response, next) => {
   next();
 });
 
-const credentials = z.object({
-  accessToken: z.string().min(1).max(4096),
-  phoneToken: z.string().min(1).max(4096),
-  expectedPhone: z
-    .string()
-    .regex(/^0\d{9}$/)
-    .optional(),
-});
+const token = z.string().min(1).max(4096);
+const accessCredentials = z.object({ accessToken: token });
+const linkCredentials = accessCredentials.extend({ phoneToken: token });
 const profile = z.object({
   name: z.string().trim().min(2).max(100),
   email: z
@@ -106,9 +101,104 @@ function customerResult(
   };
 }
 
-function handler(operation: "lookup" | "register" | "update") {
+function readBalanceLabels() {
+  return balancePresentation.parse(JSON.parse(process.env.ZALO_MEMBER_BALANCE_LABELS || "{}"));
+}
+
+async function identifyZaloUser(accessToken: string, secret: string) {
+  return graphProfile.safeParse(await graph("me?fields=id", {
+    access_token: accessToken,
+    appsecret_proof: createHmac("sha256", secret).update(accessToken).digest("hex"),
+  }));
+}
+
+function bearerToken(request: Request) {
+  return request.get("authorization")?.match(/^Bearer (.+)$/i)?.[1] ?? "";
+}
+
+function memberEntry(operation: "authenticate" | "link") {
   return async (request: Request, response: Response) => {
     const issuedAt = Date.now();
+    const secret = process.env.ZALO_MEMBER_APP_SECRET;
+    const appId = process.env.ZALO_MEMBER_MINI_APP_ID;
+    const hk = getZaloHkMemberConfig();
+    if (!secret || !appId || !hk) {
+      response.status(503).json({ code: "NOT_CONFIGURED" });
+      return;
+    }
+    const input = accessCredentials.safeParse(request.body);
+    const linkInput = linkCredentials.safeParse(request.body);
+    if (!input.success || (operation === "link" && !linkInput.success)) {
+      response.status(400).json({ code: "INVALID_INPUT" });
+      return;
+    }
+    try {
+      const { accessToken } = input.data;
+      const identity = await identifyZaloUser(accessToken, secret);
+      if (!identity.success) {
+        response.status(401).json({ code: "ZALO_NOT_VERIFIED" });
+        return;
+      }
+      const sub = identity.data.id;
+      const isRevoked = () => consentStore.isRevoked(appId, sub, secret, issuedAt);
+      const scope = { appId, sub, shopId: hk.shopId };
+      if (operation === "authenticate") {
+        const link = await consentStore.readLink(appId, sub, secret);
+        const member = link?.shopId === hk.shopId ? await findZaloHkMember(hk, link.phone) : null;
+        if (await isRevoked()) {
+          response.status(401).json({ code: "SESSION_REVOKED" });
+          return;
+        }
+        if (link && member?.uid === link.uid &&
+            !await consentStore.isRevoked(appId, sub, secret, link.linkedAt)) {
+          const sessionToken = issueZaloMemberSession({ ...scope, phone: link.phone, memberUid: link.uid }, secret, issuedAt);
+          response.json({ sessionToken, member: customerResult(link.phone, member, readBalanceLabels()) });
+          return;
+        }
+        response.json({ sessionToken: issueZaloMemberSession(scope, secret, issuedAt), member: null });
+        return;
+      }
+
+      const session = readZaloMemberSession(bearerToken(request), secret, hk.shopId, appId);
+      if (!session || session.sub !== sub || session.phone || !linkInput.success) {
+        response.status(401).json({ code: "SESSION_EXPIRED" });
+        return;
+      }
+      const isLinkRevoked = () => consentStore.isRevoked(appId, sub, secret, session.issuedAt);
+      if (await isLinkRevoked()) {
+        response.status(401).json({ code: "SESSION_REVOKED" });
+        return;
+      }
+      const verified = graphPhone.safeParse(await graph("me/info", {
+        access_token: accessToken,
+        code: linkInput.data.phoneToken,
+        secret_key: secret,
+      }));
+      const phone = verified.success && normalizePhone(verified.data.data.number);
+      if (!phone) {
+        response.status(422).json({ code: "PHONE_NOT_VERIFIED" });
+        return;
+      }
+      const member = await findZaloHkMember(hk, phone);
+      const result = customerResult(phone, member, readBalanceLabels());
+      const saved = !member || await consentStore.saveLink(appId, sub, secret, session.issuedAt,
+        { phone, uid: member.uid, shopId: hk.shopId });
+      if (!saved || await isLinkRevoked()) {
+        response.status(401).json({ code: "SESSION_REVOKED" });
+        return;
+      }
+      response.json({
+        sessionToken: issueZaloMemberSession({ ...scope, phone, memberUid: member?.uid }, secret, session.issuedAt),
+        member: result,
+      });
+    } catch {
+      response.status(502).json({ code: "MEMBER_SERVICE_UNAVAILABLE" });
+    }
+  };
+}
+
+function handler(operation: "register" | "update") {
+  return async (request: Request, response: Response) => {
     const secret = process.env.ZALO_MEMBER_APP_SECRET;
     const appId = process.env.ZALO_MEMBER_MINI_APP_ID;
     const hk = getZaloHkMemberConfig();
@@ -123,62 +213,16 @@ function handler(operation: "lookup" | "register" | "update") {
       response.status(503).json({ code: "REGISTRATION_UNAVAILABLE" });
       return;
     }
-    const input = credentials.safeParse(request.body);
-    const bearer = request.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
     const details = profile.safeParse(request.body?.profile);
-    if (
-      (!bearer && !input.success) ||
-      (operation !== "lookup" && !details.success)
-    ) {
+    if (!details.success) {
       response.status(400).json({ code: "INVALID_INPUT" });
       return;
     }
     try {
-      const balanceLabels = balancePresentation.parse(
-        JSON.parse(process.env.ZALO_MEMBER_BALANCE_LABELS || "{}"),
-      );
-      let session = bearer
-        ? readZaloMemberSession(bearer, secret, hk.shopId, appId)
-        : null;
-      let sessionToken: string | undefined;
-      if (!session && !bearer && operation === "lookup" && input.success) {
-        const { accessToken, phoneToken } = input.data;
-        const identity = graphProfile.safeParse(
-          await graph("me?fields=id", {
-            access_token: accessToken,
-            appsecret_proof: createHmac("sha256", secret)
-              .update(accessToken)
-              .digest("hex"),
-          }),
-        );
-        const verified =
-          identity.success &&
-          graphPhone.safeParse(
-            await graph("me/info", {
-              access_token: accessToken,
-              code: phoneToken,
-              secret_key: secret,
-            }),
-          );
-        const phone =
-          verified &&
-          verified.success &&
-          normalizePhone(verified.data.data.number);
-        if (identity.success && phone) {
-          const verifiedIdentity = {
-            appId,
-            sub: identity.data.id,
-            phone,
-            shopId: hk.shopId,
-          };
-          sessionToken = issueZaloMemberSession(verifiedIdentity, secret, issuedAt);
-          session = readZaloMemberSession(sessionToken, secret, hk.shopId, appId);
-        }
-      }
-      if (!session) {
-        response
-          .status(401)
-          .json({ code: bearer ? "SESSION_EXPIRED" : "PHONE_NOT_VERIFIED" });
+      const balanceLabels = readBalanceLabels();
+      const session = readZaloMemberSession(bearerToken(request), secret, hk.shopId, appId);
+      if (!session?.phone || (operation === "update" && !session.memberUid)) {
+        response.status(401).json({ code: "SESSION_EXPIRED" });
         return;
       }
       const { phone } = session;
@@ -187,7 +231,7 @@ function handler(operation: "lookup" | "register" | "update") {
         response.status(401).json({ code: "SESSION_REVOKED" });
         return;
       }
-      if (operation !== "lookup" && request.body?.expectedPhone !== phone) {
+      if (request.body?.expectedPhone !== phone) {
         response.status(409).json({ code: "PHONE_CHANGED" });
         return;
       }
@@ -197,15 +241,27 @@ function handler(operation: "lookup" | "register" | "update") {
         response.status(401).json({ code: "SESSION_REVOKED" });
         return;
       }
-      if (
-        operation === "lookup" ||
-        !details.success ||
-        (operation === "register" && current)
-      ) {
-        response.json({
-          ...customerResult(phone, current, balanceLabels),
-          sessionToken,
-        });
+      if (session.memberUid) {
+        const link = await consentStore.readLink(appId, session.sub, secret);
+        if (current?.uid !== session.memberUid || link?.uid !== session.memberUid ||
+            link.phone !== phone || link.shopId !== hk.shopId) {
+          response.status(401).json({ code: "SESSION_EXPIRED" });
+          return;
+        }
+      }
+      const confirmLink = async (member: NonNullable<typeof current>) => {
+        const saved = await consentStore.saveLink(appId, session.sub, secret, session.issuedAt,
+          { phone, uid: member.uid, shopId: hk.shopId });
+        return saved ? issueZaloMemberSession({ appId, sub: session.sub,
+          phone, memberUid: member.uid, shopId: hk.shopId }, secret, session.issuedAt) : null;
+      };
+      if (operation === "register" && current) {
+        const sessionToken = await confirmLink(current);
+        if (!sessionToken) {
+          response.status(401).json({ code: "SESSION_REVOKED" });
+          return;
+        }
+        response.json({ ...customerResult(phone, current, balanceLabels), sessionToken });
         return;
       }
       const { name, email, birthday, sex } = details.data;
@@ -261,10 +317,16 @@ function handler(operation: "lookup" | "register" | "update") {
         response.status(401).json({ code: "SESSION_REVOKED" });
         return;
       }
-      if (!refreshed) throw new Error("Member not yet available");
+      if (!refreshed || refreshed.uid !== uid) throw new Error("Member not yet available");
+      const sessionToken = operation === "register" ? await confirmLink(refreshed) : undefined;
+      if (sessionToken === null) {
+        response.status(401).json({ code: "SESSION_REVOKED" });
+        return;
+      }
       const result = customerResult(phone, refreshed, balanceLabels);
       response.json({
         ...result,
+        sessionToken,
         profile: {
           ...result.profile,
           email: refreshed.email ?? email ?? "",
@@ -278,7 +340,8 @@ function handler(operation: "lookup" | "register" | "update") {
   };
 }
 
-zaloMemberRoutes.post("/lookup", zaloMemberRateLimiter, handler("lookup"));
+zaloMemberRoutes.post("/authenticate", zaloMemberRateLimiter, memberEntry("authenticate"));
+zaloMemberRoutes.post("/link", zaloMemberRateLimiter, memberEntry("link"));
 zaloMemberRoutes.post("/register", zaloMemberRateLimiter, handler("register"));
 zaloMemberRoutes.post("/profile", zaloMemberRateLimiter, handler("update"));
 

@@ -33,6 +33,10 @@ export function createZaloMemberConsentStore(db: Firestore) {
     return db.collection("zalo_member_consent_revocations").doc(id);
   }
 
+  function linkRef(appId: string, userId: string, secret: string) {
+    return db.collection("zalo_member_links").doc(ref(appId, userId, secret).id);
+  }
+
   return {
     async revoke(appId: string, userId: string, secret: string, revokedAt: number) {
       const document = ref(appId, userId, secret);
@@ -40,10 +44,38 @@ export function createZaloMemberConsentStore(db: Firestore) {
         const existing = await transaction.get(document);
         const previous = existing.get("revokedAt") as number | undefined;
         if (previous !== undefined && previous >= revokedAt) return;
+        const link = linkRef(appId, userId, secret);
+        const linkedAt = (await transaction.get(link)).get("linkedAt");
         transaction.set(document, {
           revokedAt,
           expiresAt: new Date(revokedAt + zaloMemberSessionLifetimeMs),
         });
+        if (typeof linkedAt !== "number" || linkedAt <= revokedAt) transaction.delete(link);
+      });
+    },
+
+    async readLink(appId: string, userId: string, secret: string) {
+      const result = z.object({
+        phone: z.string().regex(/^0\d{9}$/),
+        uid: z.string().min(1),
+        shopId: z.number().int().positive(),
+        linkedAt: z.number().int(),
+      }).safeParse((await linkRef(appId, userId, secret).get()).data());
+      return result.success ? result.data : null;
+    },
+
+    async saveLink(appId: string, userId: string, secret: string, issuedAt: number,
+      link: { phone: string; uid: string; shopId: number }) {
+      const document = ref(appId, userId, secret);
+      return db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(document);
+        const revokedAt = snapshot.get("revokedAt");
+        const target = linkRef(appId, userId, secret);
+        const linkedAt = (await transaction.get(target)).get("linkedAt");
+        if ((typeof revokedAt === "number" && issuedAt <= revokedAt) ||
+            (typeof linkedAt === "number" && issuedAt < linkedAt)) return false;
+        transaction.set(target, { ...link, linkedAt: issuedAt });
+        return true;
       });
     },
 

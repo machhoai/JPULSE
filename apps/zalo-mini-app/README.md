@@ -14,11 +14,11 @@ Header và footer nằm trong [AppLayout.tsx](src/components/AppLayout.tsx), hì
 
 ## Luồng hiện tại
 
-**Tiếp tục bằng Zalo** mở số dư nếu số điện thoại có hồ sơ. Để thử đăng ký trong bản mẫu, mở **Đổi tình huống thử nghiệm** và chọn **Khách mới**. Nhập họ tên và các thông tin bổ sung, rồi xác nhận đăng ký. Hồ sơ mới có thể mở màn hình số dư ngay, kể cả khi chưa có số dư tại cơ sở.
+Khi mở My BDuck, Mini App xác thực tài khoản bằng access token Zalo. Khách chưa liên kết bấm **Liên kết tài khoản** để cấp quyền chia sẻ số điện thoại và tìm hồ sơ. Khách đã liên kết mở thẳng màn hình số dư. Để thử đăng ký trong bản mẫu, chọn **Khách mới** trong **Đổi tình huống thử nghiệm**, rồi bấm **Liên kết tài khoản**.
 
 Để thử với JPULSE, cấu hình `VITE_ZALO_MEMBER_API_URL` bằng URL HTTPS của `/api/zalo-members` và build chế độ Zalo Testing. Trên Cloud Run, cấu hình `ZALO_MEMBER_APP_SECRET` của Zalo App cha cùng `HK_API_BASE_URL` (HTTPS), `HK_API_APP_ID`, `HK_API_KEY` và `HK_API_SHOP_ID` cùng phạm vi với JPOS. Lưu khóa HK và Zalo App Secret trong Secret Manager. Backend cần kết nối cùng Firestore mặc định với JPOS.
 
-Sau khi xác minh số qua Zalo, backend tra chính xác trong `pos_members` theo shop HK và lấy số dư hiện tại theo UID. Nếu Firestore chưa có hồ sơ, backend hỏi HK theo số điện thoại trong cùng shop. Chỉ khi HK xác nhận chưa có thành viên thì ứng dụng mới hiện luồng đăng ký.
+Backend xác thực access token tại `POST /authenticate` và chỉ đổi token số điện thoại tại `POST /link` sau khi kiểm tra phiên và danh tính Zalo. Sau khi xác minh số, backend tra `pos_members` hoặc HK theo shop đã cấu hình và lấy số dư theo UID. Backend lưu liên kết trong `zalo_member_links` và xóa liên kết khi nhận webhook rút quyền hợp lệ. Chỉ khi HK xác nhận chưa có thành viên thì ứng dụng mới hiện luồng đăng ký. Triển khai backend mới và build Mini App mới cùng đợt vì luồng mới dùng hai endpoint thay cho `/lookup`.
 
 Khi endpoint HK của môi trường Testing chỉ hỗ trợ HTTP, có thể đặt `ZALO_MEMBER_HK_ALLOW_HTTP=true` riêng trên revision Testing. Mini App vẫn gọi Cloud Run qua HTTPS. Kết nối từ Cloud Run tới HK qua HTTP truyền dữ liệu thành viên không mã hóa. Các action thành viên dùng phiên bản `10.11.8` giống JPOS, độc lập với phiên bản mặc định `HK_API_VERSION`.
 
@@ -53,7 +53,7 @@ Mở địa chỉ Vite in trong terminal. Để chạy bản đã build, dùng `
 
 ## Thử các luồng
 
-- Bấm **Tiếp tục bằng Zalo** với tình huống **Khách mới** mặc định. Trên màn hình liên kết, nhập `BD01PAYDUCK000123` để xem thẻ có số dư và thử sửa hồ sơ.
+- Chọn **Số điện thoại đã đăng ký** rồi bấm **Liên kết tài khoản** để xem số dư demo và thử sửa hồ sơ.
 - Để thử OCR, chọn [ảnh thẻ giả lập](examples/sample-card.jpg). Mã in là `BD12PAYDUCK543218`. Đối chiếu nội dung OCR rồi bấm **Liên kết thẻ**. Mã này mở thẻ có số dư bằng 0. Có thể sửa mã hoặc nhập tay nếu OCR đọc nhầm.
 - Mở **Mã thẻ dùng thử** để thử số điện thoại không khớp, thẻ đã liên kết, lỗi tra cứu và lỗi tải số dư. Thử mã bất kỳ chưa đăng ký để thấy thông báo không tìm thấy.
 - Trên màn hình đầu, **Đổi tình huống thử nghiệm** cho phép thử khách đã liên kết và khách từ chối chia sẻ số điện thoại.

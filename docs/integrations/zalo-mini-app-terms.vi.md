@@ -12,7 +12,7 @@ Bạn có thể kiểm tra tình trạng đăng ký thành viên, xem hồ sơ, 
 
 | Dữ liệu | Nguồn và mục đích |
 | --- | --- |
-| Mã định danh người dùng Zalo và số điện thoại đã xác minh | Khi bạn chọn **Tiếp tục bằng Zalo** và đồng ý cấp quyền, Mini App dùng mã xác thực của Zalo để xác minh người dùng và số điện thoại. Số điện thoại được dùng để tìm hồ sơ thành viên theo cơ sở hoặc làm số liên hệ khi bạn đăng ký thành viên. |
+| Mã định danh người dùng Zalo và số điện thoại đã xác minh | Mini App xác thực tài khoản khi bạn mở ứng dụng. Khi bạn chọn **Liên kết tài khoản** và đồng ý chia sẻ, hệ thống xác minh số điện thoại để tìm hồ sơ theo cơ sở hoặc dùng làm số liên hệ khi bạn đăng ký thành viên. |
 | Họ tên, email, ngày sinh, giới tính | Mini App hiển thị thông tin có trong hệ thống thành viên. Khi đăng ký hoặc cập nhật hồ sơ, bạn cung cấp họ tên và có thể chọn điền email, ngày sinh và giới tính. Thông tin bạn gửi dùng để tạo hoặc cập nhật hồ sơ thành viên. |
 | Cơ sở, hạng thành viên và số dư | Mini App lấy thông tin từ hệ thống thành viên để hiển thị cho bạn sau khi xác minh số điện thoại. |
 | Thời điểm rút lại đồng ý và mã đối chiếu đã băm | Khi Zalo thông báo bạn đã rút lại đồng ý hoặc yêu cầu xóa dữ liệu Mini App, hệ thống dùng thông tin này để vô hiệu hóa phiên truy cập đã cấp. |
@@ -28,6 +28,8 @@ Chúng tôi giới hạn quyền truy cập theo nhiệm vụ, bảo vệ kết 
 ## 4. Thời hạn xử lý và lưu giữ
 
 Phiên truy cập Mini App có hiệu lực tối đa 15 phút kể từ lúc đăng nhập và có thể mất hiệu lực sớm khi bạn rút lại đồng ý. Mã do Zalo cấp được xử lý để xác minh phiên. Dữ liệu hồ sơ và số dư được truy vấn từ hệ thống thành viên để hiển thị trong Mini App.
+
+JPULSE lưu thông tin liên kết gồm mã đối chiếu tài khoản Zalo, số điện thoại, mã hồ sơ và cơ sở để bạn mở lại hồ sơ ở lần truy cập sau. Hệ thống xóa liên kết khi nhận được thông báo rút quyền hợp lệ từ Zalo.
 
 Thông tin bạn gửi để tạo hoặc cập nhật hồ sơ được lưu trên hệ thống thành viên trong **[Thời hạn hoặc tiêu chí lưu giữ hồ sơ thành viên đã xác nhận]**. Thông tin đối chiếu để vô hiệu hóa phiên được lưu **[Thời hạn tối đa theo cấu hình lưu giữ đã xác nhận]**. Chúng tôi chỉ lưu dữ liệu lâu hơn khi có căn cứ theo pháp luật áp dụng.
 

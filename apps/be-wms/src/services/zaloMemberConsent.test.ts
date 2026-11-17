@@ -46,6 +46,17 @@ test("a session carries its issuance time and is scoped to the configured Mini A
   assert.equal(readZaloMemberSession(token, secret, 1, "123"), null);
 });
 
+test("an identity session can be issued before the user shares a phone", () => {
+  const now = Date.now();
+  const secret = "test-zalo-app-secret";
+  const token = issueZaloMemberSession({ appId, sub: userId, shopId: 1 }, secret, now);
+  const session = readZaloMemberSession(token, secret, 1, appId);
+  assert.equal(session?.sub, userId);
+  assert.equal(session?.phone, undefined);
+  assert.equal(session?.memberUid, undefined);
+  assert.equal(readZaloMemberSession(token, secret, 2, appId), null);
+});
+
 test("retries and out-of-order events preserve the latest revocation across server instances", {
   skip: !process.env.FIRESTORE_EMULATOR_HOST,
 }, async () => {
@@ -56,6 +67,9 @@ test("retries and out-of-order events preserve the latest revocation across serv
   const secret = randomUUID();
   try {
     assert.equal(await reader.isRevoked(appId, userId, secret, timestamp), false);
+    const link = { phone: "0912345678", uid: "member-id", shopId: 1 };
+    assert.equal(await store.saveLink(appId, userId, secret, timestamp - 2, link), true);
+    assert.equal((await reader.readLink(appId, userId, secret))?.uid, link.uid);
     await Promise.all([
       store.revoke(appId, userId, secret, timestamp),
       reader.revoke(appId, userId, secret, timestamp - 1),
@@ -65,6 +79,11 @@ test("retries and out-of-order events preserve the latest revocation across serv
     assert.equal(await reader.isRevoked(appId, userId, secret, timestamp), true);
     assert.equal(await reader.isRevoked(appId, userId, secret, timestamp + 1), false);
     assert.equal(await reader.isRevoked("123", userId, secret, timestamp), false);
+    assert.equal(await reader.readLink(appId, userId, secret), null);
+    assert.equal(await store.saveLink(appId, userId, secret, timestamp, link), false);
+    assert.equal(await store.saveLink(appId, userId, secret, timestamp + 2, link), true);
+    await reader.revoke(appId, userId, secret, timestamp + 1);
+    assert.equal((await reader.readLink(appId, userId, secret))?.uid, link.uid);
   } finally {
     await deleteApp(app);
   }

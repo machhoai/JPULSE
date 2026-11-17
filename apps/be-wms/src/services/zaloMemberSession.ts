@@ -5,7 +5,8 @@ export const zaloMemberSessionLifetimeMs = 15 * 60_000;
 const claims = z.object({
   appId: z.string().min(1),
   sub: z.string().min(1),
-  phone: z.string().regex(/^0\d{9}$/),
+  phone: z.string().regex(/^0\d{9}$/).optional(),
+  memberUid: z.string().min(1).optional(),
   shopId: z.number().int().positive(),
   issuedAt: z.number().int(),
   expires: z.number().int(),
@@ -13,7 +14,7 @@ const claims = z.object({
 
 function signature(payload: string, secret: string) {
   return createHmac("sha256", secret)
-    .update(`jpulse:zalo-member:v3:${payload}`)
+    .update(`jpulse:zalo-member:v4:${payload}`)
     .digest();
 }
 

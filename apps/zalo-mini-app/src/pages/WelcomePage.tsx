@@ -18,17 +18,21 @@ type Props = {
     scenario: DemoScenario;
     setScenario: (scenario: DemoScenario) => void;
     checkingZalo: boolean;
+    authenticating: boolean;
+    zaloReady: boolean;
     declined: boolean;
     zaloError: string;
-    signIn: () => void;
+    connectMember: () => void;
 };
 export function WelcomePage({
     scenario,
     setScenario,
     checkingZalo,
+    authenticating,
+    zaloReady,
     declined,
     zaloError,
-    signIn,
+    connectMember,
 }: Props) {
     return (
         <>
@@ -42,10 +46,16 @@ export function WelcomePage({
                     <button
                         type="button"
                         className={`${primaryButton} mx-auto`}
-                        onClick={signIn}
-                        disabled={checkingZalo}
+                        onClick={connectMember}
+                        disabled={authenticating || checkingZalo}
                     >
-                        {checkingZalo ? "Đang kiểm tra quyền Zalo…" : "Tiếp tục bằng Zalo"}
+                        {authenticating
+                            ? "Đang xác thực tài khoản…"
+                            : checkingZalo
+                              ? "Đang liên kết…"
+                              : hasMemberBackend && !zaloReady
+                                ? "Thử lại"
+                                : "Liên kết tài khoản"}
                         <ArrowRight size={19} aria-hidden="true" />
                     </button>
                     {hasMemberBackend && (
@@ -74,7 +84,7 @@ export function WelcomePage({
                                 className={`${label} mb-1.5 block`}
                                 htmlFor="demo-scenario"
                             >
-                                Tình huống đăng nhập
+                                Tình huống liên kết
                             </label>
                             <select
                                 className={fieldControl}

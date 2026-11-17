@@ -11,7 +11,7 @@ const routes = {
 export type Page = keyof typeof routes;
 const pageChange = "my-bduck:page-change";
 
-function readPage(): Page {
+export function readPage(): Page {
   return (
     (Object.keys(routes) as Page[]).find(
       (page) => routes[page] === window.location.hash,

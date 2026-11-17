@@ -1,5 +1,5 @@
 import type { Balance, Profile } from "./demo";
-import { getZaloMemberCredentials, isZaloTesting } from "./zaloTesting";
+import { getZaloAccessToken, getZaloPhoneToken, isZaloTesting } from "./zaloTesting";
 
 export type MemberAccount = {
   shopId: number;
@@ -22,9 +22,10 @@ export type Registration = {
 
 const messages: Record<string, string> = {
   NOT_CONFIGURED: "Kết nối thành viên chưa được cấu hình.",
+  ZALO_NOT_VERIFIED: "Chưa xác thực được tài khoản Zalo. Vui lòng thử lại.",
   PHONE_NOT_VERIFIED: "Chưa xác minh được số điện thoại. Vui lòng thử lại.",
-  SESSION_EXPIRED: "Phiên đã hết hạn. Vui lòng quay lại và đăng nhập lại.",
-  SESSION_REVOKED: "Quyền chia sẻ đã được rút lại. Bạn có thể cấp lại quyền khi đăng nhập.",
+  SESSION_EXPIRED: "Phiên đã hết hạn. Vui lòng mở lại My BDuck hoặc thử lại.",
+  SESSION_REVOKED: "Quyền chia sẻ đã được rút lại. Bạn có thể cấp lại quyền khi liên kết tài khoản.",
   REGISTRATION_UNAVAILABLE:
     "Đăng ký trực tuyến chưa mở. Vui lòng liên hệ quầy hỗ trợ.",
   PROFILE_INCOMPLETE:
@@ -47,11 +48,18 @@ export function clearMemberSession() {
   sessionToken = undefined;
 }
 
-export async function requestMember(
-  operation: "lookup" | "register" | "profile",
-  profile?: Registration,
-  expectedPhone?: string,
-) {
+export class MemberApiError extends Error {
+  constructor(public readonly code: string) {
+    super(messages[code] ?? "Tạm thời chưa truy vấn được dữ liệu thành viên. Vui lòng thử lại.");
+  }
+}
+
+async function postMember<T>(
+  operation: string,
+  body: object,
+  token?: string,
+  signal?: AbortSignal,
+): Promise<T> {
   const base = import.meta.env.VITE_ZALO_MEMBER_API_URL as string | undefined;
   if (!base) throw new Error(messages.NOT_CONFIGURED);
   const endpoint = new URL(base);
@@ -64,33 +72,57 @@ export async function requestMember(
   ) {
     throw new Error(messages.NOT_CONFIGURED);
   }
-  const login = operation === "lookup";
-  const token = sessionToken;
-  if (!login && !token) throw new Error(messages.SESSION_EXPIRED);
-  const credentials = login ? await getZaloMemberCredentials() : undefined;
   const response = await fetch(`${base.replace(/\/$/, "")}/${operation}`, {
     method: "POST",
     redirect: "error",
     cache: "no-store",
     headers: {
       "Content-Type": "application/json",
-      ...(!login && { Authorization: `Bearer ${token}` }),
+      ...(token && { Authorization: `Bearer ${token}` }),
     },
-    body: JSON.stringify({ ...credentials, profile, expectedPhone }),
+    body: JSON.stringify(body),
+    signal,
   });
   const result = await response.json().catch(() => null);
   if (!response.ok || !result) {
     if (response.status === 401 && sessionToken === token) clearMemberSession();
-    throw new Error(
-      messages[result?.code] ??
-        "Tạm thời chưa truy vấn được dữ liệu thành viên. Vui lòng thử lại.",
-    );
+    throw new MemberApiError(result?.code);
   }
-  const member = result as MemberResult;
-  if (login) {
-    if (!member.sessionToken)
-      throw new Error("Chưa nhận được phiên thành viên.");
-    sessionToken = member.sessionToken;
-  }
-  return member;
+  return result as T;
+}
+
+type EntryResult = { member: MemberResult | null; sessionToken: string };
+
+export async function authenticateMember(signal?: AbortSignal) {
+  const accessToken = await getZaloAccessToken();
+  const result = await postMember<EntryResult>("authenticate", { accessToken }, undefined, signal);
+  signal?.throwIfAborted();
+  if (!result.sessionToken) throw new MemberApiError("SESSION_EXPIRED");
+  sessionToken = result.sessionToken;
+  return result.member;
+}
+
+export async function linkMember() {
+  const token = sessionToken;
+  if (!token) throw new MemberApiError("SESSION_EXPIRED");
+  const phoneToken = await getZaloPhoneToken().catch(() => {
+    throw new MemberApiError("PHONE_NOT_VERIFIED");
+  });
+  const accessToken = await getZaloAccessToken();
+  const result = await postMember<EntryResult>("link", { accessToken, phoneToken }, token);
+  if (!result.sessionToken || !result.member) throw new MemberApiError("SESSION_EXPIRED");
+  sessionToken = result.sessionToken;
+  return result.member;
+}
+
+export async function requestMember(
+  operation: "register" | "profile",
+  profile: Registration,
+  expectedPhone: string,
+) {
+  const token = sessionToken;
+  if (!token) throw new MemberApiError("SESSION_EXPIRED");
+  const result = await postMember<MemberResult>(operation, { profile, expectedPhone }, token);
+  if (result.sessionToken) sessionToken = result.sessionToken;
+  return result;
 }

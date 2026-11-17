@@ -1,25 +1,30 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppLayout } from "./components/AppLayout";
 import { demoCard, demoProfile, type Profile } from "./demo";
 import {
+  authenticateMember,
   hasMemberBackend,
+  linkMember,
+  MemberApiError,
   clearMemberSession,
   requestMember,
   type MemberAccount,
   type MemberResult,
   type Registration,
 } from "./memberApi";
-import { goBackTo, navigate, usePage } from "./navigation";
+import { goBackTo, navigate, readPage, usePage } from "./navigation";
 import { BalancePage } from "./pages/BalancePage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { RegistrationPage } from "./pages/RegistrationPage";
 import { UnregisteredPage } from "./pages/UnregisteredPage";
 import { WelcomePage, type DemoScenario } from "./pages/WelcomePage";
-import { getZaloMemberCredentials, isZaloTesting } from "./zaloTesting";
+import { getZaloPhoneToken, isZaloTesting } from "./zaloTesting";
 
 export function App() {
   const [scenario, setScenario] = useState<DemoScenario>("returning");
   const [declined, setDeclined] = useState(false);
+  const [zaloReady, setZaloReady] = useState(false);
+  const [authenticating, setAuthenticating] = useState(hasMemberBackend);
   const [checkingZalo, setCheckingZalo] = useState(false);
   const [zaloError, setZaloError] = useState("");
   const [profile, setProfile] = useState(demoProfile);
@@ -33,6 +38,8 @@ export function App() {
   );
   const page = usePage();
   const activePage =
+    page === "welcome" && session === "member" ? "balance" :
+    page === "welcome" && session === "unregistered" ? "unregistered" :
     page === "welcome" ||
     (session === "unregistered" &&
       (page === "unregistered" || page === "register")) ||
@@ -41,7 +48,7 @@ export function App() {
       : "welcome";
   const card = accounts[accountIndex];
 
-  function showMember(result: MemberResult) {
+  const showMember = useCallback((result: MemberResult) => {
     if (!result.registered) {
       setProfile({ name: "", email: "", phone: result.phone });
       setSession("unregistered");
@@ -53,20 +60,48 @@ export function App() {
     setAccountIndex(0);
     setUpdatedAt(new Date());
     setSession("member");
-    navigate("balance", activePage === "register");
-  }
+    navigate("balance", readPage() === "register");
+  }, []);
 
-  async function signIn() {
+  const authenticate = useCallback(async (signal?: AbortSignal) => {
+    setAuthenticating(true);
+    setZaloReady(false);
+    setZaloError("");
+    try {
+      const member = await authenticateMember(signal);
+      if (signal?.aborted) return;
+      setZaloReady(true);
+      if (member) showMember(member);
+    } catch (error) {
+      if (!signal?.aborted)
+        setZaloError(error instanceof Error ? error.message : "Chưa xác thực được tài khoản.");
+    } finally {
+      if (!signal?.aborted) setAuthenticating(false);
+    }
+  }, [showMember]);
+
+  useEffect(() => {
+    if (!hasMemberBackend) return;
+    const controller = new AbortController();
+    void authenticate(controller.signal);
+    return () => controller.abort();
+  }, [authenticate]);
+
+  async function connectMember() {
+    if (hasMemberBackend && !zaloReady) {
+      await authenticate();
+      return;
+    }
     setDeclined(scenario === "declined" && !hasMemberBackend);
     if (scenario === "declined" && !hasMemberBackend) return;
     setCheckingZalo(true);
     setZaloError("");
     try {
       if (hasMemberBackend) {
-        showMember(await requestMember("lookup"));
+        showMember(await linkMember());
         return;
       }
-      if (isZaloTesting) await getZaloMemberCredentials();
+      if (isZaloTesting) await getZaloPhoneToken();
       if (scenario === "new")
         showMember({ registered: false, phone: demoProfile.phone });
       else
@@ -76,6 +111,10 @@ export function App() {
           accounts: [{ ...demoCard, shopId: 1 }],
         });
     } catch (error) {
+      if (error instanceof MemberApiError &&
+          (error.code === "SESSION_EXPIRED" || error.code === "SESSION_REVOKED" || error.code === "ZALO_NOT_VERIFIED")) {
+        setZaloReady(false);
+      }
       setZaloError(
         error instanceof Error
           ? error.message
@@ -108,6 +147,7 @@ export function App() {
 
   function signOut() {
     clearMemberSession();
+    setZaloReady(false);
     setScenario("returning");
     setDeclined(false);
     setZaloError("");
@@ -150,15 +190,20 @@ export function App() {
             setDeclined(false);
           }}
           checkingZalo={checkingZalo}
+          authenticating={authenticating}
+          zaloReady={zaloReady}
           declined={declined}
           zaloError={zaloError}
-          signIn={signIn}
+          connectMember={connectMember}
         />
       )}
       {activePage === "unregistered" && (
         <UnregisteredPage
           phone={profile.phone}
-          onBack={signOut}
+          onBack={() => {
+            signOut();
+            if (hasMemberBackend) void authenticate();
+          }}
           onRegister={() => navigate("register")}
         />
       )}

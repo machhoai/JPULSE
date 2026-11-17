@@ -1,12 +1,17 @@
 export const isZaloTesting = import.meta.env.MODE === "zalo-testing";
 
-export async function getZaloMemberCredentials() {
-  const { getAccessToken, getPhoneNumber } = await import("zmp-sdk/apis");
+export async function getZaloAccessToken() {
+  const { getAccessToken } = await import("zmp-sdk/apis");
   const accessToken = await getAccessToken();
   if (!accessToken) throw new Error("Chưa xác thực được tài khoản Zalo.");
-  const { token } = await getPhoneNumber();
-  if (!token) throw new Error("Chưa nhận được quyền chia sẻ số điện thoại.");
-  return { accessToken, phoneToken: token };
+  return accessToken;
+}
+
+export async function getZaloPhoneToken() {
+  const { getPhoneNumber } = await import("zmp-sdk/apis");
+  const result = await getPhoneNumber();
+  if (!result.token) throw new Error("Chưa nhận được quyền chia sẻ số điện thoại.");
+  return result.token;
 }
 
 export async function captureZaloCard() {

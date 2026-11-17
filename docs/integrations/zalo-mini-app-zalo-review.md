@@ -18,7 +18,7 @@ Dự án Google Cloud host backend My B.Duck là `jw-system-f2104`. Google Cloud
 
 ### Nội dung đề xuất cho ô mô tả mục đích xin quyền
 
-> Khi người dùng bấm “Tiếp tục bằng Zalo”, My B.Duck đề nghị người dùng chia sẻ số điện thoại để xác minh và đối chiếu với hồ sơ thành viên B.Duck CityFuns tại cơ sở được hỗ trợ. Nếu đã có hồ sơ, người dùng có thể xem hạng, số dư và thông tin thành viên. Nếu chưa có hồ sơ và cơ sở đã bật đăng ký trực tuyến, người dùng có thể dùng số đã xác minh để đăng ký. Nếu từ chối, Mini App giữ người dùng ở màn hình chào mừng. Người dùng có thể rút quyền hoặc yêu cầu xóa dữ liệu sử dụng Mini App tại Menu của Mini App → Quản lý quyền.
+> Khi mở My B.Duck, hệ thống xác thực tài khoản bằng access token Zalo. Người dùng chưa liên kết có thể bấm “Liên kết tài khoản” và cho phép chia sẻ số điện thoại để tìm hồ sơ thành viên B.Duck CityFuns. Sau khi liên kết, người dùng có thể xem hạng, số dư và thông tin thành viên. Nếu chưa có hồ sơ và cơ sở đã bật đăng ký trực tuyến, người dùng có thể đăng ký bằng số đã xác minh. Nếu từ chối, người dùng có thể thử liên kết lại từ màn hình chào. Người dùng có thể rút quyền tại Menu của Mini App → Quản lý quyền.
 
 ## Nghiệm thu trên thiết bị thật
 
