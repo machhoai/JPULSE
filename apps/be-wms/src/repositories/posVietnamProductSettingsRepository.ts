@@ -28,6 +28,7 @@ type StoredProductSettings = PosVietnamProductSettings & { local_product?: Recor
 const readRollout = (data: FirebaseFirestore.DocumentData | undefined): PosVietnamSalesRollout => ({
   enabled: data?.enabled === true,
   version: typeof data?.version === "number" ? data.version : 0,
+  ...(data?.member_packages_enabled === true ? { member_packages_enabled: true } : {}),
 });
 
 const number = (value: unknown) =>
@@ -63,7 +64,7 @@ export const posVietnamProductSettingsRepository = {
           zh: "试点状态已更改。请刷新后保存。",
         });
       }
-      const next = { enabled: input.enabled, version: previous.version + 1 };
+      const next = { ...previous, enabled: input.enabled, version: previous.version + 1 };
       const now = new Date();
       transaction.set(ref, { ...next, updated_by: input.actorId, updated_at: now.toISOString() }, { merge: true });
       const auditId = randomUUID();

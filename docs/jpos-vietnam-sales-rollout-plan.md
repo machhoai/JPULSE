@@ -97,6 +97,8 @@ Triển khai worker HK và các API thanh toán mới trước khi bật thí đ
 - Thử tiền mặt, PayOS, gửi lại sau lỗi và hủy nội bộ sau khi HK đã cấp quyền lợi. Chỉ mở rộng cho nhóm gói đã có phương án vận hành được duyệt.
 - Chạy hồi quy các nghiệp vụ tạo và tra cứu thành viên, số dư, nạp bù, cấp thẻ và các luồng thẻ hiện tại trên Tauri.
 
+Gói đã áp giá Việt Nam bán qua **Thành viên** trên JPOS 2.0.11 trở lên. Cấu hình theo SKU cần giá dương, VAT và ngày có hiệu lực. Gói phụ thuộc HK phải bật gửi giao dịch HK. Khi HK đang xử lý, thử lại theo mã đơn JPOS hiện có để kiểm tra trạng thái. Khi hủy nội bộ sau khi đã cấp quyền lợi, giữ mã HK để bộ phận vận hành đối chiếu quyền lợi theo quy trình đã duyệt.
+
 **Nghiệm thu** — JPOS thu đúng giá cấu hình, quyền lợi được cấp đúng một lần, thử lại không cộng trùng và các nghiệp vụ thành viên hiện có hoạt động bình thường.
 
 ## Điều kiện chuyển giai đoạn

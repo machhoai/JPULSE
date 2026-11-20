@@ -201,6 +201,7 @@ export interface PosVietnamProductSettingsInput {
 export interface PosVietnamSalesRollout {
   enabled: boolean;
   version: number;
+  member_packages_enabled?: boolean;
 }
 
 export interface PosVietnamProductSettings

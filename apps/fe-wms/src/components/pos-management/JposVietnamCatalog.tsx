@@ -23,6 +23,7 @@ const labels = {
     failed: "Không thể tải danh mục.", empty: "Không tìm thấy sản phẩm.",
     draft: "Thí điểm đang tắt. Đơn mới dùng giá danh mục và luồng gửi HK hiện hành.",
     active: "Thí điểm đang bật cho vé lượt và hàng lưu niệm đã cấu hình. Sản phẩm tắt gửi HK cần có giá Việt Nam hiệu lực mới bán được.",
+    memberActive: "Gói thành viên có giá hiệu lực bán qua mục Thành viên và cần bật gửi HK để cấp quyền lợi.",
     enablePilot: "Bật thí điểm tại cửa hàng", disablePilot: "Tạm dừng thí điểm",
     pilotError: "Không thể tải hoặc lưu trạng thái thí điểm.",
     price: "Giá bán đã gồm VAT (VND)", vat: "VAT Việt Nam", date: "Ngày hiệu lực",
@@ -45,6 +46,7 @@ const labels = {
     failed: "无法加载目录。", empty: "未找到商品。",
     draft: "本店试点已暂停。新订单使用现有目录价格和 HK 同步流程。",
     active: "试点适用于已配置的次票及纪念品。关闭 HK 订单同步的商品须有已生效的越南售价才能销售。",
+    memberActive: "已生效的会员套餐通过会员页面销售，并须发送至 HK 以发放权益。",
     enablePilot: "启用本店试点", disablePilot: "暂停试点",
     pilotError: "无法读取或保存试点状态。",
     price: "含税售价（VND）", vat: "越南增值税", date: "生效日期",
@@ -362,7 +364,7 @@ function VietnamCatalog({ warehouseId, canManage }: { warehouseId: string; canMa
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800">
         <p className="flex min-w-0 flex-1 items-start gap-2" aria-live="polite">
           <Info size={17} aria-hidden className="mt-0.5 shrink-0" />
-          {rolloutError || (rollout ? (rollout.enabled ? t.active : t.draft) : t.loading)}
+          {rolloutError || (rollout ? (rollout.enabled ? `${t.active}${rollout.member_packages_enabled ? ` ${t.memberActive}` : ""}` : t.draft) : t.loading)}
         </p>
         {canManage && rollout && (
           <button type="button" className={`${secondaryButton} min-h-11`} disabled={rolloutSaving || loading}
