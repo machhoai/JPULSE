@@ -28,6 +28,7 @@ import type {
   PosVoucherSettingsView,
   PosVietnamProductSettings,
   PosVietnamProductSettingsInput,
+  PosVietnamSalesRollout,
 } from "@bduck/shared-types";
 
 import { authenticatedFetch } from "@/utils/authenticatedFetch";
@@ -122,6 +123,13 @@ const saveProductVisibilitySettings = (
 };
 
 export const posManagementApi = {
+  getVietnamSalesRollout: (warehouseId: string, signal: AbortSignal, language: "vi" | "zh") =>
+    callPosApi<PosVietnamSalesRollout>(`/api/pos/stores/${warehouseId}/products/vietnam-rollout`, { signal }, language),
+  saveVietnamSalesRollout: (warehouseId: string, enabled: boolean, expectedVersion: number, language: "vi" | "zh") =>
+    callPosApi<PosVietnamSalesRollout>(`/api/pos/stores/${warehouseId}/products/vietnam-rollout`, {
+      method: "PUT",
+      body: JSON.stringify({ enabled, expected_version: expectedVersion }),
+    }, language),
   listVietnamProductSettings: (warehouseId: string, signal: AbortSignal, language: "vi" | "zh") =>
     callPosApi<PosHkCatalogProduct[]>(`/api/pos/stores/${warehouseId}/products/vietnam-settings`, { signal }, language),
   saveVietnamProductSettings: (warehouseId: string, goodsId: string, value: PosVietnamProductSettingsInput, language: "vi" | "zh") =>

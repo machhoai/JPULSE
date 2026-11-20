@@ -19,6 +19,7 @@ import {
 } from "../middlewares/requestAccessContext.js";
 
 const productParams = posWarehouseParamsSchema.extend({ goodsId: posCatalogGoodsIdSchema });
+const rolloutInput = z.object({ enabled: z.boolean(), expected_version: z.number().int().nonnegative() }).strict();
 
 function handleError(response: Response, error: unknown) {
   if (error instanceof z.ZodError) {
@@ -47,6 +48,32 @@ export async function listPosVietnamProductSettings(request: Request, response: 
     requireRequestAuthorization(request).assert("pos.settings.read", warehouseId);
     await loadWarehouseById(warehouseId);
     return sendSuccess(response, await posVietnamProductSettingsRepository.list(warehouseId));
+  } catch (error) {
+    return handleError(response, error);
+  }
+}
+
+export async function getPosVietnamSalesRollout(request: Request, response: Response) {
+  try {
+    const { warehouseId } = posWarehouseParamsSchema.parse(request.params);
+    requireRequestAuthorization(request).assert("pos.settings.read", warehouseId);
+    await loadWarehouseById(warehouseId);
+    return sendSuccess(response, await posVietnamProductSettingsRepository.getRollout(warehouseId));
+  } catch (error) {
+    return handleError(response, error);
+  }
+}
+
+export async function savePosVietnamSalesRollout(request: Request, response: Response) {
+  try {
+    const { warehouseId } = posWarehouseParamsSchema.parse(request.params);
+    requireRequestAuthorization(request).assert("pos.settings.manage", warehouseId);
+    const { enabled, expected_version } = rolloutInput.parse(request.body);
+    await loadWarehouseById(warehouseId);
+    const actorId = requireAuthenticatedRequestUser(request).id;
+    return sendSuccess(response, await posVietnamProductSettingsRepository.saveRollout({
+      warehouseId, enabled, actorId, expectedVersion: expected_version,
+    }));
   } catch (error) {
     return handleError(response, error);
   }

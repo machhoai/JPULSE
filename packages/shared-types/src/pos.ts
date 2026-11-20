@@ -198,6 +198,11 @@ export interface PosVietnamProductSettingsInput {
   send_sale_to_hk: boolean;
 }
 
+export interface PosVietnamSalesRollout {
+  enabled: boolean;
+  version: number;
+}
+
 export interface PosVietnamProductSettings
   extends Omit<PosVietnamProductSettingsInput, "expected_version"> {
   goods_id: string;
@@ -416,6 +421,7 @@ export type PosOrderPaymentStatus =
 
 export const POS_ORDER_SYNC_STATUSES = [
   "NOT_SYNCED",
+  "SKIPPED",
   "PENDING",
   "SYNCING",
   "SYNC_FAILED",

@@ -80,15 +80,20 @@ Lưu dữ liệu tham khảo HK và cấu hình bán Việt Nam riêng. Tác v�
 ## Giai đoạn 4 — Bật giá Việt Nam và thí điểm bán nội bộ trên Tauri
 
 - Dùng cùng cấu hình giá đã phát hành cho màn hình bán, giỏ hàng và backend. Lưu phiên bản cấu hình, giá, VAT và chính sách gửi HK trên đơn. Giao dịch đã tạo mã PayOS hoàn tất theo số tiền đã chốt.
+- Với đơn có gửi HK, để HK tính giá từ mã và số lượng sản phẩm khi tạo đơn. Lưu riêng số tiền HK trả về để xác nhận và thử lại trên HK. Ví dụ JPOS thu 500 và xuất hóa đơn theo 500, còn HK nhận số tiền 200 nếu đơn HK có giá 200.
 - Với SKU tắt gửi HK, hoàn tất đơn sau khi xác nhận thanh toán nội bộ. Cập nhật màn hình trạng thái, in và in lại, lịch sử và khôi phục giao dịch để nhận biết đơn hoàn tất khi chưa có mã HK. Áp dụng chính sách đã lưu cả khi gửi lần đầu và khi thử lại.
 - Bật theo cửa hàng và SKU sau khi nghiệm thu Giai đoạn 2 và 3. Kiểm tra đủ một ca với tiền mặt, PayOS, voucher, in vé, hóa đơn, hủy và chốt doanh thu. Theo dõi lỗi thanh toán, đồng bộ, phát hành và chênh lệch báo cáo theo cửa hàng trước khi mở rộng.
 - Khi cần dừng thí điểm, tạm dừng áp dụng cấu hình mới cho giao dịch mới tại cửa hàng bị ảnh hưởng. Giữ dữ liệu giá, thuế và chính sách đã chốt của các giao dịch đang xử lý hoặc đã thu tiền.
+
+Triển khai cho vé lượt và hàng lưu niệm. Bật hoặc tạm dừng tại **Sản phẩm hiển thị** theo từng cửa hàng. Giá có hiệu lực theo ngày Việt Nam. SKU bán nội bộ phải có giá và VAT có hiệu lực. Tách giỏ có cả SKU nội bộ và SKU gửi HK thành hai giao dịch. Đơn đã tạo QR giữ số tiền và chính sách ban đầu, kể cả khi đổi cấu hình cửa hàng hoặc SKU.
+
+Triển khai worker HK và các API thanh toán mới trước khi bật thí điểm. Cập nhật Tauri tại quầy thí điểm, mở lại danh mục rồi xác nhận giá trên giỏ trước khi thu tiền. Các cấu hình nháp cũ tắt cập nhật danh mục HK cần được kiểm tra và lưu lại để chốt dữ liệu SKU. Theo dõi [kịch bản nghiệm thu production](jpos-production-pilot-test.md) và chỉ mở rộng sau một ca đã đối chiếu.
 
 **Nghiệm thu** — Giá trên giỏ, số tiền thu, biên lai và dữ liệu hóa đơn khớp. Đồng bộ lại từ HK giữ đúng giá Việt Nam đã duyệt. SKU tắt gửi không phát sinh giao dịch HK sau khởi động lại hoặc thử lại.
 
 ## Giai đoạn 5 — Mở rộng sang gói còn cấp quyền lợi qua HK
 
-- Kiểm thử cơ chế cấp quyền lợi khi giá HK khác số tiền Việt Nam. Luồng hiện tại lấy giá từ HK và có thể dừng trước bước thanh toán đơn HK khi hai số tiền lệch.
+- Kiểm thử cơ chế cấp quyền lợi khi giá HK khác số tiền Việt Nam. Xác nhận thanh toán trên HK theo số tiền đơn HK và giữ số tiền đã thu tại Việt Nam trên đơn nội bộ.
 - Thử tiền mặt, PayOS, gửi lại sau lỗi và hủy nội bộ sau khi HK đã cấp quyền lợi. Chỉ mở rộng cho nhóm gói đã có phương án vận hành được duyệt.
 - Chạy hồi quy các nghiệp vụ tạo và tra cứu thành viên, số dư, nạp bù, cấp thẻ và các luồng thẻ hiện tại trên Tauri.
 

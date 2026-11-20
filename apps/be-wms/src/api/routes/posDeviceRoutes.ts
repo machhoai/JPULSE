@@ -1,7 +1,9 @@
 import { raw, Router, type Router as ExpressRouter } from "express";
 import {
+  getPosVietnamSalesRollout,
   listPosVietnamProductSettings,
   savePosVietnamProductSettings,
+  savePosVietnamSalesRollout,
 } from "../controllers/posVietnamProductSettingsController.js";
 
 import { getPosCashDrawerSettingsHandler, savePosCashDrawerSettingsHandler } from "../controllers/posCashDrawerSettingsController.js";
@@ -241,6 +243,17 @@ router.post(
   posSettingsMutationRateLimiter,
   requireAnyScopedPermission("pos.settings.manage"),
   syncPosProductCatalogHandler,
+);
+router.get(
+  "/stores/:warehouseId/products/vietnam-rollout",
+  requireAnyScopedPermission("pos.settings.read"),
+  getPosVietnamSalesRollout,
+);
+router.put(
+  "/stores/:warehouseId/products/vietnam-rollout",
+  posSettingsMutationRateLimiter,
+  requireAnyScopedPermission("pos.settings.manage"),
+  savePosVietnamSalesRollout,
 );
 router.get(
   "/stores/:warehouseId/products/vietnam-settings",

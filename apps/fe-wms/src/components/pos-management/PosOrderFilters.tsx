@@ -86,6 +86,7 @@ export function PosOrderFilters({
             {copy.sync}: {copy.all}
           </option>
           <option value="NOT_SYNCED">{copy.notSynced}</option>
+          <option value="SKIPPED">{copy.syncSkipped}</option>
           <option value="PENDING">{copy.pending}</option>
           <option value="SYNCING">{copy.syncing}</option>
           <option value="SYNC_FAILED">{copy.syncFailed}</option>

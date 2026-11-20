@@ -48,7 +48,8 @@ const resolveVatRate = (
   mapping: InvoiceSkuMapping | undefined,
   config: MeInvoiceStoreConfig | null,
 ): InvoiceVatRateName | null => {
-  return normalizeVatRateName(item.taxRate)
+  return normalizeVatRateName(item.vatRateName)
+    ?? normalizeVatRateName(item.taxRate)
     ?? mapping?.vat_rate_name
     ?? config?.default_vat_rate_name
     ?? null;
@@ -108,6 +109,7 @@ const safeRawItem = (item: Record<string, unknown>) => ({
   quantity: number(item.quantity),
   unitPriceBeforeTax: number(item.unitPriceBeforeTax),
   taxRate: number(item.taxRate),
+  ...(text(item.vatRateName) ? { vatRateName: text(item.vatRateName) } : {}),
   taxAmount: number(item.taxAmount),
 });
 

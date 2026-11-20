@@ -178,6 +178,21 @@ test("LOCAL_PAID JPOS orders stay addressable by local id before HK sync", () =>
   assert.equal(source.projection.amount_before_tax, 100_000);
 });
 
+test("a local-only order preserves the Vietnam VAT classification", () => {
+  const item = paidOrder().items[0];
+  const order = paidOrder({
+    syncStatus: "SKIPPED",
+    totalAmount: 500,
+    items: [{ ...item, price: 500, unitPriceBeforeTax: 500, taxRate: 0, taxAmount: 0, vatRateName: "KCT" }],
+  });
+  assert.equal(posOrderIsPaid(order), true);
+  const { projection } = buildPosInvoiceSourceOrder(order, "2026-08-04", null, null);
+  assert.equal(projection.hk_order_number, null);
+  assert.equal(projection.real_money, 500);
+  assert.ok(Array.isArray(projection.normalized_items));
+  assert.equal(projection.normalized_items[0].vat_rate_name, "KCT");
+});
+
 test("JPOS source writes contain no undefined Firestore values", () => {
   const source = buildPosInvoiceSourceOrder(
     paidOrder({ customerName: undefined, customerPhone: undefined }),

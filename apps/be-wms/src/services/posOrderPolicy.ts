@@ -57,6 +57,7 @@ export const derivePosOrderSyncStatus = (
   if (
     [
       "NOT_SYNCED",
+      "SKIPPED",
       "PENDING",
       "SYNCING",
       "SYNC_FAILED",

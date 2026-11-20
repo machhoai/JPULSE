@@ -1,6 +1,6 @@
 "use client";
 
-import type { InvoiceVatRateName, PosHkCatalogProduct, PosVietnamProductSettings } from "@bduck/shared-types";
+import type { InvoiceVatRateName, PosHkCatalogProduct, PosVietnamProductSettings, PosVietnamSalesRollout } from "@bduck/shared-types";
 import {
   ArrowDownUp, CheckCircle2, ChevronDown, ChevronRight, CircleAlert, CreditCard,
   FolderOpen, Gift, Info, ListFilter, Package, RefreshCw, Search, Tags, Ticket, X,
@@ -21,8 +21,11 @@ const labels = {
     available: "Đang bán", unavailable: "Ngừng bán", vietnam: "Giá Việt Nam",
     missing: "Chưa cấu hình", edit: "Cấu hình", view: "Xem", loading: "Đang tải danh mục…",
     failed: "Không thể tải danh mục.", empty: "Không tìm thấy sản phẩm.",
-    draft: "Cấu hình chuẩn bị. JPOS tại quầy chưa áp dụng các giá và tùy chọn này.",
-    price: "Giá bán đã gồm VAT (VND)", vat: "VAT Việt Nam", date: "Ngày hiệu lực dự kiến",
+    draft: "Thí điểm đang tắt. Đơn mới dùng giá danh mục và luồng gửi HK hiện hành.",
+    active: "Thí điểm đang bật cho vé lượt và hàng lưu niệm đã cấu hình. Sản phẩm tắt gửi HK cần có giá Việt Nam hiệu lực mới bán được.",
+    enablePilot: "Bật thí điểm tại cửa hàng", disablePilot: "Tạm dừng thí điểm",
+    pilotError: "Không thể tải hoặc lưu trạng thái thí điểm.",
+    price: "Giá bán đã gồm VAT (VND)", vat: "VAT Việt Nam", date: "Ngày hiệu lực",
     importHk: "Cập nhật SKU từ HK", sendHk: "Gửi giao dịch bán sang HK",
     chooseVat: "Chọn VAT", save: "Lưu cấu hình", saving: "Đang lưu…", close: "Đóng",
     saved: "Đã lưu cấu hình.", invalid: "Nhập giá VND nguyên, VAT và ngày hiệu lực cùng nhau.",
@@ -40,8 +43,11 @@ const labels = {
     available: "在售", unavailable: "停售", vietnam: "越南售价",
     missing: "未配置", edit: "配置", view: "查看", loading: "正在加载目录…",
     failed: "无法加载目录。", empty: "未找到商品。",
-    draft: "这些配置用于准备。JPOS 收银端尚未应用售价和同步选项。",
-    price: "含税售价（VND）", vat: "越南增值税", date: "预计生效日期",
+    draft: "本店试点已暂停。新订单使用现有目录价格和 HK 同步流程。",
+    active: "试点适用于已配置的次票及纪念品。关闭 HK 订单同步的商品须有已生效的越南售价才能销售。",
+    enablePilot: "启用本店试点", disablePilot: "暂停试点",
+    pilotError: "无法读取或保存试点状态。",
+    price: "含税售价（VND）", vat: "越南增值税", date: "生效日期",
     importHk: "从 HK 更新商品", sendHk: "发送销售交易到 HK",
     chooseVat: "选择增值税", save: "保存配置", saving: "正在保存…", close: "关闭",
     saved: "已保存配置。", invalid: "请同时填写整数售价、增值税和生效日期。",
@@ -291,6 +297,9 @@ function VietnamCatalog({ warehouseId, canManage }: { warehouseId: string; canMa
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [rollout, setRollout] = useState<PosVietnamSalesRollout | null>(null);
+  const [rolloutSaving, setRolloutSaving] = useState(false);
+  const [rolloutError, setRolloutError] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -304,6 +313,28 @@ function VietnamCatalog({ warehouseId, canManage }: { warehouseId: string; canMa
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [lang, reload, t.failed, warehouseId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setRolloutError("");
+    void posManagementApi.getVietnamSalesRollout(warehouseId, controller.signal, lang)
+      .then((value) => { if (!controller.signal.aborted) setRollout(value); })
+      .catch(() => { if (!controller.signal.aborted) setRolloutError(t.pilotError); });
+    return () => controller.abort();
+  }, [lang, reload, t.pilotError, warehouseId]);
+
+  async function toggleRollout() {
+    if (!rollout || rolloutSaving || !canManage) return;
+    setRolloutSaving(true);
+    setRolloutError("");
+    try {
+      setRollout(await posManagementApi.saveVietnamSalesRollout(warehouseId, !rollout.enabled, rollout.version, lang));
+    } catch (reason: unknown) {
+      setRolloutError(reason instanceof Error ? reason.message : t.pilotError);
+    } finally {
+      setRolloutSaving(false);
+    }
+  }
 
   const query = search.trim().toLocaleLowerCase(lang);
   const groups = groupCatalog(products, lang);
@@ -328,9 +359,17 @@ function VietnamCatalog({ warehouseId, canManage }: { warehouseId: string; canMa
   return (
     <section className="space-y-4" aria-labelledby="jpos-hk-catalog-title">
       <h2 id="jpos-hk-catalog-title" className="sr-only">{t.catalog}</h2>
-      <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm leading-relaxed text-amber-950">
-        <Info size={17} aria-hidden className="mt-0.5 shrink-0 text-amber-800" />
-        <p>{t.draft}</p>
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800">
+        <p className="flex min-w-0 flex-1 items-start gap-2" aria-live="polite">
+          <Info size={17} aria-hidden className="mt-0.5 shrink-0" />
+          {rolloutError || (rollout ? (rollout.enabled ? t.active : t.draft) : t.loading)}
+        </p>
+        {canManage && rollout && (
+          <button type="button" className={`${secondaryButton} min-h-11`} disabled={rolloutSaving || loading}
+            onClick={() => void toggleRollout()}>
+            {rolloutSaving ? t.saving : rollout.enabled ? t.disablePilot : t.enablePilot}
+          </button>
+        )}
       </div>
       {message && <p role="status" className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800"><CheckCircle2 size={17} aria-hidden />{message}</p>}
       <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
