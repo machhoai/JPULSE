@@ -1,3 +1,4 @@
+import type { InvoiceVatRateName } from "./invoices.js";
 import type { PosCashDrawerSettings } from "./posCashDrawer.js";
 import type {
   ISOTimestamped,
@@ -191,7 +192,7 @@ export interface PosProductVisibilitySettingsView {
 export interface PosVietnamProductSettingsInput {
   expected_version: number;
   selling_price_vnd: number | null;
-  vat_rate: import("./invoices.js").InvoiceVatRateName | null;
+  vat_rate: InvoiceVatRateName | null;
   effective_date: string | null;
   import_from_hk: boolean;
   send_sale_to_hk: boolean;
