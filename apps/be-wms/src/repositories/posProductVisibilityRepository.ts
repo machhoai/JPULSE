@@ -16,7 +16,7 @@ import type { PosProductVisibilitySettingsValue } from "../services/posProductVi
 
 export const POS_PRODUCT_VISIBILITY_SETTINGS_COLLECTION =
   "pos_product_visibility_settings";
-const JPOS_PRODUCTS_COLLECTION = "jpos_products";
+export const JPOS_PRODUCTS_COLLECTION = "jpos_products";
 
 export class PosProductVisibilityConflictError extends Error {
   readonly statusCode = 409;

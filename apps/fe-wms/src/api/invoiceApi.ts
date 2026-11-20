@@ -73,6 +73,7 @@ export interface InvoiceSyncResult {
   draft_created_count: number;
   draft_rebased_count: number;
   draft_rebase_skipped_count: number;
+  legacy_skipped_count?: number;
   reconciliation: {
     id: string;
     warehouse_id: string;

@@ -1,5 +1,6 @@
 import {
   AuditAction,
+  InvoiceDocumentStatus,
   InvoiceReconciliationCaseType,
 } from "@bduck/shared-types";
 
@@ -14,6 +15,7 @@ import {
   invoiceIssueDeadline,
   invoiceIssueDeadlineExpired,
 } from "./invoiceIssueDeadline.js";
+import { JPOS_INVOICE_MAPPING_VERSION } from "./invoicePosOrderAdapter.js";
 import {
   normalizeMisaInvoice,
   invoiceStatusMonitoringDecision,
@@ -162,7 +164,18 @@ export const reconcileInvoiceDay = async (
         businessDate,
       ),
     ]);
-    const eligibleSources = sources.filter(sourceOrderIsInvoiceEligible);
+    const historicalDocumentIds = new Set(documents
+      .filter((document) =>
+        document.transaction_id ||
+        document.status === InvoiceDocumentStatus.ISSUED ||
+        document.status === InvoiceDocumentStatus.POST_ISSUE_REVIEW,
+      )
+      .map((document) => document.id));
+    const eligibleSources = sources.filter((source) =>
+      sourceOrderIsInvoiceEligible(source) &&
+      (source.mapping_version === JPOS_INVOICE_MAPPING_VERSION ||
+        historicalDocumentIds.has(source.invoice_document_id ?? source.id)),
+    );
     const result = reconcileDailyInvoices({
       sources: eligibleSources.map((source) => ({
         id: String(source.id),

@@ -34,6 +34,18 @@ if (isLocalDevelopment) {
 const nextConfig: NextConfig = {
   /* config options here */
   output: "standalone",
+  async redirects() {
+    if (!isLocalDevelopment) return [];
+
+    return [
+      {
+        source: "/jpos/:path*",
+        has: [{ type: "header", key: "host", value: "127\\.0\\.0\\.1:3197" }],
+        destination: "http://localhost:3197/jpos/:path*",
+        permanent: false,
+      },
+    ];
+  },
   env: {
     NEXT_PUBLIC_BUILD_VERSION: generateBuildVersion(),
     NEXT_PUBLIC_LOCAL_TEST_FIREBASE_API_KEY: isLocalDevelopment

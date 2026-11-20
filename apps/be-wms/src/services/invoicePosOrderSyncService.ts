@@ -55,7 +55,7 @@ export const syncPosInvoiceOrdersForDate = async (input: {
         (value): value is string => typeof value === "string" && Boolean(value),
       ),
   );
-  const writes = orders
+  const candidates = orders
     .filter(
       (order) =>
         !order.hkOrderNumber ||
@@ -70,6 +70,10 @@ export const syncPosInvoiceOrdersForDate = async (input: {
         input.externalSourceAccountKey,
       ),
     );
+  const writes = await invoiceOrderRepository.excludeClaimedExternalIdentities(
+    input.warehouseId,
+    candidates,
+  );
   const counts = await invoiceOrderRepository.upsertOrders(
     input.warehouseId,
     input.runId,

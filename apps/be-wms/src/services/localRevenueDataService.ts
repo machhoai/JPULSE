@@ -1,3 +1,4 @@
+import { meInvoiceConfigRepository } from "../repositories/meInvoiceConfigRepository.js";
 import { posInvoiceOrderRepository } from "../repositories/posInvoiceOrderRepository.js";
 import { fetchRevenueProductGroups } from "../repositories/revenueProductRepository.js";
 
@@ -9,12 +10,14 @@ import {
   toVietnamIsoRange,
   type RevenueDateRange,
 } from "./revenueDateRange.js";
+import { toPublicStoreConfig } from "./meInvoiceStoreConfigService.js";
 
 export type { RevenuePeriodData } from "./localRevenuePeriodBuilder.js";
 
 export async function loadLocalRevenuePeriod(
   warehouseId: string | readonly string[],
   range: RevenueDateRange,
+  invoicePreparation = false,
 ): Promise<RevenuePeriodData> {
   const { startIso, endExclusiveIso } = toVietnamIsoRange(range);
   const warehouseIds = [
@@ -37,7 +40,13 @@ export async function loadLocalRevenuePeriod(
     sourceOrders.push(...batches.flat());
   }
   const groups = sourceOrders.length ? await fetchRevenueProductGroups() : {};
-  return buildLocalRevenuePeriod(sourceOrders, range, groups);
+  const invoiceConfigs = invoicePreparation
+    ? new Map(await Promise.all(warehouseIds.map(async (id) => {
+        const config = await meInvoiceConfigRepository.getStoreConfig(id);
+        return [id, config && config.is_deleted !== true ? toPublicStoreConfig(config) : null] as const;
+      })))
+    : undefined;
+  return buildLocalRevenuePeriod(sourceOrders, range, groups, invoiceConfigs);
 }
 
 export async function loadLocalTaxByDate(

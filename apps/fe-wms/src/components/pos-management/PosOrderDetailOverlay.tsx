@@ -20,7 +20,6 @@ interface Props {
   warehouseId: string;
   selectedOrder: PosOrderSummary | null;
   canCancelLocal: boolean;
-  canRefundRemote: boolean;
   onClose: () => void;
 }
 
@@ -28,7 +27,6 @@ export function PosOrderDetailOverlay({
   warehouseId,
   selectedOrder,
   canCancelLocal,
-  canRefundRemote,
   onClose,
 }: Props) {
   const copy = usePosOrderCopy();
@@ -105,7 +103,6 @@ export function PosOrderDetailOverlay({
       previewError={previewError}
       previewLoading={previewLoading}
       canCancelLocal={canCancelLocal}
-      canRefundRemote={canRefundRemote}
       onCancelled={(result: PosOrderCancelResult) => setDetail(result.order)}
     />
   );

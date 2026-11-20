@@ -7,6 +7,7 @@ export type Profile = {
 };
 
 export type Balance = {
+  category?: number;
   label: string;
   amount: number;
   unit: string;

@@ -1,4 +1,5 @@
 import { ArrowRight, ChevronDown } from "lucide-react";
+import { useState } from "react";
 import {
     heading,
     lede,
@@ -11,7 +12,7 @@ import {
     demoSummary,
 } from "../uiClasses";
 import { MemberCard } from "../components/MemberCard";
-import { hasMemberBackend } from "../memberApi";
+import { hasLocalMemberLookup, hasMemberBackend } from "../memberApi";
 
 export type DemoScenario = "new" | "returning" | "declined";
 type Props = {
@@ -22,7 +23,7 @@ type Props = {
     zaloReady: boolean;
     declined: boolean;
     zaloError: string;
-    connectMember: () => void;
+    connectMember: (phone?: string) => void;
 };
 export function WelcomePage({
     scenario,
@@ -34,6 +35,7 @@ export function WelcomePage({
     zaloError,
     connectMember,
 }: Props) {
+    const [phone, setPhone] = useState("");
     return (
         <>
             <section className="max-[701px]:contents flex flex-col">
@@ -43,10 +45,27 @@ export function WelcomePage({
                     <span className="text-brand">B.Duck Cityfuns</span> của bạn
                 </h1>
                 <div className={`${actions} max-[701px]:order-4 mx-auto !mt-4`}>
-                    <button
+                    {hasLocalMemberLookup ? (
+                        <form className="grid w-full gap-3" onSubmit={(event) => {
+                            event.preventDefault();
+                            if (!checkingZalo) connectMember(phone.trim());
+                        }}>
+                            <label className={label} htmlFor="local-member-phone">Số điện thoại thành viên</label>
+                            <input id="local-member-phone" className={fieldControl} type="tel"
+                                autoComplete="off" inputMode="tel" required maxLength={12}
+                                pattern="(0[0-9]{9}|[+]?84[0-9]{9})"
+                                aria-describedby="local-member-help" value={phone}
+                                onChange={(event) => setPhone(event.target.value)} />
+                            <p id="local-member-help" className="text-sm text-muted">Tra cứu dữ liệu thật từ JPOS/HK. Chế độ chỉ xem.</p>
+                            <button type="submit" disabled={checkingZalo} className={primaryButton}>
+                                {checkingZalo ? "Đang tra cứu…" : "Tra cứu thành viên"}
+                                <ArrowRight size={19} aria-hidden="true" />
+                            </button>
+                        </form>
+                    ) : <button
                         type="button"
                         className={`${primaryButton} mx-auto`}
-                        onClick={connectMember}
+                        onClick={() => connectMember()}
                         disabled={authenticating || checkingZalo}
                     >
                         {authenticating
@@ -57,7 +76,7 @@ export function WelcomePage({
                                 ? "Thử lại"
                                 : "Liên kết tài khoản"}
                         <ArrowRight size={19} aria-hidden="true" />
-                    </button>
+                    </button>}
                     {hasMemberBackend && (
                         <p className="text-sm text-muted">
                             My B.Duck dùng số điện thoại Zalo để tìm hồ sơ và hiển thị số dư của bạn.
@@ -74,7 +93,7 @@ export function WelcomePage({
                             {zaloError}
                         </p>
                     )}
-                    {!hasMemberBackend && (
+                    {!hasMemberBackend && !hasLocalMemberLookup && (
                         <details className={demoOptions}>
                             <summary className={demoSummary}>
                                 Đổi tình huống thử nghiệm{" "}

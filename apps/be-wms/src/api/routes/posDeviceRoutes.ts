@@ -1,4 +1,8 @@
 import { raw, Router, type Router as ExpressRouter } from "express";
+import {
+  listPosVietnamProductSettings,
+  savePosVietnamProductSettings,
+} from "../controllers/posVietnamProductSettingsController.js";
 
 import { getPosCashDrawerSettingsHandler, savePosCashDrawerSettingsHandler } from "../controllers/posCashDrawerSettingsController.js";
 import {
@@ -157,10 +161,7 @@ router.get(
 router.post(
   "/stores/:warehouseId/orders/:localOrderId/cancel",
   posSettingsMutationRateLimiter,
-  requireAnyScopedPermission([
-    "pos.orders.cancel_local",
-    "pos.orders.refund_remote",
-  ]),
+  requireAnyScopedPermission("pos.orders.cancel_local"),
   cancelPosOrderHandler,
 );
 router.get(
@@ -240,6 +241,17 @@ router.post(
   posSettingsMutationRateLimiter,
   requireAnyScopedPermission("pos.settings.manage"),
   syncPosProductCatalogHandler,
+);
+router.get(
+  "/stores/:warehouseId/products/vietnam-settings",
+  requireAnyScopedPermission("pos.settings.read"),
+  listPosVietnamProductSettings,
+);
+router.put(
+  "/stores/:warehouseId/products/:goodsId/vietnam-settings",
+  posSettingsMutationRateLimiter,
+  requireAnyScopedPermission("pos.settings.manage"),
+  savePosVietnamProductSettings,
 );
 router.get(
   "/devices/:deviceId/payment-settings",

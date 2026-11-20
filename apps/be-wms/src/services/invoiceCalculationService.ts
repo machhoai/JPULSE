@@ -49,7 +49,7 @@ const calculateDiscount = (
 export const calculateInvoice = (
   lines: InvoiceSourceOrderLine[],
   priceIncludesVat: boolean,
-  option: MeInvoiceOptionUserDefined,
+  option: Pick<MeInvoiceOptionUserDefined, "amount_oc_decimal_digits" | "unit_price_oc_decimal_digits">,
 ): InvoiceCalculationResult | null => {
   if (
     lines.length === 0
@@ -91,11 +91,11 @@ export const calculateInvoice = (
         divideDecimal(sourceAmount, divisor, amountDigits + 8),
         amountDigits,
       );
-      discount = roundDecimal(
-        divideDecimal(sourceDiscount, divisor, amountDigits + 8),
+      amountWithoutVat = roundDecimal(
+        divideDecimal(discountedSourceAmount, divisor, amountDigits + 8),
         amountDigits,
       );
-      amountWithoutVat = subtractDecimal(amount, discount);
+      discount = subtractDecimal(amount, amountWithoutVat);
       totalAmount = roundDecimal(discountedSourceAmount, amountDigits);
       vatAmount = subtractDecimal(totalAmount, amountWithoutVat);
     } else {

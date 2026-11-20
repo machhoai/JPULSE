@@ -49,14 +49,7 @@ export default function PosManagementPage() {
   const canManageDevices = hasPermission("pos.devices.manage", activeStoreId);
   const canReadSettings = hasPermission("pos.settings.read", activeStoreId);
   const canReadOrders = hasPermission("pos.orders.read", activeStoreId);
-  const canCancelLocal = hasPermission(
-    "pos.orders.cancel_local",
-    activeStoreId,
-  );
-  const canRefundRemote = hasPermission(
-    "pos.orders.refund_remote",
-    activeStoreId,
-  );
+  const canCancelLocal = hasPermission("pos.orders.cancel_local", activeStoreId);
   const canManageSettings = hasPermission("pos.settings.manage", activeStoreId);
   const canReadAdvertising = hasPermission(
     "pos.advertising.read",
@@ -231,7 +224,6 @@ export default function PosManagementPage() {
                     warehouseId={activeStoreId}
                     canRead={canReadOrders}
                     canCancelLocal={canCancelLocal}
-                    canRefundRemote={canRefundRemote}
                   />
                 ) : (
                   <PosNoAccess />

@@ -86,7 +86,7 @@ const copy = {
     all: "Tất cả trạng thái",
     empty: "Chưa có dữ liệu đơn hàng cho ngày này.",
     emptyHint:
-      "Bấm Cập nhật dữ liệu để tải đơn hàng và kiểm tra trạng thái MISA.",
+      "Bấm Cập nhật dữ liệu để tải đơn JPOS và kiểm tra trạng thái MISA.",
     order: "Đơn hàng",
     payment: "Thanh toán",
     beforeTax: "Trước thuế",
@@ -139,7 +139,7 @@ const copy = {
     search: "搜索订单号或客户",
     all: "全部状态",
     empty: "当天尚无订单数据。",
-    emptyHint: "请选择同步全天订单，从 HKAPI 获取完整数据。",
+    emptyHint: "请选择更新数据，加载 JPOS 订单并检查 MISA 状态。",
     order: "订单",
     payment: "付款",
     beforeTax: "税前金额",
@@ -431,7 +431,7 @@ export default function InvoiceManagementPage() {
     try {
       const operation = (async () => {
         let lastResult: InvoiceSyncResult | null = null;
-        const draftCounts = { created: 0, updated: 0 };
+        const draftCounts = { created: 0, updated: 0, legacySkipped: 0 };
         for (const date of selectedDates) {
           lastResult = await invoiceApi.syncSourceOrders(
             activeStoreId,
@@ -441,14 +441,21 @@ export default function InvoiceManagementPage() {
           );
           draftCounts.created += lastResult.draft_created_count;
           draftCounts.updated += lastResult.draft_rebased_count;
+          draftCounts.legacySkipped += lastResult.legacy_skipped_count ?? 0;
         }
         if (!lastResult) throw new Error("INVOICE_DATE_RANGE_EMPTY");
         setSyncResult(selectedDates.length === 1 ? lastResult : null);
         await loadOrders();
+        const legacySummary = draftCounts.legacySkipped > 0
+          ? lang === "vi"
+            ? ` Có ${draftCounts.legacySkipped} đơn đã liên kết với hồ sơ lịch sử và cần kiểm tra để tránh phát hành trùng.`
+            : ` 有 ${draftCounts.legacySkipped} 笔订单关联历史记录，需要核对以避免重复开票。`
+          : "";
         setSourceUpdateSummary(
-          lang === "vi"
+          (lang === "vi"
             ? `Đã tạo ${draftCounts.created} và tự cập nhật ${draftCounts.updated} hóa đơn nháp, giữ thông tin người mua. Các đơn cần xác nhận được gom trong danh sách “Cần kiểm tra thay đổi”.`
-            : `已创建 ${draftCounts.created} 并自动更新 ${draftCounts.updated} 张草稿，保留买方信息。需确认的订单已汇总在“需要检查变化”列表。`,
+            : `已创建 ${draftCounts.created} 并自动更新 ${draftCounts.updated} 张草稿，保留买方信息。需确认的订单已汇总在“需要检查变化”列表。`) +
+            legacySummary,
         );
         return lastResult;
       })();
@@ -1702,7 +1709,7 @@ function SyncResultCard({
         )}
       </div>
 
-      {/* HKAPI Sync Counters (New, Updated, Unchanged) */}
+      {/* JPOS sync counters */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1.5 rounded-lg border border-emerald-200/80 bg-emerald-50/60 px-2.5 py-1 text-xs shadow-2xs">
           <span className="size-2 rounded-full bg-emerald-500" />

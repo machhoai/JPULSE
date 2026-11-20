@@ -15,12 +15,10 @@ export function PosOrderPanel({
   warehouseId,
   canRead,
   canCancelLocal,
-  canRefundRemote,
 }: {
   warehouseId: string;
   canRead: boolean;
   canCancelLocal: boolean;
-  canRefundRemote: boolean;
 }) {
   const copy = usePosOrderCopy();
   const [selectedOrder, setSelectedOrder] = useState<PosOrderSummary | null>(
@@ -73,7 +71,6 @@ export function PosOrderPanel({
         warehouseId={warehouseId}
         selectedOrder={selectedOrder}
         canCancelLocal={canCancelLocal}
-        canRefundRemote={canRefundRemote}
         onClose={() => setSelectedOrder(null)}
       />
     </div>

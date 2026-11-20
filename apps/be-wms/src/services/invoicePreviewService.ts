@@ -4,6 +4,7 @@ import { invoiceDocumentRepository } from "../repositories/invoiceDocumentReposi
 import { meInvoiceConfigRepository } from "../repositories/meInvoiceConfigRepository.js";
 import type { AuthorizationService } from "./authorization/index.js";
 import { logAudit, type AuditMetadata } from "./auditService.js";
+import { JPOS_INVOICE_MAPPING_VERSION } from "./invoicePosOrderAdapter.js";
 import { executeWithMeInvoiceClient } from "./meInvoiceConnectionService.js";
 import { buildMeInvoicePayload } from "./meInvoicePayloadBuilder.js";
 import { toPublicStoreConfig } from "./meInvoiceStoreConfigService.js";
@@ -39,6 +40,16 @@ export const previewInvoiceSourceOrder = async (
         vi: "Dữ liệu đơn hàng đã thay đổi. Vui lòng tải lại trước khi xem hóa đơn.",
         zh: "订单数据已更改，请重新加载后再预览发票。",
       },
+    };
+  }
+  if (sourceOrder.mapping_version !== JPOS_INVOICE_MAPPING_VERSION) {
+    throw {
+      statusCode: 409,
+      messages: {
+        vi: "Cần đồng bộ dữ liệu thanh toán JPOS trước khi tạo bản xem trước.",
+        zh: "请同步 JPOS 付款数据后再预览发票。",
+      },
+      data: { code: "INVOICE_SOURCE_REQUIRES_JPOS_SYNC" },
     };
   }
   const preflight = sourceOrder.preflight as

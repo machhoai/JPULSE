@@ -44,6 +44,23 @@ export const hasMemberBackend =
 
 let sessionToken: string | undefined;
 
+export const hasLocalMemberLookup = import.meta.env.DEV &&
+  import.meta.env.MODE === "development" &&
+  import.meta.env.VITE_ZALO_LOCAL_LOOKUP === "true";
+
+export async function lookupLocalMember(phone: string): Promise<MemberResult> {
+  if (!hasLocalMemberLookup) throw new MemberApiError("NOT_CONFIGURED");
+  const response = await fetch("/__local-zalo/lookup", {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json", "X-Local-Zalo-Lookup": "1" },
+    body: JSON.stringify({ phone }),
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok || !result) throw new MemberApiError(result?.code);
+  return result as MemberResult;
+}
+
 export function clearMemberSession() {
   sessionToken = undefined;
 }

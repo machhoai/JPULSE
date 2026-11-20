@@ -17,6 +17,7 @@ export function PosConfigurationPanels({
   canManage,
   activeSubTab,
   onSelect,
+  jposWeb = false,
 }: {
   warehouseId: string;
   storeName: string;
@@ -24,10 +25,11 @@ export function PosConfigurationPanels({
   canManage: boolean;
   activeSubTab: SettingsSubTab;
   onSelect: (value: SettingsSubTab) => void;
+  jposWeb?: boolean;
 }) {
   return (
     <div>
-      <PosSettingsSubNav activeSubTab={activeSubTab} onSelect={onSelect} />
+      <PosSettingsSubNav activeSubTab={activeSubTab} onSelect={onSelect} jposWeb={jposWeb} />
       {activeSubTab === "receipt" && (
         <PosSettingsPanel
           key={`${warehouseId}:${management.settings?.version ?? 0}`}
@@ -72,7 +74,7 @@ export function PosConfigurationPanels({
           canManage={canManage}
         />
       )}
-      {activeSubTab === "products" && (
+      {!jposWeb && activeSubTab === "products" && (
         <PosProductVisibilityPanel
           key={`${warehouseId}:products`}
           warehouseId={warehouseId}

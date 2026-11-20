@@ -29,6 +29,8 @@ interface BottomSheetProps {
     desktopClassName?: string;
     headerMode?: "default" | "handle-only";
     mobileBreakpoint?: "md" | "lg";
+    bottomOffset?: string;
+    closeLabel?: string;
 }
 
 export function BottomSheet({
@@ -42,6 +44,8 @@ export function BottomSheet({
     desktopClassName,
     headerMode = "default",
     mobileBreakpoint = "md",
+    bottomOffset = "var(--bottomnav-height, 68px)",
+    closeLabel,
 }: BottomSheetProps) {
     const [snap, setSnap] = useState<SnapPoint>(defaultSnap);
     const [dragHeight, setDragHeight] = useState<number | null>(null);
@@ -106,6 +110,7 @@ export function BottomSheet({
     const handleDragStart = useCallback(
         (e: ReactPointerEvent<HTMLDivElement>) => {
             if (e.button !== 0) return;
+            if (e.target instanceof Element && e.target.closest("button")) return;
 
             e.currentTarget.setPointerCapture(e.pointerId);
             const startHeight = getHeightPx();
@@ -250,7 +255,7 @@ export function BottomSheet({
                         : dragHeight === null
                           ? SNAP_HEIGHTS[snap]
                           : `${dragHeight}px`,
-                    bottom: isDesktopLayout ? 0 : "var(--bottomnav-height, 68px)",
+                    bottom: isDesktopLayout ? 0 : bottomOffset,
                     transform: isSheetOpen ? "translateY(0)" : "translateY(100%)",
                     opacity: isSheetOpen ? 1 : 0,
                     pointerEvents: isSheetOpen ? "auto" : "none",
@@ -285,6 +290,7 @@ export function BottomSheet({
                     {onClose && headerMode === "default" ? (
                         <button
                             type="button"
+                            aria-label={closeLabel}
                             onClick={closeSheet}
                             className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-850 transition-colors"
                         >

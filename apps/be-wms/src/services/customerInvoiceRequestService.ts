@@ -32,7 +32,7 @@ import type { CustomerInvoiceRequestSubmission } from "./customerInvoiceRequestS
 import { resolveExternalStoreBinding } from "./externalStoreBindingService.js";
 import { canEditInvoiceDocument } from "./invoiceDocumentPolicy.js";
 import { ensureInitialInvoiceDocument } from "./invoiceDocumentService.js";
-import { buildPosInvoiceSourceOrder, posOrderIsPaid } from "./invoicePosOrderAdapter.js";
+import { buildPosInvoiceSourceOrder, JPOS_INVOICE_MAPPING_VERSION, posOrderIsPaid } from "./invoicePosOrderAdapter.js";
 import { toPublicStoreConfig } from "./meInvoiceStoreConfigService.js";
 
 type JsonRecord = Record<string, unknown>;
@@ -104,7 +104,7 @@ const loadInvoiceConfig = async (warehouseId: string) => {
 const ensureSourceAndDocument = async (order: PosInvoiceOrderRecord) => {
   let source = await findSourceOrder(order);
   const { storeConfig, account } = await loadInvoiceConfig(order.warehouseId);
-  if (!source) {
+  if (!source || (source.source_system === "JPOS" && source.mapping_version !== JPOS_INVOICE_MAPPING_VERSION)) {
     const externalBinding = await resolveExternalStoreBinding(
       "JOYWORLD_LEGACY",
       order.warehouseId,
@@ -117,8 +117,20 @@ const ensureSourceAndDocument = async (order: PosInvoiceOrderRecord) => {
       businessDate,
       storeConfig,
       account as StoredMeInvoiceAccount,
-      externalBinding?.source_account_key,
+      externalBinding?.source_account_key ?? "joyworld-legacy-default",
     );
+    const available = await invoiceOrderRepository.excludeClaimedExternalIdentities(
+      order.warehouseId,
+      [write],
+    );
+    if (!available.length) {
+      throw serviceError(
+        409,
+        "Đơn hàng có hồ sơ hóa đơn lịch sử cần được đối chiếu.",
+        "订单关联历史发票记录，请先核对。",
+        "INVOICE_LEGACY_SOURCE_REVIEW_REQUIRED",
+      );
+    }
     const startedAt = new Date();
     const runId = await invoiceOrderRepository.createRun({
       warehouse_id: order.warehouseId,
@@ -162,6 +174,14 @@ const ensureSourceAndDocument = async (order: PosInvoiceOrderRecord) => {
     order.warehouseId,
   );
   if (!document) {
+    if (source.mapping_version !== JPOS_INVOICE_MAPPING_VERSION) {
+      throw serviceError(
+        409,
+        "Đơn hàng có hồ sơ hóa đơn lịch sử cần được đối chiếu trước khi tạo bản nháp.",
+        "订单关联历史发票记录，请核对后再生成草稿。",
+        "INVOICE_LEGACY_SOURCE_REVIEW_REQUIRED",
+      );
+    }
     await ensureInitialInvoiceDocument(
       source,
       storeConfig,
@@ -209,7 +229,7 @@ const toPublicView = (
   const paymentTime = order.paidAt ?? order.createdAt;
   const status = publicStatus(paymentTime, source, document);
   return {
-    order_reference: order.hkOrderNumber ?? order.localOrderId,
+    order_reference: order.localOrderId,
     local_order_id: order.localOrderId,
     hk_order_number: order.hkOrderNumber ?? null,
     total_amount: order.totalAmount,

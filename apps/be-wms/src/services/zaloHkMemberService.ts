@@ -71,6 +71,7 @@ async function findScopedHkAccount(config: Config, phone: string) {
         (error.status === 200 || error.status === 404) &&
         error.response?.success === false && error.response.data === null &&
         (error.response.msg === "Member information does not exist" ||
+         error.response.msg === "Thông tin thành viên không tồn tại" ||
          error.response.desc === "No member information found via mobile phone number")) return null;
     throw error;
   }

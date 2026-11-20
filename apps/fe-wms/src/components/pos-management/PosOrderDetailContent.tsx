@@ -23,7 +23,6 @@ interface Props {
   previewError: string | null;
   previewLoading: boolean;
   canCancelLocal: boolean;
-  canRefundRemote: boolean;
   onCancelled: (result: PosOrderCancelResult) => void;
 }
 

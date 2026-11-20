@@ -32,6 +32,7 @@ export interface RevenueSourceDashboardQuery extends RevenueDashboardQuery {
   warehouseId?: string;
   /** Trusted IDs supplied only after controller authorization, never from query/body. */
   warehouseIds?: string[];
+  invoicePreparation?: boolean;
 }
 
 export async function resolveRevenueWarehouseId(
@@ -120,16 +121,16 @@ export async function getRevenueSourceDashboardData(
   const range = normalizeRevenueRange(canonicalQuery);
   const comparisonRange = previousRevenueRange(canonicalQuery, range);
   const warehouseIds = allStores ? query.warehouseIds! : [warehouseId];
-  const loader = (period: typeof range) =>
+  const loader = (period: typeof range, invoicePreparation = false) =>
     query.source === "OPEN_API"
       ? loadOpenApiRevenuePeriod(warehouseId, period)
-      : loadLocalRevenuePeriod(warehouseIds, period);
+      : loadLocalRevenuePeriod(warehouseIds, period, invoicePreparation);
   const warehouses = await warehouseRepository.findWarehousesScoped({
     isSystemAdmin: false,
     facilityIds: warehouseIds,
   });
   const [current, previous] = await Promise.all([
-    loader(range),
+    loader(range, query.invoicePreparation),
     loader(comparisonRange),
   ]);
   const dashboard = buildRevenueDashboard({

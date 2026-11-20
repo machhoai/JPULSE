@@ -7,6 +7,7 @@ import type {
   PosLuckyDrawSettings,
   PosLuckyDrawSettingsInput,
   PosLuckyDrawSettingsView,
+  PosHkCatalogProduct,
   PosOrderCancelInput,
   PosOrderCancelResult,
   PosOrderDetail,
@@ -25,6 +26,8 @@ import type {
   PosVoucherCampaignSetting,
   PosVoucherCampaignSettingInput,
   PosVoucherSettingsView,
+  PosVietnamProductSettings,
+  PosVietnamProductSettingsInput,
 } from "@bduck/shared-types";
 
 import { authenticatedFetch } from "@/utils/authenticatedFetch";
@@ -119,6 +122,14 @@ const saveProductVisibilitySettings = (
 };
 
 export const posManagementApi = {
+  listVietnamProductSettings: (warehouseId: string, signal: AbortSignal, language: "vi" | "zh") =>
+    callPosApi<PosHkCatalogProduct[]>(`/api/pos/stores/${warehouseId}/products/vietnam-settings`, { signal }, language),
+  saveVietnamProductSettings: (warehouseId: string, goodsId: string, value: PosVietnamProductSettingsInput, language: "vi" | "zh") =>
+    callPosApi<PosVietnamProductSettings>(
+      `/api/pos/stores/${warehouseId}/products/${encodeURIComponent(goodsId)}/vietnam-settings`,
+      { method: "PUT", body: JSON.stringify(value) },
+      language,
+    ),
   saveCashDrawerSettings: (deviceId: string, value: PosCashDrawerSettingsInput, language: "vi" | "zh" = "vi") =>
     callPosApi<PosCashDrawerSettings>(`/api/pos/devices/${deviceId}/cash-drawer-settings`, {
       method: "PUT", body: JSON.stringify(value),

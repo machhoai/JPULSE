@@ -19,6 +19,9 @@ import {
   normalizePhone,
 } from "../../services/zaloHkMemberService.js";
 
+import { customerResult } from "../../services/zaloMemberPresentation.js";
+import { logZaloGraphFailure } from "../../services/zaloGraphDiagnostics.js";
+
 const origin = "https://h5.zdn.vn";
 export const zaloMemberRoutes: Router = Router();
 const consentStore = createZaloMemberConsentStore(db);
@@ -50,59 +53,23 @@ const graphPhone = z.object({
   error: z.literal(0),
   data: z.object({ number: z.string() }),
 });
-const balancePresentation = z.record(
-  z.string().regex(/^\d+$/),
-  z.object({ label: z.string().trim().min(1), unit: z.string().trim() }),
-);
-
 async function graph(path: string, headers: Record<string, string>) {
+  const operation = path === "me?fields=id" ? "identity" : "phone";
   const response = await fetch(`https://graph.zalo.me/v2.0/${path}`, {
     headers,
     signal: AbortSignal.timeout(8000),
     redirect: "error",
   });
+  const payload: unknown = await response.json().catch(() => null);
+  const valid = operation === "identity"
+    ? graphProfile.safeParse(payload).success
+    : graphPhone.safeParse(payload).success;
+  if (!response.ok || !valid) {
+    logZaloGraphFailure(operation, response.status, payload);
+  }
   if (response.status >= 500 || response.status === 429)
     throw new Error("Zalo unavailable");
-  return response.ok ? response.json() : null;
-}
-
-function customerResult(
-  phone: string,
-  member: Awaited<ReturnType<typeof findZaloHkMember>>,
-  balanceLabels: z.infer<typeof balancePresentation>,
-) {
-  if (!member) return { registered: false, phone };
-  return {
-    registered: true,
-    profile: {
-      name: member.realName ?? "",
-      email: member.email ?? "",
-      phone,
-      birthday: member.birthday?.slice(0, 10),
-      sex: (
-        { male: "1", female: "2", "1": "1", "2": "2", "3": "3" } as Record<
-          string,
-          string
-        >
-      )[String(member.sex).toLowerCase()],
-    },
-    accounts: [{
-      shopId: member.shopId,
-      store: member.shopName,
-      level: member.levelName || "Thành viên",
-      balances: member.storedValues.map(({ category, value }) => ({
-        category,
-        label:
-          balanceLabels[String(category)]?.label ?? `Số dư loại ${category}`,
-        amount: value,
-        unit: balanceLabels[String(category)]?.unit ?? "",
-      })),
-    }],
-  };
-}
-
-function readBalanceLabels() {
-  return balancePresentation.parse(JSON.parse(process.env.ZALO_MEMBER_BALANCE_LABELS || "{}"));
+  return response.ok ? payload : null;
 }
 
 async function identifyZaloUser(accessToken: string, secret: string) {
@@ -152,7 +119,7 @@ function memberEntry(operation: "authenticate" | "link") {
         if (link && member?.uid === link.uid &&
             !await consentStore.isRevoked(appId, sub, secret, link.linkedAt)) {
           const sessionToken = issueZaloMemberSession({ ...scope, phone: link.phone, memberUid: link.uid }, secret, issuedAt);
-          response.json({ sessionToken, member: customerResult(link.phone, member, readBalanceLabels()) });
+          response.json({ sessionToken, member: customerResult(link.phone, member) });
           return;
         }
         response.json({ sessionToken: issueZaloMemberSession(scope, secret, issuedAt), member: null });
@@ -180,7 +147,7 @@ function memberEntry(operation: "authenticate" | "link") {
         return;
       }
       const member = await findZaloHkMember(hk, phone);
-      const result = customerResult(phone, member, readBalanceLabels());
+      const result = customerResult(phone, member);
       const saved = !member || await consentStore.saveLink(appId, sub, secret, session.issuedAt,
         { phone, uid: member.uid, shopId: hk.shopId });
       if (!saved || await isLinkRevoked()) {
@@ -219,7 +186,6 @@ function handler(operation: "register" | "update") {
       return;
     }
     try {
-      const balanceLabels = readBalanceLabels();
       const session = readZaloMemberSession(bearerToken(request), secret, hk.shopId, appId);
       if (!session?.phone || (operation === "update" && !session.memberUid)) {
         response.status(401).json({ code: "SESSION_EXPIRED" });
@@ -261,7 +227,7 @@ function handler(operation: "register" | "update") {
           response.status(401).json({ code: "SESSION_REVOKED" });
           return;
         }
-        response.json({ ...customerResult(phone, current, balanceLabels), sessionToken });
+        response.json({ ...customerResult(phone, current), sessionToken });
         return;
       }
       const { name, email, birthday, sex } = details.data;
@@ -323,7 +289,7 @@ function handler(operation: "register" | "update") {
         response.status(401).json({ code: "SESSION_REVOKED" });
         return;
       }
-      const result = customerResult(phone, refreshed, balanceLabels);
+      const result = customerResult(phone, refreshed);
       response.json({
         ...result,
         sessionToken,

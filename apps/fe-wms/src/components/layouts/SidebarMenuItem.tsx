@@ -20,6 +20,7 @@ interface SidebarMenuItemProps {
     label: string;
     /** Realtime badge count (0 = hidden) */
     badgeCount?: number;
+    onNavigate?: () => void;
 }
 
 /**
@@ -34,6 +35,7 @@ export default function SidebarMenuItem({
     isCollapsed,
     label,
     badgeCount = 0,
+    onNavigate,
 }: SidebarMenuItemProps) {
     const pathname = usePathname();
     const isActive =
@@ -45,6 +47,9 @@ export default function SidebarMenuItem({
     return (
         <Link
             href={item.href}
+            aria-current={isActive ? "page" : undefined}
+            aria-label={isCollapsed ? label : undefined}
+            onNavigate={onNavigate}
             title={isCollapsed ? `${label}${showBadge ? ` (${badgeCount})` : ""}` : undefined}
             className={`
         group relative flex min-h-8 items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5

@@ -64,7 +64,7 @@ const casePresentation: Record<
   MISA_NOT_IN_SOURCE: {
     title: "Hóa đơn MISA không có đơn nguồn",
     description:
-      "MISA có hóa đơn nhưng hệ thống chưa ghép được với đơn JPOS/HKAPI.",
+      "MISA có hóa đơn nhưng hệ thống chưa ghép được với đơn JPOS hoặc hồ sơ lịch sử.",
     tone: "border-violet-200 bg-violet-50 text-violet-800",
   },
   LEDGER_MISMATCH: {

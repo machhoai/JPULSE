@@ -19,7 +19,9 @@ const devOcrAssets = {
   "/ocr-dev/eng.traineddata.gz": [languageModel, "application/octet-stream"],
 } as const;
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, isPreview, mode }) => {
+  const localLookup = command === "serve" && !isPreview && mode === "development" &&
+    loadEnv(mode, process.cwd(), "VITE_").VITE_ZALO_LOCAL_LOOKUP === "true";
   if (mode === "zalo-production") {
     const env = loadEnv(mode, process.cwd(), "VITE_");
     const url = URL.parse(env.VITE_ZALO_MEMBER_API_URL ?? "");
@@ -39,6 +41,28 @@ export default defineConfig(({ mode }) => {
   }
   return {
     base: "./",
+    server: localLookup ? {
+      allowedHosts: [],
+      proxy: {
+        "/__local-zalo/lookup": {
+          target: "http://127.0.0.1:4011",
+          changeOrigin: true,
+          rewrite: () => "/lookup",
+          bypass(request, response) {
+            const host = request.headers.host ?? "";
+            const peer = request.socket.remoteAddress;
+            if (/^127\.0\.0\.1:\d+$/.test(host) &&
+                (peer === "127.0.0.1" || peer === "::ffff:127.0.0.1") &&
+                request.headers.origin === `http://${host}`) return;
+            if (response) {
+              response.statusCode = 403;
+              response.end();
+            }
+            return false;
+          },
+        },
+      },
+    } : undefined,
     plugins: [
       react(),
       tailwindcss(),

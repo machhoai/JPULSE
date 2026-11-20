@@ -1,0 +1,355 @@
+import { LockClosedIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
+import { gooeyToast } from "goey-toast";
+import { LogOut, Globe } from "lucide-react";
+import Image from "next/image";
+import { useState, useEffect, useCallback, useRef } from "react";
+
+import { createDetailedApiError } from "@/utils/apiError";
+import { authenticatedFetch } from "@/utils/authenticatedFetch";
+
+import { useAuth } from "../../hooks/useAuth";
+import { useMFA } from "../../hooks/useMFA";
+import { useTranslation } from "../../lib/i18n";
+import { MFA_LOCK_TEXT } from "../../lib/i18n/componentTranslations";
+import { useUserStore } from "../../stores/useUserStore";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
+
+const getInitials = (name: string) => {
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) {
+        return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+};
+
+const getAvatarBg = (name: string) => {
+    const colors = [
+        "bg-[#0066cc10] text-[#0066cc]",
+        "bg-[#257a3e10] text-[#257a3e]",
+        "bg-[#93600010] text-[#936000]",
+        "bg-[#7928ca10] text-[#7928ca]",
+        "bg-[#ff007f10] text-[#ff007f]",
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+};
+
+const maskEmail = (email?: string) => {
+    if (!email) return "";
+    const [username, domain] = email.split("@");
+    if (!domain) return email;
+    if (username.length <= 4) {
+        return `${username[0]}***${username[username.length - 1]}@${domain}`;
+    }
+    const start = username.slice(0, Math.min(3, Math.floor(username.length / 2)));
+    const end = username.slice(-Math.min(3, Math.floor(username.length / 2)));
+    return `${start}***${end}@${domain}`;
+};
+
+export const JposMFALockScreen = () => {
+    const { isLocked, unlockScreen } = useMFA();
+    const { user } = useUserStore();
+    const userId = user?.id;
+    const mfaEnabled = user?.mfa_enabled;
+    const { lang, setLang } = useTranslation();
+    const { logout } = useAuth();
+    const copy = MFA_LOCK_TEXT[lang === "zh" ? "zh" : "vi"];
+
+    const [code, setCode] = useState("");
+    const [method, setMethod] = useState<"totp" | "email">("totp");
+    const [isFocused, setIsFocused] = useState(false);
+    const [isValidating, setIsValidating] = useState(false);
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
+    const validationInFlightRef = useRef(false);
+    const emailInFlightRef = useRef(false);
+    const autoSentForUserRef = useRef<string | null>(null);
+
+    const sendEmailOtp = useCallback(async () => {
+        if (emailInFlightRef.current) return;
+        emailInFlightRef.current = true;
+        setCode("");
+        setIsSendingEmail(true);
+        try {
+            await gooeyToast.promise(
+                authenticatedFetch(`${API_BASE_URL}/api/auth/mfa/send-email`, {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" }
+                }).then(async res => {
+                    if (!res.ok) throw createDetailedApiError(res, await res.json().catch(() => null), copy.sendEmailFailed);
+                    return res.json();
+                }),
+                {
+                    loading: copy.sendingEmailOtp,
+                    success: copy.emailOtpSent,
+                    error: (error: unknown) => error instanceof Error ? error.message : copy.sendOtpError
+                }
+            );
+        } catch (e) {
+            console.error(e);
+        } finally {
+            emailInFlightRef.current = false;
+            setIsSendingEmail(false);
+        }
+    }, [copy]);
+
+    useEffect(() => {
+        if (!isLocked) {
+            autoSentForUserRef.current = null;
+            setCode("");
+            return;
+        }
+        if (!userId) {
+            autoSentForUserRef.current = null;
+            return;
+        }
+        if (mfaEnabled) {
+            setMethod("totp");
+            return;
+        }
+        setMethod("email");
+        if (autoSentForUserRef.current === userId) return;
+        autoSentForUserRef.current = userId;
+        void sendEmailOtp();
+    }, [isLocked, userId, mfaEnabled, sendEmailOtp]);
+
+    const verifyCode = async (token: string) => {
+        if (validationInFlightRef.current) return;
+        validationInFlightRef.current = true;
+        setIsValidating(true);
+        try {
+            await gooeyToast.promise(
+                authenticatedFetch(`${API_BASE_URL}/api/auth/mfa/verify`, {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ token })
+                }).then(async res => {
+                    if (!res.ok) throw createDetailedApiError(res, await res.json().catch(() => null), copy.invalidCode);
+                    return res.json();
+                }),
+                {
+                    loading: copy.verifying,
+                    success: () => {
+                        unlockScreen();
+                        setCode("");
+                        return copy.unlockSuccess;
+                    },
+                    error: (error: unknown) => {
+                        setCode("");
+                        return error instanceof Error ? error.message : copy.verifyError;
+                    }
+                }
+            );
+        } catch (error) {
+            console.error(error);
+            setCode("");
+        } finally {
+            validationInFlightRef.current = false;
+            setIsValidating(false);
+        }
+    };
+
+    const handleVerify = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (code.length !== 6) return;
+        void verifyCode(code);
+    };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+        setCode(val);
+        if (val.length === 6) {
+            void verifyCode(val);
+        }
+    };
+
+    const toggleLanguage = () => {
+        setLang(lang === "vi" ? "zh" : "vi");
+    };
+
+    if (!isLocked) return null;
+
+    return (
+        <div className="fixed inset-0 z-[9999]  md:bg-slate-900/35 md:backdrop-blur-md flex flex-col md:items-center md:justify-center overflow-hidden">
+            {/* Mobile Native Header Bar (Hidden on Desktop) */}
+            <div className="md:hidden w-full flex items-center justify-between px-4 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] pb-3 bbackdrop-blur-md shrink-0">
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 h-8 px-3 rounded-full bg-blue-50 border border-blue-100 text-xxs font-semibold text-blue-700">
+                        <Image src="/logo/jpos.png" width={14} height={14} alt="JPOS" />
+                        <span>MFA Security</span>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={toggleLanguage}
+                        title={copy.changeLanguage}
+                        className="flex h-8 px-3 items-center justify-center gap-1 rounded-full border border-slate-200 bg-slate-50 active:bg-slate-100 text-xxs font-bold text-slate-700 transition-all cursor-pointer active:scale-95"
+                    >
+                        <Globe size={13} />
+                        <span>{lang === "vi" ? "ZH" : "VI"}</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => void logout()}
+                        title={copy.logout}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-[#b42318] bg-white active:bg-red-100 transition-all cursor-pointer active:scale-95"
+                    >
+                        <LogOut size={13} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Main Container / Desktop Card */}
+            <div className="flex-1 md:flex-none sm:bg-white p-6 sm:p-8 md:p-8 rounded-none md:rounded-2xl shadow-none md:shadow-2xl max-w-none md:max-w-4xl w-full flex flex-col items-center justify-between md:justify-start border-0 md:border md:border-[var(--color-border-soft)] relative overflow-y-auto md:overflow-visible pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] md:pb-8">
+                {/* Top Actions: Language Switch & Logout (Desktop Only) */}
+                <div className="hidden md:flex absolute top-4 right-4 items-center gap-2">
+                    <Image src="/logo/jpos.png" width={28} height={28} alt="JPOS" />
+                    <button
+                        type="button"
+                        onClick={toggleLanguage}
+                        title={copy.changeLanguage}
+                        className="flex h-7 px-2.5 items-center justify-center gap-1 rounded-full border border-[var(--color-border-subtle)] hover:bg-slate-50 text-xxs font-bold text-[var(--color-text-secondary)] transition-all cursor-pointer"
+                    >
+                        <Globe size={12} />
+                        <span>{lang === "vi" ? "ZH" : "VI"}</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => void logout()}
+                        title={copy.logout}
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-border-subtle)] text-[#b42318] hover:bg-[#b4231808] transition-all cursor-pointer"
+                    >
+                        <LogOut size={12} />
+                    </button>
+                </div>
+
+                {/* Content Container */}
+                <div className="w-full flex-1 md:flex-none flex flex-col items-center justify-center md:justify-start max-w-sm md:max-w-none mx-auto my-auto md:my-0">
+                    <div className="flex flex-col items-center mb-4 md:mb-5 w-full">
+                        {user ? (
+                            <>
+                                <div className={`flex h-16 w-16 md:h-14 md:w-14 items-center justify-center rounded-full text-xl md:text-lg font-bold mb-3 shadow-md md:shadow-inner ring-4 ring-slate-50 md:ring-0 ${getAvatarBg(user.full_name || "")}`}>
+                                    {getInitials(user.full_name || "")}
+                                </div>
+                                <h3 className="text-base md:text-sm font-bold md:font-semibold text-slate-900 md:text-[var(--color-text-primary)]">
+                                    {user.full_name}
+                                </h3>
+                                <p className="text-xs md:text-xxs text-slate-500 md:text-[var(--color-text-muted)] mt-1 md:mt-0.5 font-mono bg-slate-100 md:bg-transparent px-2.5 py-0.5 md:px-0 md:py-0 rounded-full">
+                                    {user.employee_id}
+                                </p>
+                            </>
+                        ) : (
+                            <div className="bg-blue-50 p-4 rounded-full mb-3 shadow-inner">
+                                <LockClosedIcon className="w-8 h-8 text-blue-600" />
+                            </div>
+                        )}
+                    </div>
+
+                    <p className="text-xs text-[var(--color-text-muted)] text-center mb-6 px-2 leading-relaxed">
+                        {method === "totp" ? (
+                            copy.totpInstruction
+                        ) : (
+                            <>
+                                {copy.emailInstruction}
+                                {user?.email && (
+                                    <span className="block mt-1.5 font-semibold text-[var(--color-text-secondary)] font-mono text-[11px]">
+                                        {maskEmail(user.email)}
+                                    </span>
+                                )}
+                            </>
+                        )}
+                    </p>
+
+                    <form onSubmit={handleVerify} className="w-full max-w-[320px]">
+                        <div className="relative w-full flex flex-col items-center mb-6">
+                            {/* Hidden input overlaying the container for focus, click & native mobile OTP autofill */}
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="\d*"
+                                maxLength={6}
+                                autoComplete="one-time-code"
+                                value={code}
+                                onChange={handleInputChange}
+                                onFocus={() => setIsFocused(true)}
+                                onBlur={() => setIsFocused(false)}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-text z-10"
+                                disabled={isValidating}
+                                autoFocus
+                            />
+
+                            {/* 6 Visual styled boxes */}
+                            <div className="flex gap-2 sm:gap-2.5 justify-center w-full">
+                                {Array.from({ length: 6 }).map((_, index) => {
+                                    const char = code[index] || "";
+                                    const isActive = isFocused && (index === code.length || (index === 5 && code.length === 6));
+                                    return (
+                                        <div
+                                            key={index}
+                                            className={`w-10 sm:w-11 h-12 rounded-xl border flex items-center justify-center text-xl font-bold font-mono transition-all duration-200 ${char
+                                                ? "border-[var(--color-brand-primary)] bg-white text-[var(--color-text-primary)] shadow-xs"
+                                                : "border-[var(--color-border-subtle)] bg-slate-50/50 text-[var(--color-text-muted)]"
+                                                } ${isActive
+                                                    ? "ring-2 ring-[var(--color-brand-primary-muted)] border-[var(--color-brand-primary)] scale-105 bg-white shadow-sm"
+                                                    : ""
+                                                }`}
+                                        >
+                                            {char}
+                                            {/* Blinking caret when active and empty */}
+                                            {isActive && char === "" && (
+                                                <span className="w-0.5 h-5 bg-[var(--color-brand-primary)] animate-pulse" />
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={code.length !== 6 || isValidating}
+                            className="w-full h-11 md:h-10 bg-[var(--color-brand-primary)] hover:bg-[var(--color-brand-primary-hover)] disabled:bg-slate-100 disabled:text-slate-400 text-white rounded-full font-semibold text-sm transition-all shadow-sm active:scale-[0.98] cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {isValidating && (
+                                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            )}
+                            <span>{copy.unlock}</span>
+                        </button>
+                    </form>
+
+                    {user?.mfa_enabled && method === "totp" && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setMethod("email");
+                                void sendEmailOtp();
+                            }}
+                            disabled={isSendingEmail}
+                            className="mt-4 flex items-center justify-center gap-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-brand-primary)] active:bg-slate-100 md:active:bg-transparent transition-colors w-full p-2.5 md:p-2 rounded-xl md:rounded-none font-medium cursor-pointer"
+                        >
+                            <EnvelopeIcon className="w-4 h-4" />
+                            {copy.useEmailOtp}
+                        </button>
+                    )}
+
+                    {method === "email" && (
+                        <button
+                            type="button"
+                            onClick={() => void sendEmailOtp()}
+                            disabled={isSendingEmail}
+                            className="mt-4 flex items-center justify-center gap-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-brand-primary)] active:bg-slate-100 md:active:bg-transparent transition-colors w-full p-2.5 md:p-2 rounded-xl md:rounded-none font-medium cursor-pointer"
+                        >
+                            {copy.resendOtp}
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};

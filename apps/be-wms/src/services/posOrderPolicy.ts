@@ -12,6 +12,9 @@ export interface PosOrderLifecycleInput {
   hkOrderNumber?: string | null;
   source?: string;
   cancellationOperationId?: string | null;
+  paymentDetails?: unknown;
+  fixedTransferDetails?: unknown;
+  paymentVerificationStatus?: unknown;
 }
 
 export interface PosOrderCancellationDecision {
@@ -22,6 +25,7 @@ export interface PosOrderCancellationDecision {
 }
 
 const INVOICE_BLOCKING_STATUSES = new Set([
+  "QUEUED",
   "SUBMITTING",
   "PENDING_CONFIRMATION",
   "ISSUED",
@@ -81,10 +85,7 @@ export const decidePosOrderCancellation = (
 ): PosOrderCancellationDecision => {
   const paymentStatus = derivePosOrderPaymentStatus(order);
   const syncStatus = derivePosOrderSyncStatus(order);
-  const mode: PosOrderCancellationMode =
-    syncStatus === "SYNC_SUCCESS" || Boolean(order.hkOrderNumber)
-      ? "REMOTE_REFUND"
-      : "LOCAL_ONLY";
+  const mode = "LOCAL_ONLY";
 
   if (paymentStatus === "REFUNDED" || syncStatus === "CANCELLED") {
     return { allowed: true, idempotent: true, mode, code: null };
@@ -111,8 +112,29 @@ export const decidePosOrderCancellation = (
       code: "REFUND_IN_PROGRESS",
     };
   }
-  if (paymentStatus === "REFUND_UNKNOWN") {
+  if (paymentStatus === "REFUND_UNKNOWN" || paymentStatus === "REFUND_FAILED") {
     return { allowed: false, idempotent: false, mode, code: "REFUND_UNKNOWN" };
+  }
+  if (order.cancellationOperationId) {
+    return { allowed: false, idempotent: false, mode, code: "REFUND_UNKNOWN" };
+  }
+  const attempts = (order.paymentDetails as { attempts?: unknown[] } | undefined)?.attempts;
+  const fixedTransfer = order.fixedTransferDetails as { status?: string } | undefined;
+  if (paymentStatus === "DRAFT" && (
+    fixedTransfer?.status === "AWAITING_MANUAL_CONFIRMATION" ||
+    (Array.isArray(attempts) && attempts.some((entry) => {
+      const attempt = entry as { status?: string; remoteCancellationConfirmed?: boolean; paymentLinkId?: string } | null;
+      if (!attempt) return false;
+      return attempt.status === "PAID" ||
+        (!attempt.remoteCancellationConfirmed && attempt.status !== "EXPIRED" &&
+          (Boolean(attempt.paymentLinkId) || !["FAILED", "EXPIRED", "CANCELLED"].includes(attempt.status ?? "")));
+    }))
+  )) {
+    return { allowed: false, idempotent: false, mode, code: "PAYMENT_IN_PROGRESS" };
+  }
+  if (paymentStatus === "PAID" && order.paymentVerificationStatus === "UNVERIFIED" &&
+      fixedTransfer?.status !== "MANUALLY_CONFIRMED") {
+    return { allowed: false, idempotent: false, mode, code: "PAYMENT_UNVERIFIED" };
   }
   return { allowed: true, idempotent: false, mode, code: null };
 };

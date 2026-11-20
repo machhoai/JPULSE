@@ -11,11 +11,35 @@ import {
     fieldControl,
     message,
 } from "../uiClasses";
-import type { Profile } from "../demo";
-import type { MemberAccount } from "../memberApi";
+import type { Balance, Profile } from "../demo";
+import { hasMemberBackend, type MemberAccount } from "../memberApi";
 import { MemberOverview } from "../components/MemberOverview";
 
 const amountFormat = new Intl.NumberFormat("vi-VN");
+const balanceLabels: Partial<Record<number, string>> = {
+    101: "Điểm nạp",
+    102: "Điểm thưởng",
+    104: "Điểm",
+    105: "Tích phân",
+    106: "Lượt chơi",
+    112: "Giá trị tăng trưởng",
+};
+
+function visibleBalances(balances: Balance[]) {
+    const required = [101, 102].map((category) => ({
+        category,
+        label: balanceLabels[category]!,
+        amount: 0,
+        unit: "",
+        ...balances.find((balance) => balance.category === category),
+    }));
+    return [...required, ...balances.filter(({ category, amount }) =>
+        category !== 101 && category !== 102 && amount !== 0,
+    )].map((balance) => ({
+        ...balance,
+        label: balanceLabels[balance.category ?? 0] ?? balance.label,
+    }));
+}
 const balanceColors = [
     "bg-[#eef4fc] text-[#2144bf]",
     "bg-[#fbf8e9] text-[#934600]",
@@ -54,6 +78,9 @@ export function BalancePage({
     signOut,
 }: Props) {
     const card = accounts[accountIndex];
+    const balances = card && (hasMemberBackend || card.balances.some(({ category }) => category !== undefined))
+        ? visibleBalances(card.balances)
+        : card?.balances ?? [];
     return (
         <div className="h-full mt-10">
             <MemberOverview
@@ -102,12 +129,12 @@ export function BalancePage({
                             </select>
                         </div>
                     )}
-                    {card?.balances.length ? (
+                    {balances.length > 0 ? (
                         <dl className="grid grid-cols-1 gap-3 @min-[235px]/balances:grid-cols-2 @min-[420px]/balances:grid-cols-3">
-                            {card.balances.map((balance, index) => (
+                            {balances.map((balance, index) => (
                                 <div
                                     className={`flex min-w-0 flex-col gap-2 rounded-[20px] px-4 py-4 ${balanceColors[index % balanceColors.length]}`}
-                                    key={balance.label}
+                                    key={balance.category ?? balance.label}
                                 >
                                     <dt className="text-xs font-semibold tracking-wide uppercase wrap-anywhere">
                                         {balance.label}

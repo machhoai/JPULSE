@@ -44,6 +44,31 @@ const globalIdentityForWrite = (value: SourceOrderWrite) => {
   return { sourceAccountKey, externalOrderNumber };
 };
 export const invoiceOrderRepository = {
+  async excludeClaimedExternalIdentities(
+    warehouseId: string,
+    values: SourceOrderWrite[],
+  ): Promise<SourceOrderWrite[]> {
+    const collisions = new Set<SourceOrderWrite>();
+    const candidates = values.flatMap((value) => {
+      const identity = globalIdentityForWrite(value);
+      if (!identity) return [];
+      const identityId = invoiceGlobalSourceIdentityDocumentId(
+        identity.sourceAccountKey, identity.externalOrderNumber,
+      );
+      return [{ value, ref: sourceIdentities.doc(identityId) }];
+    });
+    for (let start = 0; start < candidates.length; start += WRITE_CHUNK_SIZE) {
+      const chunk = candidates.slice(start, start + WRITE_CHUNK_SIZE);
+      const snapshots = await db.getAll(...chunk.map(({ ref }) => ref));
+      chunk.forEach(({ value }, index) => {
+        const claimed = snapshots[index].get("source_order_document_id");
+        const local = invoiceSourceOrderDocumentId(warehouseId, value.source_order_id, "JPOS");
+        if (claimed && claimed !== local) collisions.add(value);
+      });
+    }
+    return values.filter((value) => !collisions.has(value));
+  },
+
   async createRun(value: Record<string, unknown>): Promise<string> {
     const id = randomUUID();
     await runs.doc(id).set({ id, ...value });

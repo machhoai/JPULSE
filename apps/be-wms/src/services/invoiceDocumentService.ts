@@ -39,6 +39,7 @@ import type {
 import { invoiceLineShouldAppearInIssuedInvoice } from "./invoiceLineVisibilityPolicy.js";
 import { canonicalJson, parseJoyworldDate } from "./invoiceOrderSyncUtils.js";
 import { preflightInvoiceSourceOrder } from "./invoicePreflightService.js";
+import { JPOS_INVOICE_MAPPING_VERSION } from "./invoicePosOrderAdapter.js";
 import { dateFromValue } from "./meInvoiceConfigService.js";
 import { toPublicStoreConfig } from "./meInvoiceStoreConfigService.js";
 
@@ -152,6 +153,16 @@ export const prepareInvoiceDocumentFromSourceOrder = async (
       "Đơn hàng đã thay đổi. Vui lòng tải lại trước khi tạo bản nháp.",
       "订单已更改，请重新加载后再生成草稿。",
       "INVOICE_SOURCE_STALE",
+    );
+  }
+  if (sourceOrder.source_system === "JOYWORLD" ||
+      (sourceOrder.source_system === "JPOS" &&
+        sourceOrder.mapping_version !== JPOS_INVOICE_MAPPING_VERSION)) {
+    throw serviceError(
+      409,
+      "Cần đồng bộ dữ liệu thanh toán JPOS trước khi chuẩn bị hóa đơn.",
+      "请同步 JPOS 付款数据后再生成发票。",
+      "INVOICE_SOURCE_REQUIRES_JPOS_SYNC",
     );
   }
   const { storeConfig, account } =
@@ -619,14 +630,15 @@ const validationForEditedDraft = (
   buyer: InvoiceDraftBuyer,
   storeConfig: MeInvoiceStoreConfig,
   account: StoredMeInvoiceAccount,
+  priceIncludesVat: boolean | null,
 ) => {
   const invoiceItems = items.filter(invoiceLineShouldAppearInIssuedInvoice);
   const calculation =
-    storeConfig.price_includes_vat === null
+    priceIncludesVat === null
       ? null
       : calculateInvoice(
           invoiceItems,
-          storeConfig.price_includes_vat,
+          priceIncludesVat,
           storeConfig.option_user_defined,
         );
   const preflight = preflightInvoiceSourceOrder({
@@ -636,7 +648,7 @@ const validationForEditedDraft = (
     mapped_payment_method: paymentMethodName,
     store_config_exists: true,
     store_config_enabled: storeConfig.enabled,
-    price_includes_vat: storeConfig.price_includes_vat,
+    price_includes_vat: priceIncludesVat,
     inv_series: storeConfig.inv_series,
     go_live_at: storeConfig.go_live_at,
     account_exists: true,
@@ -737,6 +749,9 @@ export const updateInvoiceDocument = async (
     input.buyer,
     storeConfig,
     account,
+    current.mapping_version === JPOS_INVOICE_MAPPING_VERSION
+      ? true
+      : storeConfig.price_includes_vat,
   );
   const editState = statusAfterInvoiceEdit(
     String(current.source_financial_fingerprint),

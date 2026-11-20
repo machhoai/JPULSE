@@ -9,6 +9,7 @@ import {
 
 import { invoiceFinancialFingerprint } from "./invoiceDocumentPolicy.js";
 import { INVOICE_RATE_LIMIT_BASE_COOLDOWN_MS } from "./invoiceIssueDeadline.js";
+import { JPOS_INVOICE_MAPPING_VERSION } from "./invoicePosOrderAdapter.js";
 import type { NormalizedMisaInvoice } from "./invoiceReconciliationPolicy.js";
 import { MeInvoiceApiError } from "./meInvoiceClient.js";
 
@@ -55,6 +56,15 @@ export const validateInvoiceIssueCandidate = (
   _actorId: string,
 ): InvoiceIssueCandidateIssue[] => {
   const issues: InvoiceIssueCandidateIssue[] = [];
+  if (sourceOrder.source_system === "JOYWORLD" ||
+      (sourceOrder.source_system === "JPOS" &&
+        (sourceOrder.mapping_version !== JPOS_INVOICE_MAPPING_VERSION ||
+          document.mapping_version !== JPOS_INVOICE_MAPPING_VERSION))) {
+    issues.push({
+      code: "SOURCE_REQUIRES_JPOS_SYNC",
+      message: "Đơn cần được đồng bộ từ dữ liệu thanh toán JPOS trước khi phát hành.",
+    });
+  }
   const allowedStatuses = [
     InvoiceDocumentStatus.NEEDS_REVIEW,
     InvoiceDocumentStatus.NEEDS_SECOND_REVIEW,
@@ -92,6 +102,14 @@ export const validateInvoiceIssueCandidate = (
     document.calculation && typeof document.calculation === "object"
       ? (document.calculation as Record<string, unknown>)
       : null;
+  if (sourceOrder.mapping_version === JPOS_INVOICE_MAPPING_VERSION &&
+      (!documentCalculation || documentCalculation.total_amount !== sourceOrder.real_money ||
+        sourceCalculation?.total_amount !== sourceOrder.real_money)) {
+    issues.push({
+      code: "JPOS_TOTAL_MISMATCH",
+      message: "Tổng tiền hóa đơn phải khớp số tiền đã thanh toán trên JPOS.",
+    });
+  }
   if (
     sourceItems.length > 0 &&
     (invoiceFinancialFingerprint(sourceItems) !==

@@ -200,7 +200,56 @@ test("JPOS projection keeps both local and HK identities after synchronization",
   assert.equal(source.source_order_id, order.localOrderId);
   assert.equal(source.projection.local_order_id, order.localOrderId);
   assert.equal(source.projection.hk_order_number, "HK-889900");
-  assert.equal(source.projection.order_number, "HK-889900");
+  assert.equal(source.projection.order_number, order.localOrderId);
+});
+
+test("JPOS invoice discounts allocate the paid difference across VAT groups", () => {
+  const first = paidOrder().items[0];
+  const order = paidOrder({
+    items: [first, { ...first, goodsId: "second", price: 108_000, taxRate: 8 }],
+    discountAmount: 21_801,
+    totalAmount: 196_199,
+  });
+  const source = buildPosInvoiceSourceOrder(order, "2026-08-04", null, null);
+  const calculation = source.projection.calculation as {
+    total_amount: number;
+    total_amount_without_vat: number;
+    total_vat_amount: number;
+    lines: Array<{ discount_amount: number; total_amount: number }>;
+  };
+  assert.deepEqual(calculation.lines.map((line) => line.discount_amount), [11_000, 10_801]);
+  assert.equal(calculation.total_amount, 196_199);
+  assert.equal(calculation.total_vat_amount + calculation.total_amount_without_vat, 196_199);
+  assert.equal(source.projection.discount_money, 21_801);
+  assert.notEqual(source.source_payload_hash, buildPosInvoiceSourceOrder(
+    { ...order, discountAmount: 21_800 }, "2026-08-04", null, null,
+  ).source_payload_hash);
+});
+
+test("historical HK imports and refunded orders are excluded at invoice intake", () => {
+  assert.equal(posOrderIsPaid(paidOrder({ source: "JOYWORLD_IMPORT" })), false);
+  assert.equal(posOrderIsPaid(paidOrder({ paymentStatus: "REFUNDED" })), false);
+});
+
+test("free-product voucher stays on its recorded SKU before allocating the order discount", () => {
+  const taxed = paidOrder().items[0];
+  const order = paidOrder({
+    items: [taxed, { ...taxed, goodsId: "gift", price: 30_000, taxRate: 0 }],
+    vouchers: [
+      { rewardType: "FREE_PRODUCT", product: { goodsId: "gift" }, discountAmount: 30_000 },
+      { rewardType: "DISCOUNT_PERCENT", discountAmount: 11_000 },
+    ],
+    discountAmount: 41_000,
+    totalAmount: 99_000,
+  });
+  const projection = buildPosInvoiceSourceOrder(order, "2026-08-04", null, null).projection;
+  const calculation = projection.calculation as {
+    total_amount: number; total_vat_amount: number;
+    lines: Array<{ discount_amount: number; total_amount: number }>;
+  };
+  assert.deepEqual(calculation.lines.map((line) => line.discount_amount), [11_000, 30_000]);
+  assert.equal(calculation.total_amount, 99_000);
+  assert.equal(calculation.total_vat_amount, 9_000);
 });
 
 test("VietQR lookup maps the official business response and caches it", async () => {

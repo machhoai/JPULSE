@@ -31,6 +31,7 @@ import {
   statusIsIssued,
   validateInvoiceIssueCandidate,
 } from "./invoiceIssuePolicy.js";
+import { JPOS_INVOICE_MAPPING_VERSION } from "./invoicePosOrderAdapter.js";
 import { fetchMisaInvoicesForDate } from "./invoiceReconciliationService.js";
 import { dispatchInvoiceIssueItem } from "./invoiceTaskDispatcher.js";
 import {
@@ -542,6 +543,26 @@ export const processInvoiceIssueItem = async (
       }
     }
 
+    const documentId = String(claimed.item.invoice_document_id);
+    const [source, document] = await Promise.all([
+      invoiceOrderRepository.getOrder(documentId, claimed.job.warehouse_id),
+      invoiceDocumentRepository.getDocument(documentId, claimed.job.warehouse_id),
+    ]);
+    if (source?.mapping_version !== JPOS_INVOICE_MAPPING_VERSION ||
+        document?.mapping_version !== JPOS_INVOICE_MAPPING_VERSION ||
+        source.source_payload_hash !== document.source_payload_hash) {
+      return finalizeClaimed({
+        jobId,
+        itemId,
+        owner,
+        status: InvoiceIssueItemStatus.MANUAL_RECONCILIATION,
+        attempt,
+        retryAfterMs: null,
+        errorCode: "SOURCE_REQUIRES_JPOS_SYNC",
+        lastError: "Cần kiểm tra lại dữ liệu đơn JPOS trước khi gửi hóa đơn.",
+        clearManualRetryRequest: manualRetryRequested,
+      });
+    }
     manualRetryPublishStarted = manualRetryRequested;
     const results = await executeWithMeInvoiceClient(
       claimed.job.meinvoice_account_id,

@@ -45,11 +45,11 @@ test("implements the approved cancellation matrix", () => {
       status: "SYNC_FAILED",
       hkOrderNumber: "O-1",
     }).mode,
-    "REMOTE_REFUND",
+    "LOCAL_ONLY",
   );
   assert.equal(
     decidePosOrderCancellation({ status: "SYNC_SUCCESS" }).mode,
-    "REMOTE_REFUND",
+    "LOCAL_ONLY",
   );
   assert.equal(
     decidePosOrderCancellation({ status: "SYNCING" }).code,
@@ -66,6 +66,24 @@ test("implements the approved cancellation matrix", () => {
     }).code,
     "IMPORTED_READ_ONLY",
   );
+  assert.equal(decidePosOrderCancellation({ status: "LOCAL_PAID" }, ["QUEUED"]).code, "INVOICE_LOCKED");
+});
+
+test("cancellation waits for active payments and unresolved legacy refunds", () => {
+  assert.equal(decidePosOrderCancellation({
+    status: "DRAFT",
+    paymentDetails: { attempts: [{ status: "CANCELLED", paymentLinkId: "link" }] },
+  }).code, "PAYMENT_IN_PROGRESS");
+  assert.equal(decidePosOrderCancellation({
+    status: "DRAFT",
+    paymentDetails: { attempts: [{ status: "CANCELLED", paymentLinkId: "link", remoteCancellationConfirmed: true }] },
+  }).allowed, true);
+  assert.equal(decidePosOrderCancellation({
+    status: "LOCAL_PAID", paymentVerificationStatus: "UNVERIFIED",
+  }).code, "PAYMENT_UNVERIFIED");
+  assert.equal(decidePosOrderCancellation({
+    status: "SYNC_FAILED", cancellationOperationId: "legacy", paymentStatus: "REFUND_FAILED",
+  }).code, "REFUND_UNKNOWN");
 });
 
 test("treats a terminal cancellation as idempotent", () => {

@@ -46,6 +46,20 @@ test("business dates use Vietnam midnight and a stable ISO key", () => {
   assert.equal(vietnamDateKey("invalid"), null);
 });
 
+test("invoice export data uses local order references and net amounts after voucher", () => {
+  const paid = order("a", 110_000, 1);
+  paid.items[0].taxRate = 10;
+  const settled = { ...paid, hkOrderNumber: "HK-1", totalAmount: 99_000, discountAmount: 11_000 };
+  const imported = { ...paid, source: "JOYWORLD_IMPORT", localOrderId: "import" };
+  const period = buildLocalRevenuePeriod(
+    [settled, imported], range, {}, new Map([["a", null]]),
+  );
+  assert.equal(period.orders.length, 1);
+  assert.equal(period.soldItems[0].orderNumber, paid.localOrderId);
+  assert.equal(period.soldItems[0].realMoney, 99_000);
+  assert.equal(period.soldItems[0].taxMoney, 9_000);
+});
+
 test("all-store aggregation retains matching local IDs, groups products and recalculates percentages", () => {
   const a = order("a", 100_000, 1);
   const b = { ...order("b", 300_000, 3), paymentMethodId: "QR_CODE" };

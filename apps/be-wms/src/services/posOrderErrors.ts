@@ -37,8 +37,20 @@ const ERROR_MESSAGES: Record<string, Messages> = {
     zh: "退款结果未知，重试前需要对账。",
   },
   REFUND_CONFIRMATION_REQUIRED: {
-    vi: "Bạn phải xác nhận hoàn tiền theo phương thức thanh toán ban đầu.",
-    zh: "请确认按原支付方式退款。",
+    vi: "Xác nhận đã hoàn đủ tiền cho khách trước khi hủy đơn.",
+    zh: "取消订单前，请确认已向顾客全额退款。",
+  },
+  PAYMENT_IN_PROGRESS: {
+    vi: "Đơn còn yêu cầu thanh toán đang chờ xác nhận. Kiểm tra và đóng yêu cầu tại quầy trước khi hủy.",
+    zh: "订单仍有待确认的支付请求，请在收银台核查并关闭后再取消。",
+  },
+  PAYMENT_UNVERIFIED: {
+    vi: "Cần xác minh khoản tiền đã thu trước khi hủy và ghi nhận hoàn tiền.",
+    zh: "请先核实已收款项，再取消订单并记录退款。",
+  },
+  INVALID_REFUND_AMOUNT: {
+    vi: "Số tiền đã thu của đơn không hợp lệ. Cần đối soát trước khi hủy.",
+    zh: "订单实收金额无效，请核对后再取消。",
   },
   CANCEL_PERMISSION_DENIED: {
     vi: "Bạn không có quyền hủy loại đơn hàng này.",

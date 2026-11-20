@@ -4,7 +4,9 @@ import { demoCard, demoProfile, type Profile } from "./demo";
 import {
   authenticateMember,
   hasMemberBackend,
+  hasLocalMemberLookup,
   linkMember,
+  lookupLocalMember,
   MemberApiError,
   clearMemberSession,
   requestMember,
@@ -42,7 +44,7 @@ export function App() {
     page === "welcome" && session === "unregistered" ? "unregistered" :
     page === "welcome" ||
     (session === "unregistered" &&
-      (page === "unregistered" || page === "register")) ||
+      (page === "unregistered" || (page === "register" && !hasLocalMemberLookup))) ||
     (session === "member" && (page === "balance" || page === "profile"))
       ? page
       : "welcome";
@@ -87,7 +89,19 @@ export function App() {
     return () => controller.abort();
   }, [authenticate]);
 
-  async function connectMember() {
+  async function connectMember(phone?: string) {
+    if (hasLocalMemberLookup && phone) {
+      setCheckingZalo(true);
+      setZaloError("");
+      try {
+        showMember(await lookupLocalMember(phone));
+      } catch (error) {
+        setZaloError(error instanceof Error ? error.message : "Chưa tra cứu được hồ sơ.");
+      } finally {
+        setCheckingZalo(false);
+      }
+      return;
+    }
     if (hasMemberBackend && !zaloReady) {
       await authenticate();
       return;
@@ -204,10 +218,10 @@ export function App() {
             signOut();
             if (hasMemberBackend) void authenticate();
           }}
-          onRegister={() => navigate("register")}
+          onRegister={hasLocalMemberLookup ? undefined : () => navigate("register")}
         />
       )}
-      {activePage === "register" && (
+      {activePage === "register" && !hasLocalMemberLookup && (
         <RegistrationPage
           phone={profile.phone}
           onBack={() => goBackTo("unregistered")}
@@ -232,7 +246,7 @@ export function App() {
           level={card?.level}
           empty={justRegistered || accounts.length === 0}
           onBack={() => goBackTo("balance")}
-          saveProfile={saveProfile}
+          saveProfile={hasLocalMemberLookup ? undefined : saveProfile}
         />
       )}
     </AppLayout>

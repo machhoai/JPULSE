@@ -1,16 +1,15 @@
 import { randomUUID } from "node:crypto";
 
 import { db } from "../config/firebase.js";
+import { resolveExternalStoreBinding } from "../services/externalStoreBindingService.js";
+import { invoiceGlobalSourceIdentityDocumentId } from "../services/invoiceSourceIdentityPolicy.js";
 import {
   decidePosOrderCancellation,
+  derivePosOrderPaymentStatus,
   type PosOrderCancellationMode,
 } from "../services/posOrderPolicy.js";
 
 import { buildPosOrderCancellationAudit } from "./posOrderCancellationAudit.js";
-import {
-  finalizePosOrderCancellation,
-  markPosOrderCancellationFailure,
-} from "./posOrderCancellationResultRepository.js";
 import {
   buildPosOrderSummaryDocument,
   type RawPosOrder,
@@ -31,6 +30,9 @@ export interface PosOrderCancellationOperation {
   remote_order_id: string | null;
   remote_order_number: string | null;
   refund_order_number: string | null;
+  refunded_amount?: number;
+  refund_confirmed_at?: string | null;
+  refund_payment_method?: string | null;
   last_error: string | null;
   attempt_count: number;
   created_at: string;
@@ -61,36 +63,25 @@ export const posOrderCancellationRepository = {
     actorId: string;
     actorName: string;
     operationId: string;
-    bizCode: string;
-    allowedModes: ReadonlySet<PosOrderCancellationMode>;
+    refundConfirmed: boolean;
     context?: {
       ip_address?: string | null;
       device_id?: string | null;
       session_token?: string | null;
     };
-  }): Promise<{
-    created: boolean;
-    resumed: boolean;
-    order: RawPosOrder;
-    operation: PosOrderCancellationOperation;
-  }> {
+  }): Promise<{ idempotent: boolean }> {
     const orderRef = db.collection("pos_orders").doc(input.localOrderId);
     const operationRef = db
       .collection("pos_order_cancellations")
       .doc(input.localOrderId);
-    const sourceQuery = db
-      .collection("invoice_source_orders")
-      .where("warehouse_id", "==", input.warehouseId)
-      .where("local_order_id", "==", input.localOrderId)
-      .limit(5);
+    const sources = db.collection("invoice_source_orders")
+      .where("warehouse_id", "==", input.warehouseId);
 
     return db.runTransaction(async (transaction) => {
-      const [orderSnapshot, operationSnapshot, sourceSnapshots] =
-        await Promise.all([
-          transaction.get(orderRef),
-          transaction.get(operationRef),
-          transaction.get(sourceQuery),
-        ]);
+      const [orderSnapshot, operationSnapshot] = await Promise.all([
+        transaction.get(orderRef),
+        transaction.get(operationRef),
+      ]);
       if (!orderSnapshot.exists) {
         throw new PosOrderCancellationRepositoryError("ORDER_NOT_FOUND", 404);
       }
@@ -99,112 +90,58 @@ export const posOrderCancellationRepository = {
         throw new PosOrderCancellationRepositoryError("ORDER_NOT_FOUND", 404);
       }
       if (operationSnapshot.exists) {
-        const existing =
-          operationSnapshot.data() as PosOrderCancellationOperation;
-        if (existing.status === "FAILED") {
-          if (!input.allowedModes.has(existing.mode)) {
-            throw new PosOrderCancellationRepositoryError(
-              "CANCEL_PERMISSION_DENIED",
-              403,
-            );
-          }
-          const version = Number(order.version ?? 0);
-          if (version !== input.expectedVersion) {
-            throw new PosOrderCancellationRepositoryError(
-              "ORDER_VERSION_CONFLICT",
-              409,
-            );
-          }
-          const now = new Date().toISOString();
-          const resumedOperation = {
-            ...existing,
-            status: "REFUNDING" as const,
-            attempt_count: existing.attempt_count + 1,
-            last_error: null,
-            sync_time: now,
-            updated_at: now,
-          };
-          const resumedOrder = {
-            ...order,
-            paymentStatus: "REFUNDING",
-            version: version + 1,
-            updatedAt: now,
-          };
-          transaction.update(operationRef, resumedOperation);
-          transaction.update(orderRef, {
-            paymentStatus: resumedOrder.paymentStatus,
-            version: resumedOrder.version,
-            updatedAt: now,
-          });
-          transaction.set(
-            db.collection("pos_order_summaries").doc(input.localOrderId),
-            buildPosOrderSummaryDocument(input.localOrderId, resumedOrder),
-            { merge: false },
-          );
-          const auditId = randomUUID();
-          transaction.create(
-            db.collection("audit_logs").doc(auditId),
-            buildPosOrderCancellationAudit({
-              id: auditId,
-              order,
-              actorId: input.actorId,
-              actorName: input.actorName,
-              actionTime: input.actionTime,
-              oldValue: {
-                paymentStatus: order.paymentStatus ?? null,
-                cancellationStatus: existing.status,
-                attemptCount: existing.attempt_count,
-              },
-              newValue: {
-                paymentStatus: "REFUNDING",
-                cancellationStatus: "REFUNDING",
-                attemptCount: resumedOperation.attempt_count,
-              },
-              notes: "Retried JoyWorld refund after a confirmed failed attempt",
-              context: input.context,
-            }),
-          );
-          return {
-            created: false,
-            resumed: true,
-            order: resumedOrder,
-            operation: resumedOperation,
-          };
-        }
-        return {
-          created: false,
-          resumed: false,
-          order,
-          operation: existing,
-        };
-      }
-
-      const invoiceRefs = sourceSnapshots.docs
-        .map((item) => text(item.data().invoice_document_id))
-        .filter((item): item is string => Boolean(item))
-        .map((id) => db.collection("invoice_documents").doc(id));
-      const invoiceSnapshots = await Promise.all(
-        invoiceRefs.map((reference) => transaction.get(reference)),
-      );
-      const invoiceStatuses = [
-        ...sourceSnapshots.docs.map(
-          (item) => item.data().invoice_document_status,
-        ),
-        ...invoiceSnapshots.map((item) => item.data()?.status),
-      ];
-      const decision = decidePosOrderCancellation(order, invoiceStatuses);
-      if (!decision.allowed || decision.idempotent) {
+        const existing = operationSnapshot.data() as PosOrderCancellationOperation;
+        if (existing.status === "SUCCEEDED") return { idempotent: true };
+        // Existing JoyWorld operations must be reconciled before another refund.
         throw new PosOrderCancellationRepositoryError(
-          decision.code ?? "ORDER_ALREADY_CANCELLED",
+          existing.status === "REFUNDING" ? "REFUND_IN_PROGRESS" : "REFUND_UNKNOWN",
           409,
         );
       }
-      if (!input.allowedModes.has(decision.mode)) {
-        throw new PosOrderCancellationRepositoryError(
-          "CANCEL_PERMISSION_DENIED",
-          403,
+
+      const queries = [sources.where("local_order_id", "==", input.localOrderId)];
+      const hkOrderNumber = text(order.hkOrderNumber);
+      if (hkOrderNumber) queries.push(sources.where("order_number", "==", hkOrderNumber));
+      const sourceSnapshots = await Promise.all(queries.map((query) => transaction.get(query)));
+      const matchedSources = new Map(sourceSnapshots.flatMap((snapshot) =>
+        snapshot.docs.map((document) => [document.id, document] as const),
+      ));
+      const invoiceSources = new Map<string, FirebaseFirestore.DocumentSnapshot>(matchedSources);
+      if (hkOrderNumber) {
+        const binding = await resolveExternalStoreBinding("JOYWORLD_LEGACY", input.warehouseId);
+        const identityId = invoiceGlobalSourceIdentityDocumentId(
+          binding?.source_account_key ?? "joyworld-legacy-default",
+          hkOrderNumber,
         );
+        const identity = await transaction.get(db.collection("invoice_source_identities").doc(identityId));
+        const sourceId = text(identity.get("source_order_document_id"));
+        if (sourceId && !invoiceSources.has(sourceId)) {
+          const source = await transaction.get(db.collection("invoice_source_orders").doc(sourceId));
+          if (source.exists) invoiceSources.set(sourceId, source);
+        }
       }
+      const invoiceIds = new Set<string>();
+      for (const source of invoiceSources.values()) {
+        invoiceIds.add(text(source.get("invoice_document_id")) ?? source.id);
+      }
+      const invoiceSnapshots = await Promise.all([...invoiceIds].map((id) =>
+        transaction.get(db.collection("invoice_documents").doc(id)),
+      ));
+      const invoiceStatuses = [
+        ...[...invoiceSources.values()].map((source) => source.get("invoice_document_status")),
+        ...invoiceSnapshots.map((invoice) => invoice.get("status")),
+      ];
+      if ([...invoiceSources.values()].some((source) =>
+          source.get("match_status") === "MATCHED" ||
+          source.get("warehouse_id") !== input.warehouseId) ||
+          invoiceSnapshots.some((invoice) => Boolean(invoice.get("active_issue_job_id")))) {
+        throw new PosOrderCancellationRepositoryError("INVOICE_LOCKED", 409);
+      }
+      const decision = decidePosOrderCancellation(order, invoiceStatuses);
+      if (!decision.allowed) {
+        throw new PosOrderCancellationRepositoryError(decision.code ?? "CANCEL_BLOCKED", 409);
+      }
+      if (decision.idempotent) return { idempotent: true };
       const version = Number(order.version ?? 0);
       if (version !== input.expectedVersion) {
         throw new PosOrderCancellationRepositoryError(
@@ -214,40 +151,55 @@ export const posOrderCancellationRepository = {
       }
 
       const now = new Date().toISOString();
-      const localOnly = decision.mode === "LOCAL_ONLY";
-      const paymentStatus = localOnly
-        ? order.status === "DRAFT"
-          ? "DRAFT"
-          : "REFUNDED"
-        : "REFUNDING";
+      const paid = derivePosOrderPaymentStatus(order) !== "DRAFT";
+      const refundedAmount = paid ? order.totalAmount : 0;
+      if (!Number.isFinite(refundedAmount) || refundedAmount < 0) {
+        throw new PosOrderCancellationRepositoryError("INVALID_REFUND_AMOUNT", 409);
+      }
+      if (refundedAmount > 0 && !input.refundConfirmed) {
+        throw new PosOrderCancellationRepositoryError("REFUND_CONFIRMATION_REQUIRED", 400);
+      }
+      const paymentWatchId = text(order.paymentWatchId);
+      const paymentWatch = paymentWatchId
+        ? await transaction.get(db.collection("pos_payment_status").doc(paymentWatchId))
+        : null;
+      const paymentStatus = paid ? "REFUNDED" : "DRAFT";
       const operation: PosOrderCancellationOperation = {
         operation_id: input.operationId,
         local_order_id: input.localOrderId,
         warehouse_id: input.warehouseId,
-        mode: decision.mode,
-        status: localOnly ? "SUCCEEDED" : "REFUNDING",
+        mode: "LOCAL_ONLY",
+        status: "SUCCEEDED",
         reason: input.reason,
         action_time: input.actionTime,
         sync_time: now,
         cancelled_by: input.actorId,
         cancelled_by_name: input.actorName,
-        biz_code: localOnly ? null : input.bizCode,
+        biz_code: null,
         remote_order_id: text(order.remoteOrderId),
         remote_order_number: text(order.hkOrderNumber),
         refund_order_number: null,
+        refunded_amount: refundedAmount,
+        refund_confirmed_at: refundedAmount > 0 ? now : null,
+        refund_payment_method: refundedAmount > 0
+          ? text(order.paymentMethodId) ?? text(order.paymentMethod) ?? text(order.paymentMethodName)
+          : null,
         last_error: null,
-        attempt_count: localOnly ? 0 : 1,
+        attempt_count: 0,
         created_at: now,
         updated_at: now,
-        completed_at: localOnly ? now : null,
+        completed_at: now,
         is_deleted: false,
       };
       const orderUpdate = {
-        ...(localOnly ? { status: "CANCELLED" } : {}),
+        status: "CANCELLED",
         paymentStatus,
-        syncStatus: localOnly ? "CANCELLED" : order.syncStatus,
+        syncStatus: "CANCELLED",
+        syncOperationId: null,
+        refundedAmount,
+        refundedAt: operation.refund_confirmed_at,
         cancellationOperationId: input.operationId,
-        cancelledAt: localOnly ? input.actionTime : null,
+        cancelledAt: input.actionTime,
         cancelledBy: input.actorId,
         cancelReason: input.reason,
         version: version + 1,
@@ -255,6 +207,30 @@ export const posOrderCancellationRepository = {
       };
       transaction.create(operationRef, operation);
       transaction.update(orderRef, orderUpdate);
+      if (paymentWatch?.exists && paymentWatch.get("localOrderId") === input.localOrderId) {
+        transaction.update(paymentWatch.ref, {
+          orderStatus: "CANCELLED",
+          paymentStatus: "CANCELLED",
+          updatedAt: now,
+        });
+      }
+      for (const source of matchedSources.values()) {
+        transaction.update(source.ref, {
+          source_status: 4,
+          pos_order_status: "CANCELLED",
+          "preflight.issue_eligible": false,
+          updated_at: new Date(now),
+        });
+      }
+      for (const invoice of invoiceSnapshots) {
+        if (invoice.exists) {
+          transaction.update(invoice.ref, {
+            status: "CANCELLED",
+            issue_eligible: false,
+            updated_at: new Date(now),
+          });
+        }
+      }
       transaction.set(
         db.collection("pos_order_summaries").doc(input.localOrderId),
         buildPosOrderSummaryDocument(input.localOrderId, {
@@ -278,21 +254,11 @@ export const posOrderCancellationRepository = {
             syncStatus: order.syncStatus ?? null,
           },
           newValue: orderUpdate,
-          notes: localOnly
-            ? "Cancelled JPOS order locally and disabled remote synchronization"
-            : "Started JoyWorld full-order refund",
+          notes: "Recorded local JPOS cancellation",
           context: input.context,
         }),
       );
-      return {
-        created: true,
-        resumed: false,
-        order: { ...order, ...orderUpdate },
-        operation,
-      };
+      return { idempotent: false };
     });
   },
-
-  finalize: finalizePosOrderCancellation,
-  markFailure: markPosOrderCancellationFailure,
 };

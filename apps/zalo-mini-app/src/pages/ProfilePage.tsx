@@ -14,7 +14,7 @@ export function ProfilePage({
     profile: Profile;
     level?: string;
     empty: boolean;
-    saveProfile: (profile: Profile) => Promise<void>;
+    saveProfile?: (profile: Profile) => Promise<void>;
     onBack: () => void;
 }) {
     return (
@@ -28,7 +28,14 @@ export function ProfilePage({
                 >
                     <ArrowLeft size={18} aria-hidden="true" /> Về số dư
                 </button>
-                <ProfileScreen profile={profile} onSave={saveProfile} />
+                {saveProfile ? <ProfileScreen profile={profile} onSave={saveProfile} /> : (
+                    <dl className="grid gap-3 rounded-2xl bg-white p-4">
+                        <div><dt>Số điện thoại</dt><dd>{profile.phone}</dd></div>
+                        <div><dt>Email</dt><dd>{profile.email || "Chưa có"}</dd></div>
+                        <div><dt>Ngày sinh</dt><dd>{profile.birthday?.split("-").reverse().join("/") || "Chưa có"}</dd></div>
+                        <div><dt>Giới tính</dt><dd>{profile.sex === "1" ? "Nam" : profile.sex === "2" ? "Nữ" : "Chưa xác định"}</dd></div>
+                    </dl>
+                )}
             </div>
         </div>
     );

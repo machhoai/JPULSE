@@ -30,6 +30,7 @@ export async function exportRevenueWorkbook(
       year: input.year,
       startDate: input.startDate,
       endDate: input.endDate,
+      invoicePreparation: input.reportType === "INVOICE_PREPARATION",
     },
     userId,
   );

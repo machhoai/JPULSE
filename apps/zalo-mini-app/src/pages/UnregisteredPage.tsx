@@ -10,15 +10,15 @@ export function UnregisteredPage({
 }: {
     phone: string;
     onBack: () => void;
-    onRegister: () => void;
+    onRegister?: () => void;
 }) {
     return (
         <RegistrationIntro phone={phone} onBack={onBack}>
-            <div className={`${actions} max-[701px]:order-4`}>
+            {onRegister && <div className={`${actions} max-[701px]:order-4`}>
                 <button type="button" className={primaryButton} onClick={onRegister}>
                     Đăng ký ngay<ArrowRight size={18} aria-hidden="true" />
                 </button>
-            </div>
+            </div>}
         </RegistrationIntro>
     );
 }

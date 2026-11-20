@@ -11,6 +11,7 @@ import { db } from "../config/firebase.js";
 import {
   derivePosOrderPaymentStatus,
   derivePosOrderSyncStatus,
+  isInvoiceCancellationBlocked,
   normalizePosOrderPhone,
 } from "../services/posOrderPolicy.js";
 import type { PosOrderListQuery } from "../services/posOrderSchemas.js";
@@ -132,34 +133,32 @@ const decodeCursor = (
 const findInvoiceSummary = async (
   localOrderId: string,
   warehouseId: string,
+  hkOrderNumber: string | null,
 ): Promise<PosOrderInvoiceSummary> => {
-  const sources = await db
+  const sources = db
     .collection("invoice_source_orders")
-    .where("warehouse_id", "==", warehouseId)
-    .where("local_order_id", "==", localOrderId)
-    .limit(2)
-    .get();
-  const source = sources.docs[0];
-  const sourceValue = source?.data();
-  const documentId = text(sourceValue?.invoice_document_id);
-  const document = documentId
-    ? await db.collection("invoice_documents").doc(documentId).get()
-    : null;
-  const documentValue = document?.data();
-  const status =
-    text(documentValue?.status) ?? text(sourceValue?.invoice_document_status);
-  return {
-    sourceOrderDocumentId: source?.id ?? null,
-    documentId,
-    status,
-    invoiceNumber: text(documentValue?.invoice_number),
-    blocked: [
-      "SUBMITTING",
-      "PENDING_CONFIRMATION",
-      "ISSUED",
-      "POST_ISSUE_REVIEW",
-      "CLOSED",
-    ].includes(status ?? ""),
+    .where("warehouse_id", "==", warehouseId);
+  const queries = [sources.where("local_order_id", "==", localOrderId)];
+  if (hkOrderNumber) queries.push(sources.where("order_number", "==", hkOrderNumber));
+  const snapshots = await Promise.all(queries.map((query) => query.get()));
+  const matches = new Map(snapshots.flatMap((snapshot) =>
+    snapshot.docs.map((document) => [document.id, document] as const),
+  ));
+  const summaries = await Promise.all([...matches.values()].map(async (source) => {
+    const document = await db.collection("invoice_documents")
+      .doc(text(source.get("invoice_document_id")) ?? source.id).get();
+    const status = text(document.get("status")) ?? text(source.get("invoice_document_status"));
+    return {
+      sourceOrderDocumentId: source.id,
+      documentId: document.exists ? document.id : null,
+      status,
+      invoiceNumber: text(document.get("invoice_number")),
+      blocked: isInvoiceCancellationBlocked(status) ||
+        source.get("match_status") === "MATCHED" || Boolean(document.get("active_issue_job_id")),
+    };
+  }));
+  return summaries.find((summary) => summary.blocked) ?? summaries[0] ?? {
+    sourceOrderDocumentId: null, documentId: null, status: null, invoiceNumber: null, blocked: false,
   };
 };
 
@@ -211,14 +210,14 @@ export const posOrderRepository = {
     localOrderId: string,
     warehouseId: string,
   ): Promise<PosOrderDetail | null> {
-    const [snapshot, invoice, cancellationSnapshot] = await Promise.all([
+    const [snapshot, cancellationSnapshot] = await Promise.all([
       db.collection("pos_orders").doc(localOrderId).get(),
-      findInvoiceSummary(localOrderId, warehouseId),
       db.collection("pos_order_cancellations").doc(localOrderId).get(),
     ]);
     if (!snapshot.exists) return null;
     const value = snapshot.data()!;
     if (text(value.warehouseId) !== warehouseId) return null;
+    const invoice = await findInvoiceSummary(localOrderId, warehouseId, text(value.hkOrderNumber));
     const summary = mapPosOrderSummary(snapshot.id, value);
     const sync = (value.sync ?? {}) as Record<string, unknown>;
     const member = (value.member ?? {}) as Record<string, unknown>;
@@ -233,6 +232,8 @@ export const posOrderRepository = {
           syncTime: text(cancellationValue.sync_time) ?? "",
           cancelledBy: text(cancellationValue.cancelled_by) ?? "",
           refundOrderNumber: text(cancellationValue.refund_order_number),
+          refundedAmount: number(cancellationValue.refunded_amount),
+          refundConfirmedAt: text(cancellationValue.refund_confirmed_at),
           lastError: text(cancellationValue.last_error),
         }
       : null;
@@ -251,6 +252,11 @@ export const posOrderRepository = {
       },
       invoice,
       cancellation,
+      latePayOSPayments: (
+        Array.isArray(value.paymentDetails?.attempts) ? value.paymentDetails.attempts : []
+      ).flatMap((attempt: Record<string, unknown> | null) => attempt?.latePaymentAfterCancellation === true
+        ? [{ orderCode: number(attempt.orderCode), amount: number(attempt.paidAmount) }]
+        : []),
     };
   },
 };

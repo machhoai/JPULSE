@@ -7,6 +7,8 @@ import {
   type RevenuePaymentCategory,
   type SoldOrderGoodsItem,
   type TopProductGroup,
+  type InvoiceCalculationResult,
+  type MeInvoiceStoreConfig,
 } from "@bduck/shared-types";
 
 import type { PosInvoiceOrderRecord } from "../repositories/posInvoiceOrderRepository.js";
@@ -27,6 +29,7 @@ import {
   type ProductGroups,
 } from "./localRevenueDataUtils.js";
 import { daysBetween, type RevenueDateRange } from "./revenueDateRange.js";
+import { buildPosInvoiceSourceOrder, posOrderIsPaid } from "./invoicePosOrderAdapter.js";
 
 export interface RevenuePeriodData {
   dailyRows: RevenueDailyRow[];
@@ -40,8 +43,9 @@ export function buildLocalRevenuePeriod(
   sourceOrders: PosInvoiceOrderRecord[],
   range: RevenueDateRange,
   catalog: RevenueProductGroups = {},
+  invoiceConfigs?: ReadonlyMap<string, MeInvoiceStoreConfig | null>,
 ): RevenuePeriodData {
-  const orders = uniquePaidOrders(sourceOrders);
+  const orders = uniquePaidOrders(invoiceConfigs ? sourceOrders.filter(posOrderIsPaid) : sourceOrders);
   const daily = new Map(
     daysBetween(range.startDate, range.endDate).map((date) => [
       date,
@@ -59,10 +63,25 @@ export function buildLocalRevenuePeriod(
   for (const order of orders) {
     const businessDate = vietnamDateKey(order.paidAt ?? order.createdAt);
     const row = businessDate ? daily.get(businessDate) : undefined;
-    if (!row) continue;
+    if (!businessDate || !row) continue;
 
     const totalRevenue = finiteNumber(order.totalAmount);
-    const taxAmount = orderTaxAmount(order);
+    if (invoiceConfigs && totalRevenue <= 0) continue;
+    const invoice = invoiceConfigs
+      ? buildPosInvoiceSourceOrder(order, businessDate, invoiceConfigs.get(order.warehouseId) ?? null, null)
+      : null;
+    const calculation = invoice?.projection.calculation as InvoiceCalculationResult | null | undefined;
+    if (invoice && calculation?.total_amount !== totalRevenue) {
+      throw Object.assign(new Error(`JPOS invoice total mismatch for ${order.localOrderId}`), {
+        statusCode: 422,
+        messages: {
+          vi: `Không thể xuất dữ liệu hóa đơn cho đơn ${order.localOrderId}. Kiểm tra giá, VAT và chiết khấu.`,
+          zh: `无法导出订单 ${order.localOrderId} 的发票数据。请检查售价、税率和折扣。`,
+        },
+      });
+    }
+    const invoiceLines = new Map(calculation?.lines.map((line) => [line.line_number, line]));
+    const taxAmount = calculation?.total_vat_amount ?? orderTaxAmount(order);
     const payment = resolvePosPayment(order);
     row.totalRevenue += totalRevenue;
     row.totalTax += taxAmount;
@@ -84,14 +103,16 @@ export function buildLocalRevenuePeriod(
 
     const localOrderId = text(order.localOrderId) ?? "";
     const orderId = `${order.warehouseId}:${localOrderId}`;
-    const orderNumber = text(order.hkOrderNumber) ?? localOrderId;
+    const orderNumber = invoiceConfigs ? localOrderId : text(order.hkOrderNumber) ?? localOrderId;
     const orderItems = Array.isArray(order.items) ? order.items : [];
     let totalQuantity = 0;
     orderItems.forEach((rawItem, index) => {
       const item = asRecord(rawItem);
       const quantity = finiteNumber(item.quantity ?? item.qty);
-      const revenue = itemRevenue(item, quantity);
-      const itemTax = itemTaxAmount(item, quantity);
+      const line = invoiceLines.get(index + 1);
+      if (invoiceConfigs && !line) return;
+      const revenue = line?.total_amount ?? itemRevenue(item, quantity);
+      const itemTax = line?.vat_amount ?? itemTaxAmount(item, quantity);
       const productName = text(item.goodsName) ?? text(item.name) ?? "Product";
       const groupName = resolveRevenueProductGroup(item, catalog);
       totalQuantity += quantity;
@@ -112,7 +133,7 @@ export function buildLocalRevenuePeriod(
         price: finiteNumber(item.price ?? item.unitPrice),
         qty: quantity,
         sysMoney: revenue,
-        discountMoney: 0,
+        discountMoney: line?.discount_amount ?? 0,
         realMoney: revenue,
         cancelQty: 0,
         cancelMoney: 0,
@@ -132,7 +153,7 @@ export function buildLocalRevenuePeriod(
       totalQty: totalQuantity,
       itemCount: orderItems.length,
       sysMoney: totalRevenue,
-      discountMoney: finiteNumber(order.voucherDiscount),
+      discountMoney: finiteNumber(order.discountAmount ?? order.voucherDiscount),
       realMoney: totalRevenue,
       cancelMoney: 0,
       taxMoney: taxAmount,

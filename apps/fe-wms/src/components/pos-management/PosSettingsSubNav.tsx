@@ -1,6 +1,7 @@
 "use client";
 
 import { Gift, PackageSearch, Printer, QrCode, TicketCheck, UtensilsCrossed } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 import { usePosCashDrawerCopy } from "./usePosCashDrawerCopy";
 import { usePosManagementCopy } from "./usePosManagementCopy";
@@ -17,22 +18,25 @@ export type SettingsSubTab =
 interface PosSettingsSubNavProps {
   activeSubTab: SettingsSubTab;
   onSelect: (subTab: SettingsSubTab) => void;
+  jposWeb?: boolean;
 }
 
 export function PosSettingsSubNav({
   activeSubTab,
   onSelect,
+  jposWeb = false,
 }: PosSettingsSubNavProps) {
   const copy = usePosManagementCopy();
   const cashDrawerCopy = usePosCashDrawerCopy();
+  const { lang } = useTranslation();
 
   const subTabs: Array<{
     id: SettingsSubTab;
     label: string;
     icon: typeof Printer;
   }> = [
-    { id: "receipt", label: copy.subTabReceipt, icon: Printer },
-    { id: "ticket", label: copy.subTabTicket, icon: UtensilsCrossed },
+    { id: "receipt", label: jposWeb && lang === "vi" ? "Hóa đơn" : copy.subTabReceipt, icon: Printer },
+    { id: "ticket", label: jposWeb ? (lang === "zh" ? "打印票券" : "In vé") : copy.subTabTicket, icon: jposWeb ? TicketCheck : UtensilsCrossed },
     { id: "lucky-draw", label: copy.subTabLuckyDraw, icon: Gift },
     { id: "products", label: copy.subTabProducts, icon: PackageSearch },
     { id: "vouchers", label: copy.subTabVouchers, icon: TicketCheck },
@@ -42,7 +46,7 @@ export function PosSettingsSubNav({
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-slate-100 pb-3">
-      {subTabs.map((tab) => {
+      {subTabs.filter((tab) => !jposWeb || tab.id !== "products").map((tab) => {
         const Icon = tab.icon;
         const isActive = activeSubTab === tab.id;
         return (
@@ -50,6 +54,7 @@ export function PosSettingsSubNav({
             key={tab.id}
             type="button"
             onClick={() => onSelect(tab.id)}
+            aria-pressed={isActive}
             className={`flex h-7 items-center gap-1.5 rounded-lg px-3 text-xs font-bold transition-all ${
               isActive
                 ? "bg-amber-50 text-amber-900 border border-amber-200/80 shadow-2xs"

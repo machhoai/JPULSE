@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   InvoiceDocumentStatus,
+  InvoiceOrderSyncPurpose,
   InvoicePreparationStatus,
   type InvoiceSourceOrderLine,
   type MeInvoiceStoreConfig,
@@ -16,6 +17,108 @@ import { calculateInvoice } from "./invoiceCalculationService.js";
 import { buildInitialInvoiceDocument } from "./invoiceDocumentDraftBuilder.js";
 import { invoiceSourceProjectionHash } from "./invoiceDocumentPolicy.js";
 import { invoiceDocumentBulkRebaseSchema } from "./invoiceDocumentSchemas.js";
+import { JPOS_INVOICE_MAPPING_VERSION } from "./invoicePosOrderAdapter.js";
+
+test("daily JPOS sync prepares one local draft without HK and skips legacy duplicates", {
+  skip: !process.env.FIRESTORE_EMULATOR_HOST,
+}, async () => {
+  assert.match(process.env.FIRESTORE_EMULATOR_HOST!, /^(127\.0\.0\.1|localhost):\d+$/);
+  process.env.NODE_ENV = "test";
+  const project = "demo-invoice-source-update";
+  process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 = Buffer.from(JSON.stringify({
+    project_id: project,
+    client_email: `test@${project}.iam.gserviceaccount.com`,
+    private_key: generateKeyPairSync("rsa", {
+      modulusLength: 2048,
+      privateKeyEncoding: { type: "pkcs8", format: "pem" },
+      publicKeyEncoding: { type: "spki", format: "pem" },
+    }).privateKey,
+  })).toString("base64");
+  const [{ db }, { syncInvoiceOrdersForDate }, repository] = await Promise.all([
+    import("../config/firebase.js"),
+    import("./invoiceOrderSyncService.js"),
+    import("../repositories/invoiceOrderRepository.js"),
+  ]);
+  const warehouseId = `local-invoice-${Date.now()}`;
+  const businessDate = "2026-11-20";
+  const order = {
+    warehouseId,
+    localOrderId: `${warehouseId}-local`,
+    hkOrderNumber: `${warehouseId}-linked-hk`,
+    status: "LOCAL_PAID",
+    paymentStatus: "PAID",
+    totalAmount: 99_000,
+    discountAmount: 11_000,
+    items: [{ goodsId: "ticket", goodsName: "Vé", quantity: 1, price: 110_000, taxRate: 10 }],
+    paidAt: "2026-11-20T04:00:00.000Z",
+    createdAt: "2026-11-20T03:59:00.000Z",
+  };
+  const duplicate = { ...order, localOrderId: `${warehouseId}-duplicate`, hkOrderNumber: `${warehouseId}-legacy` };
+  const imported = { ...order, localOrderId: `${warehouseId}-import`, hkOrderNumber: null, source: "JOYWORLD_IMPORT" };
+  await Promise.all([
+    db.collection("warehouses").doc(warehouseId).set({ is_deleted: false }),
+    db.collection("meinvoice_store_configs").doc(warehouseId).set({
+      warehouse_id: warehouseId,
+      meinvoice_account_id: warehouseId,
+      enabled: true,
+      default_buyer_name: "Khách lẻ",
+      default_buyer_address: "",
+      default_payment_method_name: "TM/CK",
+      default_unit_name: "Vé",
+      go_live_at: new Date("2026-01-01T00:00:00Z"),
+      inv_series: "C26",
+    }),
+    db.collection("meinvoice_accounts").doc(warehouseId).set({
+      id: warehouseId, legal_entity_id: warehouseId, enabled: true, last_test_succeeded: true,
+    }),
+    ...[order, duplicate, imported].map((value) => db.collection("pos_orders").doc(value.localOrderId).set(value)),
+  ]);
+  await repository.invoiceOrderRepository.upsertOrders(warehouseId, "legacy-run", [{
+    source_order_id: duplicate.hkOrderNumber,
+    source_payload_hash: "hk-hash",
+    raw_payload: {},
+    projection: {
+      source_system: "JOYWORLD",
+      order_number: duplicate.hkOrderNumber,
+      business_date: businessDate,
+      source_action_time: new Date(order.paidAt),
+    },
+  }], new Date());
+  const authorization = {
+    assert: (_action: string, scope: string) => assert.equal(scope, warehouseId),
+    can: () => true,
+  } as unknown as AuthorizationService;
+  const input = { warehouse_id: warehouseId, business_date: businessDate, purpose: InvoiceOrderSyncPurpose.ISSUE, include_reconciliation: false };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => { throw new Error("External HTTP is unavailable"); };
+  try {
+    const first = await syncInvoiceOrdersForDate(input, "actor", authorization);
+    const second = await syncInvoiceOrdersForDate(input, "actor", authorization);
+    assert.equal(first.order_count, 1);
+    assert.equal(first.legacy_skipped_count, 1);
+    assert.equal(first.draft_created_count, 1);
+    assert.equal(second.unchanged_count, 1);
+    assert.equal(second.draft_created_count, 0);
+    const id = repository.invoiceSourceOrderDocumentId(warehouseId, order.localOrderId, "JPOS");
+    const document = await db.collection("invoice_documents").doc(id).get();
+    assert.equal(document.get("source_order_number"), order.localOrderId);
+    assert.equal(document.get("calculation.total_amount"), order.totalAmount);
+    assert.equal(document.get("calculation.total_vat_amount"), 9_000);
+    assert.equal(document.get("revision"), 1);
+    await document.ref.update({ status: InvoiceDocumentStatus.ISSUED });
+    await db.collection("pos_orders").doc(order.localOrderId).update({
+      discountAmount: 22_000,
+      totalAmount: 88_000,
+    });
+    const third = await syncInvoiceOrdersForDate(input, "actor", authorization);
+    assert.equal(third.draft_rebase_skipped_count, 1);
+    const issued = await document.ref.get();
+    assert.equal(issued.get("status"), InvoiceDocumentStatus.ISSUED);
+    assert.equal(issued.get("calculation.total_amount"), 99_000);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 test(
   "source update preserves buyers, reviews material changes in bulk and rejects stale confirmations",
@@ -126,7 +229,7 @@ test(
       mapped_payment_method: "TM/CK",
       source_action_time: new Date("2026-10-12T12:57:29Z"),
       calculation: calculateInvoice(items, true, option),
-      mapping_version: "v1",
+      mapping_version: JPOS_INVOICE_MAPPING_VERSION,
       calculation_version: "v1",
       preflight: {
         status: InvoicePreparationStatus.READY_TO_ISSUE,

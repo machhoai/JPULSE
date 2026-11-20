@@ -22,7 +22,7 @@ Backend xác thực access token tại `POST /authenticate` và chỉ đổi tok
 
 Khi endpoint HK của môi trường Testing chỉ hỗ trợ HTTP, có thể đặt `ZALO_MEMBER_HK_ALLOW_HTTP=true` riêng trên revision Testing. Mini App vẫn gọi Cloud Run qua HTTPS. Kết nối từ Cloud Run tới HK qua HTTP truyền dữ liệu thành viên không mã hóa. Các action thành viên dùng phiên bản `10.11.8` giống JPOS, độc lập với phiên bản mặc định `HK_API_VERSION`.
 
-Bật `ZALO_MEMBER_REGISTRATION_ENABLED=true` trên môi trường thử sau khi xác nhận `member_join` tạo hồ sơ mà chưa cấp thẻ, xác nhận cơ chế chống tạo trùng của Joyworld và đối chiếu biểu mẫu POS. Thử cả cập nhật hồ sơ bằng `member_info_modify`. Đặt `ZALO_MEMBER_BALANCE_LABELS` là JSON theo mã loại số dư Joyworld, mỗi mục gồm `label` và `unit`, theo dữ liệu đã đối chiếu tại quầy.
+Bật `ZALO_MEMBER_REGISTRATION_ENABLED=true` trên môi trường thử sau khi xác nhận `member_join` tạo hồ sơ mà chưa cấp thẻ, xác nhận cơ chế chống tạo trùng của Joyworld và đối chiếu biểu mẫu POS. Thử cả cập nhật hồ sơ bằng `member_info_modify`. Tên loại số dư được cố định trong backend theo mã HK. Điểm nạp và Điểm thưởng luôn hiện, các loại còn lại chỉ hiện khi khác 0.
 
 ## Build để phát hành
 
@@ -41,6 +41,20 @@ Trước khi phát hành, triển khai API JPULSE lên môi trường thử, upl
 Đây là bản mẫu local của giai đoạn 1. Luồng đăng nhập, liên kết, số dư và hồ sơ dùng dữ liệu giả lập trong phiên hiện tại. OCR chạy trong trình duyệt với worker, WebAssembly và dữ liệu nhận dạng đi kèm ứng dụng. Ảnh được xử lý trên thiết bị. Bản local không cần Mini App ID, thông tin kết nối JPULSE hay Joyworld.
 
 ## Chạy từ thư mục gốc của repo
+
+Để tra số điện thoại với dữ liệu JPOS/HK thật, chạy hai terminal PowerShell từ thư mục gốc. Backend chỉ lắng nghe loopback và tra cứu trên Firebase production. Cấu hình `HK_API_APP_ID`, `HK_API_KEY`, `HK_API_BASE_URL`, `HK_API_SHOP_ID` ở môi trường terminal backend hoặc `.env.local` của repo, cùng thông tin Firebase production đã có. Nếu endpoint HK chỉ hỗ trợ HTTP, đặt `ZALO_MEMBER_HK_ALLOW_HTTP=true` cho tiến trình này.
+
+```powershell
+$env:NODE_ENV = 'development'
+pnpm --filter @bduck/be-wms dev:zalo-lookup
+```
+
+```powershell
+$env:VITE_ZALO_LOCAL_LOOKUP = 'true'
+pnpm --filter @bduck/zalo-mini-app dev
+```
+
+Mở địa chỉ `http://127.0.0.1` kèm cổng Vite in ra. Nhập số điện thoại vào ô **Số điện thoại thành viên**. Chế độ này chỉ xem số dư và hồ sơ, không đăng ký hoặc cập nhật dữ liệu thật. Chạy Vite mà không bật `VITE_ZALO_LOCAL_LOOKUP` để dùng dữ liệu demo.
 
 ```sh
 pnpm install --frozen-lockfile

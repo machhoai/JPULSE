@@ -21,7 +21,6 @@ interface Props {
   previewError: string | null;
   previewLoading: boolean;
   canCancelLocal: boolean;
-  canRefundRemote: boolean;
   onCancelled: (result: PosOrderCancelResult) => void;
 }
 
@@ -32,17 +31,15 @@ export function PosOrderCancelSection({
   previewError,
   previewLoading,
   canCancelLocal,
-  canRefundRemote,
   onCancelled,
 }: Props) {
   const copy = usePosOrderCopy();
   const [reason, setReason] = useState(order.cancellation?.reason ?? "");
   const [confirmed, setConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const isRemote = preview?.mode === "REMOTE_REFUND";
-  const hasPermission = isRemote ? canRefundRemote : canCancelLocal;
+  const requiresRefund = Boolean(preview && preview.amount > 0);
   const reasonValid = reason.trim().length >= 3;
-  const confirmationValid = !isRemote || confirmed;
+  const confirmationValid = !requiresRefund || confirmed;
   const blockedReason = preview?.blockedReason
     ? ({
         ORDER_SYNCING: copy.blockedSyncing,
@@ -50,26 +47,25 @@ export function PosOrderCancelSection({
         IMPORTED_READ_ONLY: copy.blockedImported,
         REFUND_IN_PROGRESS: copy.blockedRefunding,
         REFUND_UNKNOWN: copy.blockedUnknown,
+        PAYMENT_IN_PROGRESS: copy.blockedPayment,
+        PAYMENT_UNVERIFIED: copy.blockedUnverified,
         CANCEL_PERMISSION_DENIED: copy.noPermission,
       }[preview.blockedReason] ?? copy.cancellationBlocked)
     : null;
   const canSubmit = Boolean(
-    preview?.refundable && hasPermission && reasonValid && confirmationValid,
+    preview?.refundable && canCancelLocal && reasonValid && confirmationValid,
   );
 
   async function cancelOrder() {
     if (!canSubmit || submitting) return;
     setSubmitting(true);
     const action = posManagementApi
-      .getOrder(warehouseId, order.localOrderId)
-      .then((latest) =>
-        posManagementApi.cancelOrder(warehouseId, order.localOrderId, {
-          reason: reason.trim(),
-          action_time: new Date().toISOString(),
-          expectedVersion: latest.version,
-          refundConfirmed: isRemote && confirmed,
-        }),
-      );
+      .cancelOrder(warehouseId, order.localOrderId, {
+        reason: reason.trim(),
+        action_time: new Date().toISOString(),
+        expectedVersion: order.version,
+        refundConfirmed: requiresRefund && confirmed,
+      });
     try {
       const result = await showToast.promise(action, {
         loading: copy.cancelLoading,
@@ -115,8 +111,11 @@ export function PosOrderCancelSection({
         {preview ? (
           <div className="mt-2 rounded-lg border border-amber-100 bg-white p-2.5 text-xs">
             <p className="font-semibold text-slate-700">
-              {isRemote ? copy.remoteRefund : copy.localOnly}
+              {copy.localOnly}
             </p>
+            {order.hkOrderNumber && requiresRefund && (
+              <p className="mt-1 text-slate-600">{copy.hkEntitlement}</p>
+            )}
             <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-slate-500">
               <span>
                 {copy.previewAmount}:{" "}
@@ -133,7 +132,7 @@ export function PosOrderCancelSection({
             </div>
           </div>
         ) : null}
-        {preview && !hasPermission && !blockedReason ? (
+        {preview && !canCancelLocal && !blockedReason ? (
           <Warning text={copy.noPermission} />
         ) : null}
 
@@ -153,7 +152,7 @@ export function PosOrderCancelSection({
               {copy.reasonRequired}
             </p>
           ) : null}
-          {isRemote ? (
+          {requiresRefund ? (
             <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-amber-200 bg-white p-2.5 text-xs text-slate-700">
               <input
                 type="checkbox"
@@ -187,6 +186,9 @@ function CancellationAudit({ order }: { order: PosOrderDetail }) {
         <Ban size={15} className="text-slate-500" />
         {copy.cancelAudit}
       </h3>
+      {order.latePayOSPayments?.map((payment) => (
+        <Warning key={payment.orderCode} text={`${copy.latePayment} ${formatMoney(payment.amount)} · PayOS ${payment.orderCode}`} />
+      ))}
       <dl className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
         <AuditItem label={copy.operationId} value={cancellation.operationId} />
         <AuditItem label={copy.status} value={cancellation.status} />
@@ -199,6 +201,9 @@ function CancellationAudit({ order }: { order: PosOrderDetail }) {
           value={formatTime(cancellation.syncTime)}
         />
         <AuditItem label={copy.cancelReason} value={cancellation.reason} />
+        {cancellation.refundConfirmedAt && (
+          <AuditItem label={copy.previewAmount} value={formatMoney(cancellation.refundedAmount ?? 0)} />
+        )}
         <AuditItem
           label={copy.refundOrderNumber}
           value={cancellation.refundOrderNumber || "—"}

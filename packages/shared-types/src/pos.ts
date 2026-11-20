@@ -188,6 +188,38 @@ export interface PosProductVisibilitySettingsView {
   products: PosProductVisibilityCatalogItem[];
 }
 
+export interface PosVietnamProductSettingsInput {
+  expected_version: number;
+  selling_price_vnd: number | null;
+  vat_rate: import("./invoices.js").InvoiceVatRateName | null;
+  effective_date: string | null;
+  import_from_hk: boolean;
+  send_sale_to_hk: boolean;
+}
+
+export interface PosVietnamProductSettings
+  extends Omit<PosVietnamProductSettingsInput, "expected_version"> {
+  goods_id: string;
+  warehouse_id: string;
+  version: number;
+  updated_at: string;
+  updated_by: string;
+}
+
+export interface PosHkCatalogProduct {
+  goods_id: string;
+  goods_name: string;
+  category: number;
+  group_name: string;
+  hk_price: number | null;
+  hk_after_tax_price: number | null;
+  hk_tax_rate: number | null;
+  hk_tax_type: number | null;
+  hk_available: boolean;
+  hk_updated_at: string | null;
+  vietnam_settings: PosVietnamProductSettings | null;
+}
+
 export interface PosProductVisibilitySettingsInput {
   expected_version: number;
   disabled_group_keys: string[];
@@ -457,6 +489,8 @@ export interface PosOrderCancellationSummary {
   syncTime: string;
   cancelledBy: string;
   refundOrderNumber: string | null;
+  refundedAmount?: number;
+  refundConfirmedAt?: string | null;
   lastError: string | null;
 }
 
@@ -469,6 +503,7 @@ export interface PosOrderDetail extends PosOrderSummary {
   sync: PosOrderSyncDetail;
   invoice: PosOrderInvoiceSummary;
   cancellation: PosOrderCancellationSummary | null;
+  latePayOSPayments?: Array<{ orderCode: number; amount: number }>;
 }
 
 export interface PosOrderListCursor {

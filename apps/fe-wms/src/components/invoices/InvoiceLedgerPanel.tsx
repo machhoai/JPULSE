@@ -234,7 +234,7 @@ export function InvoiceLedgerPanel({
                 Hóa đơn đã phát hành
               </h2>
               <p className="text-xxs text-slate-500">
-                JoyWorld ↔ MISA meInvoice · {businessDate}
+                JPOS ↔ MISA meInvoice · {businessDate}
               </p>
             </div>
             <button
