@@ -7,6 +7,7 @@ import type {
 } from "@bduck/shared-types";
 import {
   onIdTokenChanged,
+  signInWithCustomToken,
   signOut,
   type User as FirebaseUser,
 } from "firebase/auth";
@@ -25,6 +26,8 @@ import {
   writeSessionBootstrap,
 } from "@/lib/sessionBootstrapCache";
 import { useUserStore } from "@/stores/useUserStore";
+import { useMfaStore } from "@/stores/useMfaStore";
+import { isSharedWebHost, isWebPasswordLoginInProgress } from "@/lib/sharedWebSession";
 import { authenticatedFetch } from "@/utils/authenticatedFetch";
 
 const API_BASE_URL =
@@ -49,6 +52,15 @@ async function fetchAuth(path: string, init: RequestInit, timeoutMs: number) {
     ...init,
     credentials: "include",
     signal: AbortSignal.timeout(timeoutMs),
+  });
+}
+
+async function fetchSharedSession(path: string, method: "GET" | "POST") {
+  return fetch(`${API_BASE_URL}${path}`, {
+    method,
+    credentials: "include",
+    cache: "no-store",
+    signal: AbortSignal.timeout(SESSION_RESTORE_TIMEOUT_MS),
   });
 }
 
@@ -78,7 +90,10 @@ export default function AuthSessionProvider() {
 
       const sessionSyncPromise = (async () => {
         const startedAt = performance.now();
-        let response = await fetchAuth(
+        const sharedWebHost = isSharedWebHost();
+        let response = sharedWebHost
+          ? await fetchSharedSession("/api/auth/session", "GET")
+          : await fetchAuth(
           "/api/auth/session",
           { method: "GET" },
           SESSION_RESTORE_TIMEOUT_MS,
@@ -87,7 +102,7 @@ export default function AuthSessionProvider() {
         // During a rolling deployment, the previous backend does not expose
         // GET /session yet. Recreate the cookie through the established login
         // endpoint for both an expired session and an older backend version.
-        if (shouldBootstrapSessionWithFirebase(response.status)) {
+        if (!sharedWebHost && shouldBootstrapSessionWithFirebase(response.status)) {
           const idToken = await firebaseUser.getIdToken(forceTokenRefresh);
           response = await fetchAuth(
             "/api/auth/sessionLogin",
@@ -117,6 +132,10 @@ export default function AuthSessionProvider() {
           auth.currentUser?.uid !== firebaseUser.uid ||
           payload?.data?.user?.id !== firebaseUser.uid
         ) {
+          if (sharedWebHost && auth.currentUser?.uid === firebaseUser.uid) {
+            clearAuth();
+            await signOut(auth);
+          }
           return;
         }
 
@@ -131,6 +150,7 @@ export default function AuthSessionProvider() {
           | undefined;
         const grants = (payload?.data?.access?.grants ||
           []) as UserFacilityAccessGrant[];
+        if (payload?.data?.mfaVerified === false) useMfaStore.getState().lockScreen();
         setAuthData(payload.data.user, roleIds, activeAssignments);
         if (metadata?.active_version_id) {
           const permissions = buildMaterializedPermissions(metadata, grants);
@@ -162,14 +182,43 @@ export default function AuthSessionProvider() {
   );
 
   useEffect(() => {
-    return onIdTokenChanged(auth, (firebaseUser) => {
+    let active = true;
+    let attemptedSharedRestore = false;
+    const clearSignedOutSession = () => {
+      lastSessionSyncAt = 0;
+      clearAuth();
+      void clearClientSnapshots().catch(logSessionSyncError);
+      void isolateClientDataForAccount(null).catch(logSessionSyncError);
+    };
+    const unsubscribe = onIdTokenChanged(auth, (firebaseUser) => {
       if (!firebaseUser) {
-        lastSessionSyncAt = 0;
-        clearAuth();
-        void clearClientSnapshots().catch(logSessionSyncError);
-        void isolateClientDataForAccount(null).catch(logSessionSyncError);
+        if (isSharedWebHost() && !attemptedSharedRestore && !isWebPasswordLoginInProgress()) {
+          attemptedSharedRestore = true;
+          void fetchSharedSession("/api/auth/shared-session", "POST")
+            .then(async (response) => {
+              const payload = response.ok ? await readJson(response) : null;
+              if (!active || auth.currentUser || isWebPasswordLoginInProgress()) return;
+              if (typeof payload?.token !== "string") {
+                clearSignedOutSession();
+                return;
+              }
+              useMfaStore.getState().unlockScreen();
+              await signInWithCustomToken(auth, payload.token);
+            })
+            .catch((error) => {
+              logSessionSyncError(error);
+              if (active && !auth.currentUser && !isWebPasswordLoginInProgress()) {
+                useMfaStore.getState().lockScreen();
+                clearSignedOutSession();
+              }
+            });
+        } else if (!isWebPasswordLoginInProgress()) {
+          clearSignedOutSession();
+        }
         return;
       }
+      attemptedSharedRestore = true;
+      if (isSharedWebHost() && isWebPasswordLoginInProgress()) return;
       const current = useUserStore.getState();
       const isAlreadyAuthenticated =
         current.authStatus === "AUTHENTICATED" &&
@@ -204,6 +253,10 @@ export default function AuthSessionProvider() {
           }
         });
     });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, [
     beginAuthVerification,
     clearAuth,
@@ -242,7 +295,7 @@ export default function AuthSessionProvider() {
 
   useEffect(() => {
     const validateCurrentSession = () => {
-      if (!auth.currentUser) return;
+      if (!auth.currentUser || isWebPasswordLoginInProgress()) return;
       void syncBackendSession(auth.currentUser).catch(logSessionSyncError);
     };
     const validateOnVisible = () => {
@@ -251,10 +304,12 @@ export default function AuthSessionProvider() {
     window.addEventListener("focus", validateCurrentSession);
     window.addEventListener("online", validateCurrentSession);
     document.addEventListener("visibilitychange", validateOnVisible);
+    const timer = isSharedWebHost() ? window.setInterval(validateOnVisible, SESSION_VALIDATION_DEDUPE_MS) : undefined;
     return () => {
       window.removeEventListener("focus", validateCurrentSession);
       window.removeEventListener("online", validateCurrentSession);
       document.removeEventListener("visibilitychange", validateOnVisible);
+      window.clearInterval(timer);
     };
   }, [syncBackendSession]);
 

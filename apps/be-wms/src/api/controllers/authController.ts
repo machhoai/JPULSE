@@ -13,6 +13,14 @@ import {
 } from "../../repositories/userAccessRepository.js";
 import { activeRoleAssignments } from "../../services/scopedRoleAccess.js";
 import {
+  clearSharedWebSessionMfa,
+  createSharedWebFirebaseToken,
+  hasSharedWebSessionMfa,
+  isSharedWebOrigin,
+  jposWebOrigin,
+  markSharedWebSessionMfa,
+} from "../../services/sharedWebSessionService.js";
+import {
   completeAccountInvitation,
   sendPasswordResetEmail,
   verifyAccountInvitation,
@@ -208,9 +216,12 @@ export const currentSession = async (req: Request, res: Response) => {
   }
 
   try {
-    const [roleAssignments, access] = await Promise.all([
+    const [roleAssignments, access, mfaVerified] = await Promise.all([
       getUserWarehouseRoles(user.id),
       loadClientAccessSnapshot(user.id),
+      req.get("Origin") === jposWebOrigin && req.cookies?.__session
+        ? hasSharedWebSessionMfa(req.cookies.__session, user.id)
+        : undefined,
     ]);
     const roles = await attachRoleNames(
       activeRoleAssignments(roleAssignments, new Date()),
@@ -218,7 +229,7 @@ export const currentSession = async (req: Request, res: Response) => {
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).json({
       success: true,
-      data: { user, roles, access },
+      data: { user, roles, access, mfaVerified },
       messages: {
         vi: "Khôi phục phiên đăng nhập thành công.",
         zh: "登录会话恢复成功。",
@@ -350,6 +361,11 @@ export const logout = async (req: Request, res: Response) => {
     const sessionCookie = req.cookies?.__session || "";
     if (sessionCookie) {
       await logoutSession(sessionCookie);
+      if (isSharedWebOrigin(req.get("Origin"))) {
+        await clearSharedWebSessionMfa(sessionCookie).catch((error) => {
+          console.error("[authController] shared session cleanup failed:", error);
+        });
+      }
     }
 
     res.clearCookie("__session");
@@ -372,6 +388,19 @@ export const logout = async (req: Request, res: Response) => {
         zh: "登出时发生系统错误。",
       },
     });
+  }
+};
+
+export const restoreSharedWebSession = async (req: Request, res: Response) => {
+  res.set("Cache-Control", "no-store");
+  if (!isSharedWebOrigin(req.get("Origin"))) return res.sendStatus(403);
+  try {
+    const token = await createSharedWebFirebaseToken(req.cookies?.__session || "");
+    if (!token) return res.sendStatus(401);
+    return res.json({ token });
+  } catch (error) {
+    console.error("[authController] shared web session restore failed:", error);
+    return res.sendStatus(503);
   }
 };
 
@@ -481,6 +510,9 @@ export const checkMfa = async (req: Request, res: Response) => {
     const isValid = await verifyMfa(user.id, token);
 
     if (isValid) {
+      if (isSharedWebOrigin(req.get("Origin")) && req.cookies?.__session) {
+        await markSharedWebSessionMfa(req.cookies.__session, user.id);
+      }
       return res.status(200).json({
         success: true,
         data: null,

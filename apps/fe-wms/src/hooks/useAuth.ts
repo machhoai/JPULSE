@@ -12,6 +12,7 @@ import { useTranslation } from "@/lib/i18n";
 import { AUTH_TOAST_TEXT } from "@/lib/i18n/componentTranslations";
 import { isolateClientDataForAccount } from "@/lib/clientDataIsolation";
 import { buildMaterializedPermissions } from "@/lib/accessSnapshotPolicy";
+import { trackWebPasswordLogin } from "@/lib/sharedWebSession";
 import type {
   UserAccessMetadata,
   UserFacilityAccessGrant,
@@ -126,7 +127,7 @@ export const useAuth = () => {
       return messages;
     };
 
-    const actionPromise = loginAction();
+    const actionPromise = trackWebPasswordLogin(loginAction);
     gooeyToast.promise(actionPromise, {
       loading: copy.loginLoading,
       success: (msgs) => msgs?.[lang] || copy.loginSuccess,

@@ -242,7 +242,7 @@ export const menuItems: MenuItem[] = [
         id: "posManagement",
         labelKey: "posManagement",
         icon: MonitorSmartphone,
-        href: "/pos-management",
+        href: "https://jpos.joyworldcityfuns.vn/",
         permissionsAny: [
             "pos.devices.read",
             "pos.settings.read",

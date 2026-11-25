@@ -13,6 +13,7 @@ import {
   getAuthorizationRolloutMode,
   resolveAuthorizationContext,
 } from "../../services/authorizationRolloutService.js";
+import { hasSharedWebSessionMfa, jposWebOrigin, sharedWebSessionId } from "../../services/sharedWebSessionService.js";
 
 import { createRequireIdentityAuth } from "./identityAuthMiddleware.js";
 import {
@@ -30,9 +31,20 @@ const verifyRequestClaims = async (
       : "";
   const sessionCookie = req.cookies?.__session || "";
 
+  if (req.get("Origin") === jposWebOrigin && req.originalUrl.startsWith("/api/pos/")) {
+    if (!sessionCookie) return null;
+    const verified = await auth.verifySessionCookie(sessionCookie, true).catch(() => null);
+    if (!verified) return null;
+    return await hasSharedWebSessionMfa(sessionCookie, verified.uid).catch(() => false) ? verified : null;
+  }
+
   if (bearerToken) {
     try {
-      return await auth.verifyIdToken(bearerToken, true);
+      const verified = await auth.verifyIdToken(bearerToken, true);
+      if (!verified.jpulse_web_session) return verified;
+      if (!sessionCookie || verified.jpulse_web_session !== sharedWebSessionId(sessionCookie)) return null;
+      const session = await auth.verifySessionCookie(sessionCookie, true);
+      return session.uid === verified.uid ? session : null;
     } catch {
       // A valid session cookie may still authenticate this request.
     }

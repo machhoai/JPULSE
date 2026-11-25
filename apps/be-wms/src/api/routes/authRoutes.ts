@@ -5,6 +5,7 @@ import {
   logout,
   requestPasswordResetHandler,
   resolveLoginIdentifier,
+  restoreSharedWebSession,
   sendEmailOtp,
   sessionLogin,
   currentSession,
@@ -22,6 +23,7 @@ const router: ExpressRouter = Router();
 
 router.post("/sessionLogin", authSessionRateLimiter, sessionLogin);
 router.get("/session", requireIdentityAuth, currentSession);
+router.post("/shared-session", authSessionRateLimiter, restoreSharedWebSession);
 router.post("/login/resolve", authRateLimiter, resolveLoginIdentifier);
 router.post("/logout", logout);
 router.post(
