@@ -147,17 +147,11 @@ test("invoice issue deadline is the next Vietnam midnight", () => {
     "2026-08-25",
   );
   assert.equal(
-    invoiceIssueDeadlineExpired(
-      deadline,
-      new Date("2026-08-24T16:59:59.999Z"),
-    ),
+    invoiceIssueDeadlineExpired(deadline, new Date("2026-08-24T16:59:59.999Z")),
     false,
   );
   assert.equal(
-    invoiceIssueDeadlineExpired(
-      deadline,
-      new Date("2026-08-24T17:00:00.000Z"),
-    ),
+    invoiceIssueDeadlineExpired(deadline, new Date("2026-08-24T17:00:00.000Z")),
     true,
   );
 });
@@ -181,9 +175,7 @@ test("invoice retries never cross the Vietnam midnight deadline", () => {
     null,
   );
   assert.equal(
-    deadlineTerminalInvoiceIssueStatus(
-      InvoiceIssueItemStatus.RETRYABLE_ERROR,
-    ),
+    deadlineTerminalInvoiceIssueStatus(InvoiceIssueItemStatus.RETRYABLE_ERROR),
     InvoiceIssueItemStatus.CANCELLED,
   );
   assert.equal(
@@ -434,6 +426,31 @@ test("bulk stuck retry API requires a business date and OTP", () => {
     retryInvoiceIssueItemsSchema.safeParse({
       ...input,
       business_date: "24/08/2026",
+    }).success,
+    false,
+  );
+});
+
+test("targeted retry requires explicit invoice IDs and does not fall back to the legacy all-items request", () => {
+  const scope = {
+    warehouse_id: "store-1",
+    business_dates: ["2026-08-24", "2026-08-25"],
+    invoice_document_ids: ["document-1", "document-2"],
+    otp: "123456",
+  };
+  assert.deepEqual(retryInvoiceIssueItemsSchema.parse(scope), scope);
+  assert.equal(
+    retryInvoiceIssueItemsSchema.safeParse({
+      ...scope,
+      invoice_document_ids: [],
+    }).success,
+    false,
+  );
+  assert.equal(
+    retryInvoiceIssueItemsSchema.safeParse({
+      ...scope,
+      business_date: "2026-08-24",
+      invoice_document_ids: [],
     }).success,
     false,
   );

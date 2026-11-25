@@ -18,12 +18,66 @@ export type PosInvoiceOrderRecord = Record<string, unknown> & {
 // request-scoped proxy in local development, so retaining a CollectionReference
 // at module load would permanently bind this repository to the default project.
 const orders = () => db.collection("pos_orders");
+const invoiceSnapshotPath = "invoice_snapshots/payment";
 
-const asPosOrder = (
-  value: Record<string, unknown>,
-): PosInvoiceOrderRecord => value as PosInvoiceOrderRecord;
+const asPosOrder = (value: Record<string, unknown>): PosInvoiceOrderRecord =>
+  value as PosInvoiceOrderRecord;
+
+function applyInvoicePaymentSnapshot(
+  order: PosInvoiceOrderRecord,
+  snapshot: FirebaseFirestore.DocumentData | undefined,
+): PosInvoiceOrderRecord {
+  if (!snapshot) return order;
+  if (
+    snapshot.schemaVersion !== 1 ||
+    snapshot.localOrderId !== order.localOrderId ||
+    snapshot.warehouseId !== order.warehouseId ||
+    snapshot.paidAt !== order.paidAt ||
+    typeof snapshot.totalAmount !== "number" ||
+    !Array.isArray(snapshot.items) ||
+    !Array.isArray(snapshot.vouchers)
+  ) {
+    throw new Error("INVALID_POS_INVOICE_PAYMENT_SNAPSHOT");
+  }
+
+  return {
+    ...order,
+    shopId: snapshot.shopId,
+    createdAt: snapshot.createdAt,
+    paymentMethod: snapshot.paymentMethod,
+    paymentMethodId: snapshot.paymentMethodId,
+    paymentMethodName: snapshot.paymentMethodName,
+    totalAmount: snapshot.totalAmount,
+    discountAmount: snapshot.discountAmount,
+    voucherDiscount: null,
+    vouchers: snapshot.vouchers,
+    items: snapshot.items,
+  };
+}
 
 export const posInvoiceOrderRepository = {
+  async withInvoicePaymentSnapshots(
+    values: PosInvoiceOrderRecord[],
+  ): Promise<PosInvoiceOrderRecord[]> {
+    const result: PosInvoiceOrderRecord[] = [];
+    const collection = orders();
+    const chunkSize = 200;
+    for (let offset = 0; offset < values.length; offset += chunkSize) {
+      const chunk = values.slice(offset, offset + chunkSize);
+      const snapshots = await db.getAll(
+        ...chunk.map((order) =>
+          collection.doc(`${order.localOrderId}/${invoiceSnapshotPath}`),
+        ),
+      );
+      result.push(
+        ...chunk.map((order, index) =>
+          applyInvoicePaymentSnapshot(order, snapshots[index].data()),
+        ),
+      );
+    }
+    return result;
+  },
+
   async findByInvoiceRequestToken(
     token: string,
   ): Promise<PosInvoiceOrderRecord | null> {
@@ -74,9 +128,7 @@ export const posInvoiceOrderRepository = {
     for (let cursor = 0; cursor < unique.length; cursor += 30) {
       const chunk = unique.slice(cursor, cursor + 30);
       if (chunk.length === 0) continue;
-      const snapshot = await orders()
-        .where("hkOrderNumber", "in", chunk)
-        .get();
+      const snapshot = await orders().where("hkOrderNumber", "in", chunk).get();
       snapshot.docs.forEach((item) => {
         const order = asPosOrder(item.data());
         if (typeof order.hkOrderNumber === "string" && order.hkOrderNumber) {

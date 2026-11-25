@@ -55,21 +55,22 @@ export const syncPosInvoiceOrdersForDate = async (input: {
         (value): value is string => typeof value === "string" && Boolean(value),
       ),
   );
-  const candidates = orders
-    .filter(
-      (order) =>
-        !order.hkOrderNumber ||
-        !legacyJoyworldOrderNumbers.has(order.hkOrderNumber),
-    )
-    .map((order) =>
-      buildPosInvoiceSourceOrder(
-        order,
-        input.businessDate,
-        input.storeConfig,
-        input.account,
-        input.externalSourceAccountKey,
-      ),
-    );
+  const eligibleOrders = orders.filter(
+    (order) =>
+      !order.hkOrderNumber ||
+      !legacyJoyworldOrderNumbers.has(order.hkOrderNumber),
+  );
+  const snapshottedOrders =
+    await posInvoiceOrderRepository.withInvoicePaymentSnapshots(eligibleOrders);
+  const candidates = snapshottedOrders.map((order) =>
+    buildPosInvoiceSourceOrder(
+      order,
+      input.businessDate,
+      input.storeConfig,
+      input.account,
+      input.externalSourceAccountKey,
+    ),
+  );
   const writes = await invoiceOrderRepository.excludeClaimedExternalIdentities(
     input.warehouseId,
     candidates,

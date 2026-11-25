@@ -621,6 +621,7 @@ export const invoiceIssueRepository = {
     actorId: string;
     requestId: string;
     signType: number;
+    requireRetryableError?: boolean;
     items: Array<{ itemId: string; allowPublish: boolean }>;
   }) {
     const uniqueItems = new Map(input.items.map((item) => [item.itemId, item]));
@@ -662,6 +663,9 @@ export const invoiceIssueRepository = {
           !itemSnap.exists ||
           !item ||
           !isUserRetryCandidate(item) ||
+          (input.requireRetryableError &&
+            (item.status !== InvoiceIssueItemStatus.RETRYABLE_ERROR ||
+              document?.status !== InvoiceDocumentStatus.RETRYABLE_ERROR)) ||
           !document ||
           document.warehouse_id !== input.warehouseId ||
           ![

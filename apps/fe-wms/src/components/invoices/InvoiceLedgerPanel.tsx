@@ -22,8 +22,11 @@ import {
   type InvoiceReconciliationCaseView,
 } from "@/api/invoiceApi";
 import { invoiceErrorToast } from "@/components/invoices/invoiceErrorPresentation";
+import { useTranslation } from "@/lib/i18n";
 import { shortName } from "@/utils/name";
 import { showToast } from "@/utils/toast";
+
+import { INVOICE_PAGE_SIZE, InvoicePagination } from "./InvoicePagination";
 
 const amount = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -66,6 +69,7 @@ export function InvoiceLedgerPanel({
   canDownload,
   canResolve,
   onIssuedStatisticsLoaded,
+  search = "",
 }: {
   warehouseId: string;
   businessDate: string;
@@ -73,12 +77,15 @@ export function InvoiceLedgerPanel({
   refreshToken: string;
   canDownload: boolean;
   canResolve: boolean;
+  search?: string;
   onIssuedStatisticsLoaded?: (
     warehouseId: string,
     businessDate: string,
     statistics: InvoiceIssuedStatistics,
   ) => void;
 }) {
+  const { lang } = useTranslation();
+  const [listPage, setListPage] = useState(1);
   const [ledger, setLedger] = useState<InvoiceLedgerEntryView[]>([]);
   const [cases, setCases] = useState<InvoiceReconciliationCaseView[]>([]);
   const [loading, setLoading] = useState(false);
@@ -130,15 +137,30 @@ export function InvoiceLedgerPanel({
     void load();
   }, [load, refreshToken]);
 
-  const visibleLedger = useMemo(
-    () =>
-      ledger.filter(
-        (item) =>
-          item.match_status === InvoiceOrderMatchStatus.MATCHED ||
-          Boolean(item.transaction_id),
-      ),
-    [ledger],
+  const visibleLedger = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase(lang);
+    return ledger.filter(
+      (item) =>
+        (item.match_status === InvoiceOrderMatchStatus.MATCHED ||
+          Boolean(item.transaction_id)) &&
+        (!term ||
+          [
+            item.order_number,
+            item.source_order_id,
+            item.invoice_number,
+            item.customer_name,
+          ].some((field) => field?.toLocaleLowerCase(lang).includes(term))),
+    );
+  }, [lang, ledger, search]);
+  const page = Math.min(
+    listPage,
+    Math.max(1, Math.ceil(visibleLedger.length / INVOICE_PAGE_SIZE)),
   );
+  const ledgerPage = visibleLedger.slice(
+    (page - 1) * INVOICE_PAGE_SIZE,
+    page * INVOICE_PAGE_SIZE,
+  );
+  useEffect(() => setListPage(1), [search]);
   const openCases = cases.filter(
     (item) => item.status === InvoiceReconciliationCaseStatus.OPEN,
   );
@@ -264,16 +286,22 @@ export function InvoiceLedgerPanel({
             </div>
           ) : visibleLedger.length === 0 ? (
             <div className="flex min-h-48 items-center justify-center text-xs text-slate-500">
-              Chưa có dữ liệu phù hợp. Hãy đồng bộ ngày đã chọn.
+              {search.trim()
+                ? lang === "vi"
+                  ? "Chưa có dữ liệu phù hợp với từ khóa."
+                  : "没有符合关键词的记录。"
+                : lang === "vi"
+                  ? "Chưa có hóa đơn đã phát hành."
+                  : "暂无已开票记录。"}
             </div>
           ) : (
             <div className="flex flex-col gap-2.5 p-3">
-              {visibleLedger.map((item) => (
+              {ledgerPage.map((item) => (
                 <div
                   key={item.id}
-                  className="group relative rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-indigo-300 hover:shadow-md transition-all duration-150"
+                  className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 sm:px-3"
                 >
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center justify-between">
+                  <div className="grid min-w-0 gap-1.5 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-center lg:gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-bold text-slate-900">
@@ -305,17 +333,15 @@ export function InvoiceLedgerPanel({
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between md:justify-end gap-3 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
-                      <div className="flex flex-col text-right">
-                        <span className="text-[11px] text-indigo-800 uppercase tracking-wider font-bold">
-                          Tổng tiền
-                        </span>
-                        <span className="text-sm sm:text-base font-bold tabular-nums text-indigo-700 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-200/80 shadow-2xs">
+                    <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_minmax(4rem,auto)] items-center gap-1.5 border-t border-slate-100 pt-1 lg:grid-cols-[7rem_minmax(0,1fr)_auto] lg:gap-2 lg:border-0 lg:pt-0">
+                      <div className="whitespace-nowrap lg:text-right">
+                        <span className="sr-only">Tổng tiền</span>
+                        <span className="text-xs font-bold tabular-nums text-sky-700 lg:text-sm">
                           {amount.format(item.total_amount ?? 0)}
                         </span>
                       </div>
 
-                      <div className="flex flex-col items-end gap-1">
+                      <div className="flex min-w-0 flex-col items-center gap-1">
                         <span
                           className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
                             item.match_status ===
@@ -327,7 +353,16 @@ export function InvoiceLedgerPanel({
                                 : "bg-slate-100 text-slate-600 border border-slate-200"
                           }`}
                         >
-                          {item.match_status}
+                          {item.match_status === InvoiceOrderMatchStatus.MATCHED
+                            ? lang === "vi"
+                              ? "Đã phát hành"
+                              : "已开票"
+                            : item.match_status ===
+                                InvoiceOrderMatchStatus.NOT_ISSUED
+                              ? lang === "vi"
+                                ? "Chưa phát hành"
+                                : "未开票"
+                              : item.match_status}
                         </span>
                         {item.reconciliation_case_count > 0 && (
                           <span className="text-xs font-semibold text-rose-600">
@@ -336,7 +371,7 @@ export function InvoiceLedgerPanel({
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center justify-end gap-1">
                         <ActionButton
                           label="Xem"
                           disabled={!canDownload || !item.transaction_id}
@@ -364,6 +399,14 @@ export function InvoiceLedgerPanel({
                 </div>
               ))}
             </div>
+          )}
+          {!loading && (
+            <InvoicePagination
+              page={page}
+              total={visibleLedger.length}
+              lang={lang}
+              onPageChange={setListPage}
+            />
           )}
         </section>
       )}

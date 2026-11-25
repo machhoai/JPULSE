@@ -24,11 +24,20 @@ export const listInvoiceIssueRetryCandidatesSchema = z.object({
   business_date: z.iso.date(),
 });
 
-export const retryInvoiceIssueItemsSchema = z.object({
+const retryInvoiceScope = z.object({
   warehouse_id: z.string().trim().min(1),
-  business_date: z.iso.date(),
   otp: z
     .string()
     .trim()
     .regex(/^\d{6}$/u),
 });
+
+export const retryInvoiceIssueItemsSchema = z.union([
+  retryInvoiceScope
+    .extend({
+      business_dates: z.array(z.iso.date()).min(1).max(31),
+      invoice_document_ids: z.array(z.string().trim().min(1)).min(1),
+    })
+    .strict(),
+  retryInvoiceScope.extend({ business_date: z.iso.date() }).strict(),
+]);

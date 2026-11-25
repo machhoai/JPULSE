@@ -1,10 +1,13 @@
-import { useState, useCallback } from "react";
 import { LockClosedIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
-import { X } from "lucide-react";
 import { gooeyToast } from "goey-toast";
-import { useUserStore } from "../../stores/useUserStore";
+import { X } from "lucide-react";
+import { useState, useCallback } from "react";
+
+
 import { useTranslation } from "@/lib/i18n";
 import { ACTION_OTP_TEXT } from "@/lib/i18n/componentTranslations";
+
+import { useUserStore } from "../../stores/useUserStore";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://api.wms.localhost";
 
@@ -14,6 +17,7 @@ interface ActionOtpModalProps {
     title?: string;
     description?: string;
     isSubmitting?: boolean;
+    mobileSheet?: boolean;
 }
 
 export function ActionOtpModal({
@@ -22,6 +26,7 @@ export function ActionOtpModal({
     title,
     description,
     isSubmitting = false,
+    mobileSheet = false,
 }: ActionOtpModalProps) {
     const { lang } = useTranslation();
     const copy = ACTION_OTP_TEXT[lang === "zh" ? "zh" : "vi"];
@@ -58,12 +63,13 @@ export function ActionOtpModal({
     };
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="w-[calc(100%-2rem)] max-w-4xl rounded-2xl bg-white p-6 shadow-xl relative">
+        <div className={`fixed inset-0 z-[9999] flex justify-center bg-black/40 backdrop-blur-sm ${mobileSheet ? "items-end sm:items-center" : "items-center"}`}>
+            <div role="dialog" aria-modal="true" aria-label={title ?? copy.title} className={`relative bg-white p-6 shadow-xl ${mobileSheet ? "max-h-[90dvh] w-full overflow-y-auto rounded-t-2xl pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] sm:w-[calc(100%-2rem)] sm:max-w-md sm:rounded-2xl" : "w-[calc(100%-2rem)] max-w-4xl rounded-2xl"}`}>
                 <button
                     type="button"
                     onClick={onCancel}
                     disabled={isSubmitting}
+                    aria-label={lang === "vi" ? "Đóng" : "关闭"}
                     className="absolute right-4 top-4 rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors disabled:opacity-50"
                 >
                     <X className="h-5 w-5" />
@@ -80,6 +86,9 @@ export function ActionOtpModal({
                     <form onSubmit={handleSubmit} className="w-full">
                         <input
                             type="text"
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            aria-label="OTP"
                             maxLength={6}
                             value={code}
                             onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}

@@ -337,6 +337,7 @@ export interface InvoiceIssueRetryResult {
   already_on_misa_count: number;
   duplicate_blocked_count: number;
   skipped_count: number;
+  failed_dates?: string[];
   retried_items: Array<{ job_id: string; item_id: string }>;
   blocked_items: Array<{
     job_id: string;
@@ -653,14 +654,16 @@ export const invoiceApi = {
 
   retryStuckIssueItems: (
     warehouseId: string,
-    businessDate: string,
+    scope:
+      | string
+      | { business_dates: string[]; invoice_document_ids: string[] },
     otp: string,
   ) =>
     request<InvoiceIssueRetryResult>("/api/invoices/issues/retry", {
       method: "POST",
       body: JSON.stringify({
         warehouse_id: warehouseId,
-        business_date: businessDate,
+        ...(typeof scope === "string" ? { business_date: scope } : scope),
         otp,
       }),
     }),

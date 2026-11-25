@@ -7,7 +7,6 @@ import type {
 import { RefreshCw, Send, TriangleAlert } from "lucide-react";
 import {
   forwardRef,
-  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -17,8 +16,8 @@ import {
 
 import {
   invoiceApi,
+  type InvoiceBulkIssueSelectionPayload,
   type InvoiceBulkIssueRunView,
-  type InvoiceIssueRetryCandidate,
 } from "@/api/invoiceApi";
 import { invoiceErrorToast } from "@/components/invoices/invoiceErrorPresentation";
 import { ActionOtpModal } from "@/components/shared/ActionOtpModal";
@@ -41,7 +40,7 @@ interface InvoiceBulkIssuePanelProps {
   selectedIds: string[];
   eligibleCount: number;
   canIssue: boolean;
-  canRetry: boolean;
+  retryJobIds: string[];
   lang: "vi" | "zh";
   onCompleted: () => void;
   onIssued: () => void;
@@ -59,7 +58,7 @@ export const InvoiceBulkIssuePanel = forwardRef<
     selectedIds,
     eligibleCount,
     canIssue,
-    canRetry,
+    retryJobIds,
     lang,
     onCompleted,
     onIssued,
@@ -70,19 +69,15 @@ export const InvoiceBulkIssuePanel = forwardRef<
 ) {
   const d = bulkIssueTranslations[lang];
   const [preview, setPreview] = useState<InvoiceBulkIssuePreview | null>(null);
+  const [previewSelection, setPreviewSelection] =
+    useState<InvoiceBulkIssueSelectionPayload | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
-  const [showRetryOtp, setShowRetryOtp] = useState(false);
   const [issuing, setIssuing] = useState(false);
-  const [retryingRejected, setRetryingRejected] = useState(false);
   const [run, setRun] = useState<InvoiceBulkIssueRunView | null>(null);
-  const [retryJobIds, setRetryJobIds] = useState<string[]>([]);
-  const [retryCandidates, setRetryCandidates] = useState<
-    InvoiceIssueRetryCandidate[]
-  >([]);
-  const [loadingRetryCandidates, setLoadingRetryCandidates] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const idempotencyKey = useRef<string | null>(null);
+  const previewGeneration = useRef(0);
   const completionNotified = useRef(false);
   const trackedJobIds = useMemo(
     () => [...new Set([...(run?.job_ids ?? []), ...retryJobIds])],
@@ -98,71 +93,32 @@ export const InvoiceBulkIssuePanel = forwardRef<
     onError: setLastError,
   });
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      openIssue: (mode) => {
-        if (!canIssue || eligibleCount === 0) return;
-        void display.startConfiguration(mode);
-      },
-    }),
-    [canIssue, display, eligibleCount],
-  );
-
-  const loadRetryCandidates = useCallback(async () => {
-    if (!warehouseId || !businessDate || !canRetry) {
-      setRetryCandidates([]);
-      return;
-    }
-    setLoadingRetryCandidates(true);
-    try {
-      setRetryCandidates(
-        await invoiceApi.listIssueRetryCandidates(warehouseId, businessDate),
-      );
-    } catch (candidateError) {
-      console.error(
-        "[InvoiceBulkIssuePanel] load retry candidates",
-        candidateError,
-      );
-      const presented = invoiceErrorToast(
-        candidateError,
-        "LOAD",
-        d.issueErrorFallback,
-      );
-      showToast.error(presented.title, presented.description);
-    } finally {
-      setLoadingRetryCandidates(false);
-    }
-  }, [businessDate, canRetry, d.issueErrorFallback, warehouseId]);
-
   useEffect(() => {
     setPreview(null);
-    setRun(null);
-    setRetryJobIds([]);
-    setRetryCandidates([]);
+    setPreviewSelection(null);
+    setShowOtp(false);
     setLastError(null);
+    setPreviewing(false);
     idempotencyKey.current = null;
-    completionNotified.current = false;
+    return () => {
+      previewGeneration.current += 1;
+    };
   }, [warehouseId, businessDate]);
-
-  useEffect(() => {
-    void loadRetryCandidates();
-  }, [loadRetryCandidates]);
 
   useEffect(() => {
     if (!progress.complete || completionNotified.current) return;
     completionNotified.current = true;
     onCompleted();
-    void loadRetryCandidates();
-  }, [loadRetryCandidates, onCompleted, progress.complete]);
+  }, [onCompleted, progress.complete]);
 
-  const startPreview = async () => {
-    if (!display.selection || !canIssue || previewing || display.configDirty)
-      return;
+  const startPreview = async (selection: InvoiceBulkIssueSelectionPayload) => {
+    if (!canIssue || previewing || issuing) return;
+    const generation = ++previewGeneration.current;
     setPreviewing(true);
     setLastError(null);
     try {
-      const nextPreview = await invoiceApi.previewBulkIssue(display.selection);
+      const nextPreview = await invoiceApi.previewBulkIssue(selection);
+      if (generation !== previewGeneration.current) return;
       if (nextPreview.summary.eligible_count === 0) {
         const message = d.noEligibleInvoices;
         setLastError(message);
@@ -170,9 +126,11 @@ export const InvoiceBulkIssuePanel = forwardRef<
         return;
       }
       setPreview(nextPreview);
+      setPreviewSelection(selection);
       display.closeConfiguration();
       idempotencyKey.current = crypto.randomUUID();
     } catch (error) {
+      if (generation !== previewGeneration.current) return;
       console.error("[InvoiceBulkIssuePanel] preview bulk issue", error);
       const message = invoiceErrorToast(
         error,
@@ -182,17 +140,34 @@ export const InvoiceBulkIssuePanel = forwardRef<
       setLastError(message.description);
       showToast.error(message.title, message.description);
     } finally {
-      setPreviewing(false);
+      if (generation === previewGeneration.current) setPreviewing(false);
     }
   };
 
+  const openIssue = (mode: InvoiceBulkSelectionMode) => {
+    if (!warehouseId || !businessDate || eligibleCount === 0) return;
+    void startPreview({
+      warehouse_id: warehouseId,
+      business_date: businessDate,
+      selection_mode: mode,
+      source_order_ids: mode === "SELECTED" ? selectedIds : [],
+    });
+  };
+  useImperativeHandle(ref, () => ({ openIssue }));
+
   const submitOtp = async (otp: string) => {
-    if (!display.selection || !preview || !idempotencyKey.current || issuing)
+    if (
+      !canIssue ||
+      !previewSelection ||
+      !preview ||
+      !idempotencyKey.current ||
+      issuing
+    )
       return;
     setIssuing(true);
     setLastError(null);
     const operation = invoiceApi.createBulkIssue({
-      ...display.selection,
+      ...previewSelection,
       otp,
       idempotency_key: idempotencyKey.current,
       config_fingerprint: preview.config_fingerprint,
@@ -207,8 +182,6 @@ export const InvoiceBulkIssuePanel = forwardRef<
         successDescription: d.startIssueSuccessDesc,
         errorDescription: (error) =>
           invoiceErrorToast(error, "ISSUE", d.issueErrorFallback).description,
-        retry: () => void submitOtp(otp),
-        retryLabel: d.retry,
       });
       setRun(nextRun);
       completionNotified.current = false;
@@ -225,50 +198,11 @@ export const InvoiceBulkIssuePanel = forwardRef<
     }
   };
 
-  const retryRejected = async (otp: string) => {
-    if (retryingRejected || retryCandidates.length === 0 || !canRetry) {
-      return;
-    }
-    setRetryingRejected(true);
-    setLastError(null);
-    try {
-      const result = await showToast.promise(
-        invoiceApi.retryStuckIssueItems(warehouseId, businessDate, otp),
-        {
-          loading: d.retryChecking,
-          success: d.retryStarted,
-          error: d.retryFailed,
-          successDescription: d.retryStartedDescription,
-          errorDescription: (retryError) =>
-            invoiceErrorToast(retryError, "RETRY", d.issueErrorFallback)
-              .description,
-        },
-      );
-      setRetryJobIds([
-        ...new Set(result.retried_items.map((item) => item.job_id)),
-      ]);
-      setShowRetryOtp(false);
-      setRetryCandidates([]);
-      completionNotified.current = false;
-      onIssued();
-    } catch (retryError) {
-      setLastError(
-        invoiceErrorToast(retryError, "RETRY", d.issueErrorFallback)
-          .description,
-      );
-    } finally {
-      setRetryingRejected(false);
-    }
-  };
-
   return (
     <>
       {(showLauncher ||
-        (showProgress &&
-          (run ||
-            retryCandidates.length > 0 ||
-            retryJobIds.length > 0 ||
-            lastError))) && (
+        previewing ||
+        (showProgress && (run || retryJobIds.length > 0 || lastError))) && (
         <section className="rounded-[var(--radius-lg)] border border-sky-200 bg-sky-50 p-2">
           {showLauncher && (
             <div className="flex flex-col gap-2 pl-1 lg:flex-row lg:items-center">
@@ -289,7 +223,7 @@ export const InvoiceBulkIssuePanel = forwardRef<
                     previewing ||
                     issuing
                   }
-                  onClick={() => void display.startConfiguration("SELECTED")}
+                  onClick={() => openIssue("SELECTED")}
                   className="flex-1 inline-flex h-9 w-fit items-center gap-1.5 rounded-md bg-sky-700 px-3 text-sm font-medium text-white disabled:opacity-40 hover:bg-sky-800"
                 >
                   <Send size={14} /> {d.issueSelectedBtn}
@@ -303,7 +237,7 @@ export const InvoiceBulkIssuePanel = forwardRef<
                     previewing ||
                     issuing
                   }
-                  onClick={() => void display.startConfiguration("ALL")}
+                  onClick={() => openIssue("ALL")}
                   className="flex-1 inline-flex h-9 w-fit items-center gap-1.5 rounded-md border border-sky-300 bg-white px-3 text-sm font-medium text-sky-800 disabled:opacity-40 hover:bg-slate-50"
                 >
                   {display.loadingConfig || previewing ? (
@@ -328,37 +262,23 @@ export const InvoiceBulkIssuePanel = forwardRef<
             </div>
           )}
 
-          {showProgress &&
-            (run || retryCandidates.length > 0 || retryJobIds.length > 0) && (
-              <BulkIssueProgressCard
-                expectedTotal={
-                  run?.summary.eligible_count ||
-                  progress.total ||
-                  retryCandidates.length
-                }
-                progress={progress}
-                retryCandidates={retryCandidates}
-                loadingRetryCandidates={loadingRetryCandidates}
-                canRetry={canRetry}
-                retrying={retryingRejected}
-                lang={lang}
-                onRetry={() => setShowRetryOtp(true)}
-              />
-            )}
+          {showProgress && (run || retryJobIds.length > 0) && (
+            <BulkIssueProgressCard
+              expectedTotal={run?.summary.eligible_count || progress.total}
+              progress={progress}
+              lang={lang}
+            />
+          )}
 
           {showProgress && lastError && (
             <div className="mt-2.5 flex items-center justify-between gap-2 rounded-md border border-rose-200 bg-rose-50 p-2 text-xxs text-rose-800">
               <span className="flex items-center gap-1.5">
                 <TriangleAlert size={13} /> {lastError}
               </span>
-              {display.selection && (
+              {previewSelection && (
                 <button
                   type="button"
-                  onClick={() =>
-                    void display.startConfiguration(
-                      display.selection!.selection_mode,
-                    )
-                  }
+                  onClick={() => void startPreview(previewSelection)}
                   className="font-bold underline"
                 >
                   {d.retry}
@@ -381,36 +301,37 @@ export const InvoiceBulkIssuePanel = forwardRef<
           onItemNameChange={display.changeItemName}
           onItemUnitChange={display.changeItemUnit}
           onSave={() => void display.saveDisplayConfig()}
-          onContinue={() => void startPreview()}
+          onContinue={() => {
+            if (display.selection && !display.configDirty) {
+              void startPreview(display.selection);
+            }
+          }}
           onCancel={() =>
             !display.savingConfig && !previewing && display.closeConfiguration()
           }
         />
       )}
-      {preview && !showOtp && (
+      {preview && !showOtp && !display.configOpen && (
         <BulkIssueConfirmModal
           preview={preview}
           lang={lang}
           onCancel={() => setPreview(null)}
           onConfirm={() => setShowOtp(true)}
+          onEditDisplay={() => {
+            if (previewSelection) {
+              void display.startConfiguration(previewSelection.selection_mode);
+            }
+          }}
         />
       )}
       {showOtp && (
         <ActionOtpModal
+          mobileSheet
           title={d.otpTitle}
           description={d.otpDescription}
           isSubmitting={issuing}
           onConfirm={(otp) => void submitOtp(otp)}
           onCancel={() => !issuing && setShowOtp(false)}
-        />
-      )}
-      {showRetryOtp && (
-        <ActionOtpModal
-          title={d.retryOtpTitle}
-          description={d.retryOtpDescription(retryCandidates.length)}
-          isSubmitting={retryingRejected}
-          onConfirm={(otp) => void retryRejected(otp)}
-          onCancel={() => !retryingRejected && setShowRetryOtp(false)}
         />
       )}
     </>

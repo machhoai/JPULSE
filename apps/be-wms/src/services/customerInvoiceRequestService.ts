@@ -112,8 +112,10 @@ const ensureSourceAndDocument = async (order: PosInvoiceOrderRecord) => {
     const businessDate = customerInvoiceRequestBusinessDate(
       order.paidAt ?? order.createdAt,
     );
+    const [snapshotOrder] =
+      await posInvoiceOrderRepository.withInvoicePaymentSnapshots([order]);
     const write = buildPosInvoiceSourceOrder(
-      order,
+      snapshotOrder,
       businessDate,
       storeConfig,
       account as StoredMeInvoiceAccount,

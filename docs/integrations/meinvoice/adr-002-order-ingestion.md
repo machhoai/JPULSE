@@ -23,3 +23,9 @@ Mỗi lần người dùng chuẩn bị phát hành hoặc đối chiếu hóa �
 - Có thể tái dựng mapping và tính lại hóa đơn từ dữ liệu nguồn lịch sử mà không phải gọi lại HKAPI.
 - Dữ liệu raw tốn thêm dung lượng nhưng không bị ghi đè mất lịch sử.
 - Một ngày nhiều đơn hiện được xử lý đồng bộ trong request; khi đo được lưu lượng thực tế sẽ chuyển orchestration sang Cloud Tasks mà không đổi repository/schema.
+
+## Snapshot thanh toán JPOS
+
+JPOS tạo `pos_orders/{localOrderId}/invoice_snapshots/payment` trong cùng giao dịch ghi nhận đơn đã thanh toán. JPOS sở hữu schema `schemaVersion: 1` và chỉ tạo một tài liệu cho mỗi đơn. Snapshot giữ mã đơn, cửa hàng, thời điểm và phương thức thanh toán, dòng hàng, VAT, giảm giá và tổng tiền. Firestore Security Rules chặn truy cập từ client. Backend JPOS ghi snapshot và backend WMS đọc theo đường dẫn tài liệu, không cần index mới.
+
+WMS ưu tiên snapshot khi đồng bộ nguồn JPOS hoặc khi tạo nguồn cho yêu cầu hóa đơn của khách. Đơn cũ chưa có snapshot tiếp tục dùng dữ liệu POS hiện có. Trạng thái hủy, hoàn tiền và mã HK được đọc từ đơn POS hiện tại. Mã HK đến sau vẫn dùng để liên kết hồ sơ Joyworld và kiểm tra trùng như trước, đồng thời không làm đổi hash dữ liệu hóa đơn.

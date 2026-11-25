@@ -36,11 +36,13 @@ export function BulkIssueConfirmModal({
   lang,
   onCancel,
   onConfirm,
+  onEditDisplay,
 }: {
   preview: InvoiceBulkIssuePreview;
   lang: "vi" | "zh";
   onCancel: () => void;
   onConfirm: () => void;
+  onEditDisplay: () => void;
 }) {
   const summary = preview.summary;
   const d = bulkIssueTranslations[lang];
@@ -383,6 +385,13 @@ export function BulkIssueConfirmModal({
             className="h-11 w-full rounded-lg border border-slate-200 px-3.5 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-50 active:scale-[0.98] sm:h-9 sm:w-auto"
           >
             {d.back}
+          </button>
+          <button
+            type="button"
+            onClick={onEditDisplay}
+            className="h-11 w-full rounded-lg border border-slate-200 px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:h-9 sm:w-auto"
+          >
+            {lang === "vi" ? "Cấu hình hiển thị" : "显示设置"}
           </button>
           <button
             type="button"

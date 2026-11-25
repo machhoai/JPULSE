@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  InvoiceDocumentStatus,
   InvoiceOrderSyncPurpose,
   InvoicePreparationStatus,
 } from "@bduck/shared-types";
@@ -14,7 +15,6 @@ import {
 import {
   AlertTriangle,
   CheckCircle2,
-  ChevronRight,
   CircleDollarSign,
   FileCheck2,
   Link2,
@@ -35,6 +35,8 @@ import {
   type InvoiceSourceOrderView,
   type InvoiceSyncResult,
 } from "@/api/invoiceApi";
+import { ActionOtpModal } from "@/components/shared/ActionOtpModal";
+import { useInvoiceRetry } from "@/hooks/useInvoiceRetry";
 import { useStores } from "@/hooks/useWarehouses";
 import { db } from "@/lib/firebase";
 import { useTranslation } from "@/lib/i18n";
@@ -55,6 +57,7 @@ import {
   InvoiceLedgerPanel,
   type InvoiceIssuedStatistics,
 } from "./InvoiceLedgerPanel";
+import { INVOICE_PAGE_SIZE, InvoicePagination } from "./InvoicePagination";
 import { InvoiceSourceUpdateReview } from "./InvoiceSourceUpdateReview";
 import {
   canSelectForInvoiceIssue,
@@ -71,8 +74,7 @@ const copy = {
   vi: {
     eyebrow: "MISA meInvoice",
     title: "Quản lý hóa đơn",
-    subtitle:
-      "Cập nhật, kiểm tra và phát hành hóa đơn trong một luồng duy nhất.",
+    subtitle: "Phát hành hóa đơn từ đơn POS Việt Nam đã thanh toán.",
     store: "Cửa hàng",
     date: "Ngày giao dịch",
     sync: "Cập nhật dữ liệu",
@@ -126,7 +128,7 @@ const copy = {
   zh: {
     eyebrow: "MISA meInvoice",
     title: "发票管理",
-    subtitle: "在一个流程中更新、检查并开具发票。",
+    subtitle: "为越南 POS 已支付订单开具发票。",
     store: "门店",
     date: "交易日期",
     sync: "更新数据",
@@ -162,7 +164,8 @@ const copy = {
     unchanged: "未变化",
     retry: "重试",
     syncFailed: "发票同步失败",
-    syncDescription: "安全草稿已自动更新并保留买方信息。需确认的订单位于需要检查变化列表。",
+    syncDescription:
+      "安全草稿已自动更新并保留买方信息。需确认的订单位于需要检查变化列表。",
     previewReady: "预览已生成",
     previewFailed: "无法预览发票",
     matchedMisa: "MISA 匹配",
@@ -293,12 +296,14 @@ export default function InvoiceManagementPage() {
     useState<InvoiceSourceOrderView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<InvoiceSyncResult | null>(null);
+  const [ledgerRefresh, setLedgerRefresh] = useState(0);
   const [sourceUpdateRefreshToken, setSourceUpdateRefreshToken] = useState(0);
   const [sourceUpdateSummary, setSourceUpdateSummary] = useState<string | null>(
     null,
   );
   const [selectedIssueIds, setSelectedIssueIds] = useState<string[]>([]);
   const [query, setQuery] = useState(() => initialQueryValue("q"));
+  const [listPage, setListPage] = useState(1);
   const [attentionFilter, setAttentionFilter] =
     useState<InvoiceAttentionFilter>("ALL");
   const [configurationOpen, setConfigurationOpen] = useState(false);
@@ -346,6 +351,11 @@ export default function InvoiceManagementPage() {
       if (generation === loadGeneration.current) setLoading(false);
     }
   }, [activeStoreId, lang, selectedDates]);
+
+  const refreshInvoiceResults = useCallback(() => {
+    setLedgerRefresh((version) => version + 1);
+    void loadOrders();
+  }, [loadOrders]);
 
   useEffect(() => {
     void loadOrders();
@@ -400,6 +410,7 @@ export default function InvoiceManagementPage() {
   useEffect(() => {
     setSelectedIssueIds([]);
     setSourceUpdateSummary(null);
+    setListPage(1);
   }, [activeStoreId, businessDate, businessDateTo]);
 
   useEffect(() => {
@@ -445,12 +456,14 @@ export default function InvoiceManagementPage() {
         }
         if (!lastResult) throw new Error("INVOICE_DATE_RANGE_EMPTY");
         setSyncResult(selectedDates.length === 1 ? lastResult : null);
+        setLedgerRefresh((version) => version + 1);
         await loadOrders();
-        const legacySummary = draftCounts.legacySkipped > 0
-          ? lang === "vi"
-            ? ` Có ${draftCounts.legacySkipped} đơn đã liên kết với hồ sơ lịch sử và cần kiểm tra để tránh phát hành trùng.`
-            : ` 有 ${draftCounts.legacySkipped} 笔订单关联历史记录，需要核对以避免重复开票。`
-          : "";
+        const legacySummary =
+          draftCounts.legacySkipped > 0
+            ? lang === "vi"
+              ? ` Có ${draftCounts.legacySkipped} đơn đã liên kết với hồ sơ lịch sử và cần kiểm tra để tránh phát hành trùng.`
+              : ` 有 ${draftCounts.legacySkipped} 笔订单关联历史记录，需要核对以避免重复开票。`
+            : "";
         setSourceUpdateSummary(
           (lang === "vi"
             ? `Đã tạo ${draftCounts.created} và tự cập nhật ${draftCounts.updated} hóa đơn nháp, giữ thông tin người mua. Các đơn cần xác nhận được gom trong danh sách “Cần kiểm tra thay đổi”.`
@@ -547,7 +560,6 @@ export default function InvoiceManagementPage() {
         order.order_number,
         order.source_order_id,
         order.local_order_id,
-        order.hk_order_number,
         order.customer_name,
       ]
         .filter(Boolean)
@@ -563,6 +575,25 @@ export default function InvoiceManagementPage() {
   const canBulkIssue = hasPermission("invoices.bulk_issue", activeStoreId);
   const canRetryIssue = hasPermission("invoices.retry", activeStoreId);
   const canConfigure = hasPermission("invoices.config", activeStoreId);
+  const retry = useInvoiceRetry({
+    warehouseId: activeStoreId,
+    dates: selectedDates,
+    enabled: canRetryIssue,
+    orders,
+    lang,
+    onCompleted: refreshInvoiceResults,
+  });
+  const retryableIds = new Set(
+    retry.candidates.map((item) => item.invoice_document_id),
+  );
+  const page = Math.min(
+    listPage,
+    Math.max(1, Math.ceil(filteredOrders.length / INVOICE_PAGE_SIZE)),
+  );
+  const visibleOrders = filteredOrders.slice(
+    (page - 1) * INVOICE_PAGE_SIZE,
+    page * INVOICE_PAGE_SIZE,
+  );
   const invoiceViews: Array<[InvoiceWorkspaceTab, string, number | null]> = [
     [
       "ACTION_REQUIRED",
@@ -597,15 +628,20 @@ export default function InvoiceManagementPage() {
   const issueEligibleOrders = issueBusinessDate
     ? readyOrders.filter((order) => order.business_date === issueBusinessDate)
     : [];
-  const selectableIssueIds = filteredOrders
+  const pageIssueDate =
+    issueBusinessDate ||
+    visibleOrders.find(canSelectForInvoiceIssue)?.business_date;
+  const selectableIssueIds = visibleOrders
     .filter(
       (order) =>
         canSelectForInvoiceIssue(order) &&
-        Boolean(issueBusinessDate) &&
-        order.business_date === issueBusinessDate,
+        order.business_date === pageIssueDate,
     )
     .map((order) => order.id);
   const selectedEligibleIds = selectedEligibleOrders.map((order) => order.id);
+  const allPageOrdersSelected =
+    selectableIssueIds.length > 0 &&
+    selectableIssueIds.every((id) => selectedEligibleIds.includes(id));
   const dailyEligibleCount = issueEligibleOrders.length;
 
   const toggleIssueId = (id: string) => {
@@ -649,7 +685,7 @@ export default function InvoiceManagementPage() {
             {d.subtitle}
           </p>
         </div>
-        <div className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_minmax(280px,1fr)_auto_auto_auto] lg:items-end">
+        <div className="grid min-w-0 gap-2 p-3 sm:grid-cols-2 xl:grid-cols-[minmax(160px,1fr)_minmax(250px,1.25fr)_auto] xl:items-end">
           <Field label={d.store}>
             <select
               value={activeStoreId}
@@ -696,67 +732,76 @@ export default function InvoiceManagementPage() {
               </span>
             )}
           </Field>
-          <button
-            type="button"
-            onClick={handleSync}
-            disabled={
-              !canUpdate ||
-              syncing ||
-              !activeStoreId ||
-              selectedDates.length === 0
-            }
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-slate-900 px-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40 sm:col-span-1"
+          <div
+            className={`grid min-w-0 gap-2 sm:col-span-2 xl:col-span-1 ${canConfigure ? "grid-cols-[44px_minmax(0,1fr)_44px]" : "grid-cols-[44px_minmax(0,1fr)]"}`}
           >
-            {syncing ? (
-              <LoaderCircle className="animate-spin" size={16} />
-            ) : (
-              <RefreshCw size={16} />
-            )}
-            {syncing ? d.syncing : d.sync}
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              bulkIssueRef.current?.openIssue(
-                selectedEligibleIds.length > 0 ? "SELECTED" : "ALL",
-              )
-            }
-            disabled={!canBulkIssue || dailyEligibleCount === 0 || syncing}
-            title={
-              dailyEligibleCount === 0 && readyDates.length > 1
-                ? lang === "vi"
-                  ? "Khi xem nhiều ngày, hãy chọn hóa đơn của một ngày trước khi phát hành."
-                  : "Select invoices from one day before issuing."
-                : undefined
-            }
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] bg-sky-700 px-4 text-sm font-bold text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 sm:col-span-1"
-          >
-            <Send size={16} />
-            {d.issueInvoices}
-            {selectedEligibleIds.length > 0
-              ? ` (${selectedEligibleIds.length})`
-              : ""}
-          </button>
-          {canConfigure && (
             <button
               type="button"
-              onClick={() => setConfigurationOpen(true)}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 sm:w-11 sm:px-0"
-              aria-label={
-                lang === "vi"
-                  ? "Mở cấu hình hóa đơn"
-                  : "Open invoice configuration"
+              aria-label={syncing ? d.syncing : d.sync}
+              aria-busy={syncing}
+              title={syncing ? d.syncing : d.sync}
+              onClick={handleSync}
+              disabled={
+                !canUpdate ||
+                syncing ||
+                !activeStoreId ||
+                selectedDates.length === 0
+              }
+              className="inline-flex size-11 items-center justify-center rounded-[var(--radius-md)] border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+            >
+              {syncing ? (
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="motion-safe:animate-spin"
+                  size={17}
+                />
+              ) : (
+                <RefreshCw aria-hidden="true" size={17} />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                bulkIssueRef.current?.openIssue(
+                  selectedEligibleIds.length > 0 ? "SELECTED" : "ALL",
+                )
+              }
+              disabled={
+                !canBulkIssue || dailyEligibleCount === 0 || syncing || loading
               }
               title={
-                lang === "vi" ? "Cấu hình hóa đơn" : "Invoice configuration"
+                dailyEligibleCount === 0 && readyDates.length > 1
+                  ? lang === "vi"
+                    ? "Khi xem nhiều ngày, hãy chọn hóa đơn của một ngày trước khi phát hành."
+                    : "Select invoices from one day before issuing."
+                  : undefined
               }
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-[var(--radius-md)] bg-sky-700 px-2 text-xs font-bold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 sm:px-4 sm:text-sm"
             >
-              <Settings2 size={17} />
-              <span className="sm:hidden">
-                {lang === "vi" ? "Cấu hình hóa đơn" : "Configuration"}
-              </span>
+              <Send size={16} />
+              {d.issueInvoices}
+              {selectedEligibleIds.length > 0
+                ? ` (${selectedEligibleIds.length})`
+                : ""}
             </button>
-          )}
+            {canConfigure && (
+              <button
+                type="button"
+                onClick={() => setConfigurationOpen(true)}
+                className="inline-flex size-11 items-center justify-center rounded-[var(--radius-md)] border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                aria-label={
+                  lang === "vi"
+                    ? "Mở cấu hình hóa đơn"
+                    : "Open invoice configuration"
+                }
+                title={
+                  lang === "vi" ? "Cấu hình hóa đơn" : "Invoice configuration"
+                }
+              >
+                <Settings2 size={17} aria-hidden="true" />
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -771,6 +816,8 @@ export default function InvoiceManagementPage() {
             onClick={() => {
               setView(value);
               setAttentionFilter("ALL");
+              setListPage(1);
+              setSelectedIssueIds([]);
             }}
             className={`flex min-h-11 items-center justify-center gap-1 rounded-xl px-2 py-2 text-center text-[11px] font-semibold leading-tight transition sm:text-xs ${
               view === value
@@ -800,11 +847,16 @@ export default function InvoiceManagementPage() {
         />
       )}
       {syncResult && (
-        <SyncResultCard
-          d={d}
-          onDismiss={() => setSyncResult(null)}
-          syncResult={syncResult}
-        />
+        <details className="rounded-xl border border-slate-200 bg-white p-2 text-xs">
+          <summary className="cursor-pointer px-2 py-1 font-semibold text-slate-700">
+            {d.syncSummaryTitle}
+          </summary>
+          <SyncResultCard
+            d={d}
+            onDismiss={() => setSyncResult(null)}
+            syncResult={syncResult}
+          />
+        </details>
       )}
       {sourceUpdateSummary && (
         <p
@@ -825,16 +877,17 @@ export default function InvoiceManagementPage() {
       />
 
       <InvoiceBulkIssuePanel
+        key={activeStoreId}
         ref={bulkIssueRef}
         warehouseId={activeStoreId}
         businessDate={issueBusinessDate || businessDate}
         selectedIds={selectedEligibleIds}
         eligibleCount={dailyEligibleCount}
         canIssue={canBulkIssue}
-        canRetry={canRetryIssue}
+        retryJobIds={retry.jobIds}
         lang={lang}
         onIssued={() => setSelectedIssueIds([])}
-        onCompleted={() => void loadOrders()}
+        onCompleted={refreshInvoiceResults}
         showLauncher={false}
         showProgress={view !== "ISSUED"}
       />
@@ -869,17 +922,40 @@ export default function InvoiceManagementPage() {
 
           <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)]">
             <div className="flex flex-col gap-2 border-b border-[var(--color-border-subtle)] p-2.5">
-              <div className="relative w-full sm:max-w-xl">
-                <Search
-                  className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={13}
-                />
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder={d.search}
-                  className="h-8 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white pl-8 pr-2.5 text-xs outline-none focus:border-[var(--color-brand-primary)]"
-                />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="relative w-full sm:max-w-xl sm:flex-1">
+                  <Search
+                    className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={13}
+                  />
+                  <input
+                    value={query}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setListPage(1);
+                      setSelectedIssueIds([]);
+                    }}
+                    aria-label={d.search}
+                    placeholder={d.search}
+                    className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-white pl-8 pr-2.5 text-base outline-none focus:border-[var(--color-brand-primary)] sm:h-9 sm:text-xs"
+                  />
+                </div>
+                {view === "ACTION_REQUIRED" && canRetryIssue && (
+                  <button
+                    type="button"
+                    disabled={
+                      !retry.candidates.length || retry.submitting || syncing
+                    }
+                    onClick={() => retry.open()}
+                    className="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius-md)] border border-sky-200 bg-sky-50 px-3 text-xs font-bold text-sky-800 hover:bg-sky-100 disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-500 sm:min-h-9"
+                  >
+                    <RefreshCw size={14} aria-hidden="true" />
+                    {lang === "vi" ? "Gửi lại tất cả" : "全部重发"}
+                    <span className="rounded-full bg-white px-1.5 py-0.5 tabular-nums">
+                      {retry.candidates.length}
+                    </span>
+                  </button>
+                )}
               </div>
               {view === "ACTION_REQUIRED" && (
                 <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -913,7 +989,10 @@ export default function InvoiceManagementPage() {
                     <button
                       key={value}
                       type="button"
-                      onClick={() => setAttentionFilter(value)}
+                      onClick={() => {
+                        setAttentionFilter(value);
+                        setListPage(1);
+                      }}
                       className={`h-8 shrink-0 rounded-full border px-3 text-xs font-semibold transition ${attentionFilter === value ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
                     >
                       {label}
@@ -954,181 +1033,173 @@ export default function InvoiceManagementPage() {
               <div className="flex flex-col gap-2.5 p-3">
                 {canBulkIssue && view === "READY" && (
                   <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/80 px-3.5 py-2 text-xs font-semibold text-slate-700">
-                    <div className="flex items-center gap-2">
+                    <label className="flex min-h-9 items-center gap-2 sm:min-h-0">
                       <input
                         type="checkbox"
-                        checked={
-                          selectableIssueIds.length > 0 &&
-                          selectableIssueIds.every((id) =>
-                            selectedIssueIds.includes(id),
-                          )
-                        }
+                        checked={allPageOrdersSelected}
                         onChange={() => {
-                          setSelectedIssueIds(
-                            selectableIssueIds.every((id) =>
-                              selectedIssueIds.includes(id),
-                            )
-                              ? []
-                              : selectableIssueIds,
+                          setSelectedIssueIds((current) =>
+                            allPageOrdersSelected
+                              ? current.filter(
+                                  (id) => !selectableIssueIds.includes(id),
+                                )
+                              : [
+                                  ...new Set([
+                                    ...current,
+                                    ...selectableIssueIds,
+                                  ]),
+                                ],
                           );
                         }}
                         disabled={selectableIssueIds.length === 0}
-                        aria-label={
-                          lang === "vi"
-                            ? "Chọn tất cả hóa đơn sẵn sàng"
-                            : "Select all ready invoices"
-                        }
                         className="h-4 w-4 rounded accent-sky-700 cursor-pointer"
                       />
                       <span>
                         {lang === "vi"
-                          ? "Chọn tất cả hóa đơn sẵn sàng phát hành"
-                          : "Select all ready invoices"}
+                          ? "Chọn các đơn cùng ngày trên trang"
+                          : "选择本页同日订单"}
                       </span>
-                    </div>
+                    </label>
                     <span className="text-slate-500 font-medium">
-                      {selectedIssueIds.length} / {selectableIssueIds.length}{" "}
-                      {lang === "vi" ? "đã chọn" : "selected"}
+                      {selectedEligibleIds.length}{" "}
+                      {lang === "vi" ? "đã chọn" : "已选择"}
                     </span>
                   </div>
                 )}
 
-                {filteredOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    className={`group relative rounded-xl border transition-all duration-150 bg-white p-3.5 shadow-2xs hover:shadow-md ${
-                      selectedIssueIds.includes(order.id)
-                        ? "border-sky-400 bg-sky-50/20 ring-1 ring-sky-300"
-                        : "border-slate-200/90 hover:border-sky-300"
-                    } [content-visibility:auto] [contain-intrinsic-size:0_132px]`}
-                  >
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center justify-between">
-                      <div className="flex items-start gap-3 min-w-0 flex-1">
-                        {canBulkIssue && canSelectForInvoiceIssue(order) && (
-                          <input
-                            type="checkbox"
-                            checked={selectedIssueIds.includes(order.id)}
-                            onChange={() => toggleIssueId(order.id)}
-                            aria-label={
-                              lang === "vi"
-                                ? "Chọn hóa đơn để phát hành"
-                                : "Select invoice to issue"
-                            }
-                            className="mt-1 h-4 w-4 shrink-0 rounded accent-sky-700 cursor-pointer"
-                          />
+                <div
+                  aria-hidden="true"
+                  className="hidden grid-cols-[minmax(0,1fr)_7rem_9rem_7rem] gap-3 px-3 text-[11px] font-semibold text-slate-600 lg:grid"
+                >
+                  <span>{d.order}</span>
+                  <span className="text-right">{d.totalMoney}</span>
+                  <span>{lang === "vi" ? "Trạng thái" : "状态"}</span>
+                  <span className="text-center">
+                    {lang === "vi" ? "Thao tác" : "操作"}
+                  </span>
+                </div>
+                {visibleOrders.map((order) => {
+                  const status = invoiceBusinessStatus(order);
+                  const documentId = order.invoice_document_id;
+                  const canRetryOrder = Boolean(
+                    documentId && retryableIds.has(documentId),
+                  );
+                  const needsInfo =
+                    status === "REVIEW_REQUIRED" &&
+                    orderMatchesAttentionFilter(order, "MISSING_INFORMATION");
+                  const pendingConfirmation =
+                    order.invoice_document_status ===
+                    InvoiceDocumentStatus.PENDING_CONFIRMATION;
+                  const statusLabel = pendingConfirmation
+                    ? lang === "vi"
+                      ? "Đang xác minh"
+                      : "正在核验"
+                    : needsInfo
+                      ? lang === "vi"
+                        ? "Thiếu thông tin"
+                        : "缺少信息"
+                      : businessStatusCopy[lang][status];
+                  const actionLabel = canRetryOrder
+                    ? lang === "vi"
+                      ? "Gửi lại"
+                      : "重发"
+                    : needsInfo && canPrepare
+                      ? lang === "vi"
+                        ? "Sửa thông tin"
+                        : "修改信息"
+                      : lang === "vi"
+                        ? "Xem chi tiết"
+                        : "查看详情";
+                  const orderNumber =
+                    order.order_number ?? order.source_order_id;
+                  const selected = selectedEligibleIds.includes(order.id);
+                  const payment =
+                    order.mapped_payment_method ?? order.payment_method;
+                  return (
+                    <article
+                      key={order.id}
+                      className={`grid min-w-0 gap-x-3 gap-y-1 rounded-xl border bg-white px-2.5 py-2 lg:grid-cols-[minmax(0,1fr)_7rem_9rem_7rem] lg:items-center lg:px-3 ${selected ? "border-sky-400 bg-sky-50/30" : "border-slate-200"}`}
+                    >
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        {canBulkIssue && status === "READY" && (
+                          <label className="grid min-h-11 w-8 shrink-0 place-items-center sm:min-h-8">
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              disabled={
+                                selectedIssueDates.length > 0 &&
+                                order.business_date !== issueBusinessDate
+                              }
+                              onChange={() => toggleIssueId(order.id)}
+                              aria-label={`${lang === "vi" ? "Chọn đơn" : "选择订单"} ${orderNumber}`}
+                              className="size-4 accent-sky-700"
+                            />
+                          </label>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => setSelectedOrder(order)}
-                          className="min-w-0 flex-1 text-left"
-                        >
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-bold text-slate-900 group-hover:text-sky-700 transition-colors">
-                              {order.order_number ?? order.source_order_id}
-                            </span>
-                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600 font-medium">
-                              {order.mapped_payment_method ??
-                                order.payment_method ??
-                                "—"}
-                            </span>
-                            {selectedDates.length > 1 && (
-                              <span className="rounded-md bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-700">
-                                {order.business_date}
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOrder(order)}
+                              className="max-w-full wrap-anywhere text-left text-sm font-bold text-slate-900 hover:text-sky-700 hover:underline"
+                            >
+                              {orderNumber}
+                            </button>
+                            {payment && (
+                              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+                                {payment}
                               </span>
                             )}
                           </div>
-                          <p
-                            className="mt-1 text-xs font-medium text-slate-600 truncate"
-                            title={order.customer_name || order.source_order_id}
+                          <div className="mt-0.5 flex flex-wrap gap-x-1.5 text-xs text-slate-600">
+                            <span title={order.customer_name || undefined}>
+                              {shortName(order.customer_name) ||
+                                (lang === "vi" ? "Khách lẻ" : "零售客户")}
+                            </span>
+                            <span>· {order.business_date}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid min-w-0 grid-cols-[minmax(65px,auto)_minmax(0,1fr)_minmax(74px,5.25rem)] items-center gap-1.5 border-t border-slate-100 pt-1 lg:contents">
+                        <strong className="whitespace-nowrap text-xs font-bold tabular-nums text-sky-700 lg:text-right lg:text-sm">
+                          <span className="sr-only">{d.totalMoney} </span>
+                          {money.format(order.real_money ?? 0)}
+                        </strong>
+                        <div className="min-w-0 text-center lg:text-left">
+                          <span
+                            className={`inline-block rounded-full border px-1.5 py-0.5 text-[11px] font-semibold leading-tight lg:px-2 ${businessStatusStyle[status]}`}
                           >
-                            {shortName(order.customer_name) ||
-                              order.source_order_id}
-                          </p>
-                          {order.source_system === "JPOS" && (
-                            <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] font-medium text-slate-500">
-                              <span className="rounded bg-slate-100 px-1.5 py-0.5">
-                                Local: {order.local_order_id ?? "—"}
-                              </span>
-                              <span className="rounded bg-slate-100 px-1.5 py-0.5">
-                                HK: {order.hk_order_number ?? "—"}
-                              </span>
-                              {order.customer_invoice_request_status ===
-                                "SUBMITTED" && (
-                                <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-700">
-                                  {lang === "vi"
-                                    ? "Khách đã gửi thông tin hóa đơn"
-                                    : "客户已提交发票信息"}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {order.payment_time && (
-                            <p className="mt-0.5 text-xs text-slate-400">
-                              {order.payment_time}
-                            </p>
-                          )}
-                        </button>
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
-                        <div className="flex items-center gap-2">
-                          <div className="flex flex-col text-right">
-                            <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
-                              {d.beforeTax}
-                            </span>
-                            <span className="text-xs font-semibold tabular-nums text-slate-700 bg-slate-100/80 px-2 py-0.5 rounded-md border border-slate-200/50">
-                              {money.format(order.amount_before_tax ?? 0)}
-                            </span>
-                          </div>
-                          <div className="flex flex-col text-right">
-                            <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
-                              {d.vat}
-                            </span>
-                            <span className="text-xs font-semibold tabular-nums text-slate-700 bg-slate-100/80 px-2 py-0.5 rounded-md border border-slate-200/50">
-                              {money.format(order.tax_money ?? 0)}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col text-right">
-                          <span className="text-[11px] text-sky-800 uppercase tracking-wider font-bold">
-                            {d.totalMoney}
-                          </span>
-                          <span className="text-sm sm:text-base font-bold tabular-nums text-sky-700 bg-sky-50 px-3 py-1 rounded-lg border border-sky-200/80 shadow-2xs">
-                            {money.format(order.real_money ?? 0)}
+                            {statusLabel}
                           </span>
                         </div>
-
                         <button
                           type="button"
-                          onClick={() => setSelectedOrder(order)}
-                          className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${businessStatusStyle[invoiceBusinessStatus(order)]}`}
-                          title={
-                            lang === "vi"
-                              ? "Bấm để xem nguyên nhân và chi tiết kỹ thuật"
-                              : "Open details"
+                          aria-label={`${actionLabel} ${orderNumber}`}
+                          onClick={() => {
+                            if (canRetryOrder && documentId)
+                              retry.open(documentId);
+                            else setSelectedOrder(order);
+                          }}
+                          disabled={
+                            canRetryOrder && (retry.submitting || syncing)
                           }
+                          className="min-h-11 w-full rounded-lg border border-slate-200 px-1 py-1 text-xs font-semibold text-sky-800 hover:border-sky-200 hover:bg-sky-50 disabled:opacity-40 lg:min-h-8 lg:px-2"
                         >
-                          {
-                            businessStatusCopy[lang][
-                              invoiceBusinessStatus(order)
-                            ]
-                          }
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setSelectedOrder(order)}
-                          aria-label={d.detail}
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors"
-                        >
-                          <ChevronRight size={16} />
+                          {actionLabel}
                         </button>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
+            )}
+            {!loading && (
+              <InvoicePagination
+                page={page}
+                total={filteredOrders.length}
+                lang={lang}
+                onPageChange={setListPage}
+              />
             )}
           </section>
 
@@ -1139,7 +1210,7 @@ export default function InvoiceManagementPage() {
                 warehouseId={activeStoreId}
                 businessDate={date}
                 mode="EXCEPTIONS"
-                refreshToken={syncResult?.id ?? ""}
+                refreshToken={String(ledgerRefresh)}
                 canDownload={hasPermission("invoices.download", activeStoreId)}
                 canResolve={canReconcile}
               />
@@ -1198,13 +1269,35 @@ export default function InvoiceManagementPage() {
             />
           </section>
 
+          <label className="relative block rounded-xl border border-slate-200 bg-white p-2.5">
+            <Search
+              size={15}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-slate-500"
+            />
+            <span className="sr-only">
+              {lang === "vi" ? "Tìm hóa đơn đã phát hành" : "搜索已开票记录"}
+            </span>
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={
+                lang === "vi"
+                  ? "Tìm mã đơn, số hóa đơn hoặc khách hàng"
+                  : "搜索订单号、发票号或客户"
+              }
+              className="h-11 w-full max-w-xl rounded-[var(--radius-md)] border border-slate-200 pl-8 pr-2.5 text-base sm:h-9 sm:text-xs"
+            />
+          </label>
           {selectedDates.map((date) => (
             <InvoiceLedgerPanel
-              key={`issued-${date}`}
+              key={`issued-${activeStoreId}-${date}`}
               warehouseId={activeStoreId}
               businessDate={date}
               mode="ISSUED"
-              refreshToken={syncResult?.id ?? ""}
+              search={query}
+              refreshToken={String(ledgerRefresh)}
               canDownload={hasPermission("invoices.download", activeStoreId)}
               canResolve={canReconcile}
               onIssuedStatisticsLoaded={handleIssuedStatisticsLoaded}
@@ -1219,6 +1312,20 @@ export default function InvoiceManagementPage() {
           canConfigure={canConfigure}
           lang={lang}
           onClose={() => setConfigurationOpen(false)}
+        />
+      )}
+      {retry.count > 0 && (
+        <ActionOtpModal
+          mobileSheet
+          title={lang === "vi" ? "Xác nhận gửi lại hóa đơn" : "确认重发发票"}
+          description={
+            lang === "vi"
+              ? `${retry.count} đơn lỗi trong cửa hàng và khoảng ngày đang chọn. Hệ thống sẽ xác minh với MISA trước khi gửi lại.`
+              : `${retry.count} 笔错误订单。系统将在重发前向 MISA 核验。`
+          }
+          isSubmitting={retry.submitting}
+          onConfirm={(otp) => void retry.confirm(otp)}
+          onCancel={retry.cancel}
         />
       )}
     </div>

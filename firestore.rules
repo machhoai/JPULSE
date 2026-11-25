@@ -703,6 +703,9 @@ service cloud.firestore {
     match /pos_orders/{orderId} {
       allow read: if hasResourceFacility('warehouseId', 'pos.orders.read');
       allow write: if false;
+      match /invoice_snapshots/{snapshotId} {
+        allow read, write: if false;
+      }
     }
     match /pos_order_summaries/{orderId} {
       allow read: if hasResourceFacility('warehouseId', 'pos.orders.read');

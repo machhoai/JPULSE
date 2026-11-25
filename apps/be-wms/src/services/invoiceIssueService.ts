@@ -440,9 +440,7 @@ export const processInvoiceIssueItem = async (
       errorCode: "INVOICE_ISSUE_DEADLINE_EXPIRED",
       lastError:
         "Vietnam business-day issue deadline reached; no further retry is allowed.",
-      clearManualRetryRequest: Boolean(
-        claimed.item.manual_retry_requested_at,
-      ),
+      clearManualRetryRequest: Boolean(claimed.item.manual_retry_requested_at),
     });
   }
   if (
@@ -546,11 +544,16 @@ export const processInvoiceIssueItem = async (
     const documentId = String(claimed.item.invoice_document_id);
     const [source, document] = await Promise.all([
       invoiceOrderRepository.getOrder(documentId, claimed.job.warehouse_id),
-      invoiceDocumentRepository.getDocument(documentId, claimed.job.warehouse_id),
+      invoiceDocumentRepository.getDocument(
+        documentId,
+        claimed.job.warehouse_id,
+      ),
     ]);
-    if (source?.mapping_version !== JPOS_INVOICE_MAPPING_VERSION ||
-        document?.mapping_version !== JPOS_INVOICE_MAPPING_VERSION ||
-        source.source_payload_hash !== document.source_payload_hash) {
+    if (
+      source?.mapping_version !== JPOS_INVOICE_MAPPING_VERSION ||
+      document?.mapping_version !== JPOS_INVOICE_MAPPING_VERSION ||
+      source.source_payload_hash !== document.source_payload_hash
+    ) {
       return finalizeClaimed({
         jobId,
         itemId,
@@ -753,18 +756,15 @@ const buyerName = (order: Record<string, unknown>): string | null => {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 };
 
-export const retryRejectedInvoiceIssueItems = async (
+const retryInvoiceItemsForDate = async (
   input: {
     warehouse_id: string;
     business_date: string;
-    otp: string;
+    documentIds?: ReadonlySet<string>;
   },
   actorId: string,
-  authorization: AuthorizationService,
   auditMetadata?: AuditMetadata,
 ) => {
-  authorization.assert("invoices.retry", input.warehouse_id);
-  requireIssueEnabled();
   if (invoiceIssueDeadlineExpired(invoiceIssueDeadline(input.business_date))) {
     throw serviceError(
       409,
@@ -772,14 +772,6 @@ export const retryRejectedInvoiceIssueItems = async (
       "INVOICE_ISSUE_DEADLINE_EXPIRED",
     );
   }
-  if (!(await verifyMfa(actorId, input.otp))) {
-    throw serviceError(
-      401,
-      "Mã OTP không đúng hoặc đã hết hạn.",
-      "INVALID_OTP",
-    );
-  }
-
   const storedConfig = await meInvoiceConfigRepository.getStoreConfig(
     input.warehouse_id,
   );
@@ -797,7 +789,14 @@ export const retryRejectedInvoiceIssueItems = async (
     );
   }
   const config = toPublicStoreConfig(storedConfig);
-  const candidates = await loadInvoiceIssueRetryCandidates(input);
+  const candidates = (await loadInvoiceIssueRetryCandidates(input)).filter(
+    ({ item, order }) =>
+      !input.documentIds ||
+      (input.documentIds.has(String(item.invoice_document_id)) &&
+        item.status === InvoiceIssueItemStatus.RETRYABLE_ERROR &&
+        order.invoice_document_status ===
+          InvoiceDocumentStatus.RETRYABLE_ERROR),
+  );
   if (candidates.length === 0) {
     return {
       retried_count: 0,
@@ -935,6 +934,7 @@ export const retryRejectedInvoiceIssueItems = async (
         actorId,
         requestId,
         signType: config.sign_type,
+        requireRetryableError: Boolean(input.documentIds),
         items: group.map(({ candidate, allowPublish }) => ({
           itemId: String(candidate.item.id),
           allowPublish,
@@ -999,6 +999,75 @@ export const retryRejectedInvoiceIssueItems = async (
     retried_items: scheduledItems,
     blocked_items: blockedItems,
   };
+};
+
+export const retryRejectedInvoiceIssueItems = async (
+  input: { warehouse_id: string; otp: string } & (
+    | { business_date: string }
+    | { business_dates: string[]; invoice_document_ids: string[] }
+  ),
+  actorId: string,
+  authorization: AuthorizationService,
+  auditMetadata?: AuditMetadata,
+) => {
+  authorization.assert("invoices.retry", input.warehouse_id);
+  requireIssueEnabled();
+  if (
+    "business_date" in input &&
+    invoiceIssueDeadlineExpired(invoiceIssueDeadline(input.business_date))
+  ) {
+    throw serviceError(
+      409,
+      "Đã qua 00:00 giờ Việt Nam của ngày kinh doanh nên hệ thống không thử phát hành lại.",
+      "INVOICE_ISSUE_DEADLINE_EXPIRED",
+    );
+  }
+  if (!(await verifyMfa(actorId, input.otp))) {
+    throw serviceError(
+      401,
+      "Mã OTP không đúng hoặc đã hết hạn.",
+      "INVALID_OTP",
+    );
+  }
+  if ("business_date" in input) {
+    return retryInvoiceItemsForDate(input, actorId, auditMetadata);
+  }
+
+  const documentIds = new Set(input.invoice_document_ids);
+  const result = {
+    retried_count: 0,
+    already_on_misa_count: 0,
+    duplicate_blocked_count: 0,
+    skipped_count: 0,
+    retried_items: [] as Awaited<
+      ReturnType<typeof retryInvoiceItemsForDate>
+    >["retried_items"],
+    blocked_items: [] as Awaited<
+      ReturnType<typeof retryInvoiceItemsForDate>
+    >["blocked_items"],
+    failed_dates: [] as string[],
+  };
+  const dates = [...new Set(input.business_dates)];
+  for (const date of dates) {
+    try {
+      const daily = await retryInvoiceItemsForDate(
+        { warehouse_id: input.warehouse_id, business_date: date, documentIds },
+        actorId,
+        auditMetadata,
+      );
+      result.retried_count += daily.retried_count;
+      result.already_on_misa_count += daily.already_on_misa_count;
+      result.duplicate_blocked_count += daily.duplicate_blocked_count;
+      result.skipped_count += daily.skipped_count;
+      result.retried_items.push(...daily.retried_items);
+      result.blocked_items.push(...daily.blocked_items);
+    } catch (error) {
+      if (dates.length === 1) throw error;
+      console.error("[invoice retry] Date could not be processed", date, error);
+      result.failed_dates.push(date);
+    }
+  }
+  return result;
 };
 
 export const sweepInvoiceIssueItems = async () => {
